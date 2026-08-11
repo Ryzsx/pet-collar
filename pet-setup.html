@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Pet Collar - Pet Setup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f4f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.08);
+            padding: 48px 44px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header .icon {
+            font-size: 56px;
+            margin-bottom: 8px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0b1a2e;
+        }
+
+        .header p {
+            color: #7a8a9e;
+            font-size: 15px;
+            margin-top: 4px;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .step-dot {
+            width: 40px;
+            height: 4px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            transition: 0.3s;
+        }
+
+        .step-dot.active {
+            background: #2a6df4;
+        }
+
+        .step-dot.done {
+            background: #22c55e;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a2f44;
+            margin-bottom: 4px;
+        }
+
+        .form-group label .required {
+            color: #ef4444;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: #f8fafc;
+            outline: none;
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+            color: #0b1a2e;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #2a6df4;
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(42, 109, 244, 0.08);
+        }
+
+        .form-group select {
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: #2a6df4;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 8px;
+        }
+
+        .btn-primary:hover {
+            background: #1a5adf;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(42, 109, 244, 0.25);
+        }
+
+        .btn-primary:disabled {
+            background: #a0b8d0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            color: #2a6df4;
+            border: 1.5px solid #2a6df4;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: #eff6ff;
+        }
+
+        #message {
+            margin-top: 14px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            display: block;
+        }
+
+        .success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            display: block;
+        }
+
+        .info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            display: block;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .pet-avatar-preview {
+            text-align: center;
+            font-size: 72px;
+            margin: 12px 0 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: #2a6df4;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            width: 33%;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .nav-buttons .btn-back {
+            padding: 14px 20px;
+            background: #e2e8f0;
+            color: #1a2f44;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: 0.2s;
+            flex: 0.5;
+        }
+
+        .nav-buttons .btn-back:hover {
+            background: #d0d8e0;
+        }
+
+        .nav-buttons .btn-next {
+            padding: 14px 20px;
+            background: #2a6df4;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: 0.2s;
+            flex: 1;
+        }
+
+        .nav-buttons .btn-next:hover {
+            background: #1a5adf;
+        }
+
+        .nav-buttons .btn-next:disabled {
+            background: #a0b8d0;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 28px 20px;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 22px;
+            }
+            .nav-buttons {
+                flex-direction: column;
+            }
+            .nav-buttons .btn-back {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="icon">🐾</div>
+            <h1>Meet Your Pet!</h1>
+            <p>Let's set up your pet's profile for personalized monitoring.</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="fill" id="progressFill"></div>
+        </div>
+
+        <!-- Steps Indicator -->
+        <div class="steps">
+            <div class="step-dot active" id="step1"></div>
+            <div class="step-dot" id="step2"></div>
+            <div class="step-dot" id="step3"></div>
+        </div>
+
+        <!-- Pet Avatar Preview -->
+        <div class="pet-avatar-preview" id="petAvatar">🐶</div>
+
+        <!-- Form -->
+        <form id="petSetupForm">
+            <!-- Step 1: Basic Info -->
+            <div id="step1Content">
+                <div class="form-group">
+                    <label>Pet Name <span class="required">*</span></label>
+                    <input type="text" id="petName" placeholder="Enter your pet's name" required />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Pet Type <span class="required">*</span></label>
+                        <select id="petType" required>
+                            <option value="">Select type</option>
+                            <option value="dog">🐕 Dog</option>
+                            <option value="cat">🐈 Cat</option>
+                            <option value="bird">🐦 Bird</option>
+                            <option value="rabbit">🐇 Rabbit</option>
+                            <option value="fish">🐟 Fish</option>
+                            <option value="hamster">🐹 Hamster</option>
+                            <option value="turtle">🐢 Turtle</option>
+                            <option value="other">🐾 Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Gender <span class="required">*</span></label>
+                        <select id="petGender" required>
+                            <option value="">Select gender</option>
+                            <option value="male">♂️ Male</option>
+                            <option value="female">♀️ Female</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Details -->
+            <div id="step2Content" class="hidden">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Breed</label>
+                        <input type="text" id="petBreed" placeholder="e.g. Golden Retriever" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="petAge" placeholder="e.g. 3" min="0" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Weight (kg)</label>
+                        <input type="number" id="petWeight" placeholder="e.g. 25" min="0" step="0.1" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Color</label>
+                        <input type="text" id="petColor" placeholder="e.g. Golden" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Additional Info -->
+            <div id="step3Content" class="hidden">
+                <div class="form-group">
+                    <label>Microchip ID / Collar ID</label>
+                    <input type="text" id="petCollarId" placeholder="e.g. SPC-001" />
+                </div>
+
+                <div class="form-group">
+                    <label>Special Notes</label>
+                    <input type="text" id="petNotes" placeholder="Allergies, medications, or special needs..." />
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="nav-buttons">
+                <button type="button" id="prevBtn" class="btn-back" style="display:none;">← Back</button>
+                <button type="button" id="nextBtn" class="btn-next">Next →</button>
+            </div>
+
+            <!-- Submit Button (hidden until step 3) -->
+            <button type="submit" id="submitBtn" class="btn-primary hidden">🐾 Add Pet & Go to Dashboard</button>
+
+            <div id="message"></div>
+        </form>
+
+        <!-- Back to Login -->
+        <button id="backToLoginBtn" class="btn-secondary" style="margin-top:12px;">← Back to Login</button>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js">
+    </script>
+
+    <script>
+        // ==========================================
+        // FIREBASE CONFIG
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlevN1yTTphNyW-ILvVrU2xBcrfadZZB8",
+            authDomain: "smart-pet-collar-24818.firebaseapp.com",
+            projectId: "smart-pet-collar-24818",
+            storageBucket: "smart-pet-collar-24818.firebasestorage.app",
+            messagingSenderId: "596089260489",
+            appId: "1:596089260489:web:20358a460725ae342507a8",
+            measurementId: "G-0BWRWZQ3HZ"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // ==========================================
+        // CHECK AUTH
+        // ==========================================
+        auth.onAuthStateChanged(function(user) {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                console.log('✅ User is logged in:', user.email);
+            }
+        });
+
+        // ==========================================
+        // BACK TO LOGIN
+        // ==========================================
+        document.getElementById('backToLoginBtn').addEventListener('click', function() {
+            auth.signOut().then(function() {
+                window.location.href = 'index.html';
+            }).catch(function() {
+                window.location.href = 'index.html';
+            });
+        });
+
+        // ==========================================
+        // DOM REFS
+        // ==========================================
+        const form = document.getElementById('petSetupForm');
+        const petName = document.getElementById('petName');
+        const petType = document.getElementById('petType');
+        const petGender = document.getElementById('petGender');
+        const petBreed = document.getElementById('petBreed');
+        const petAge = document.getElementById('petAge');
+        const petWeight = document.getElementById('petWeight');
+        const petColor = document.getElementById('petColor');
+        const petCollarId = document.getElementById('petCollarId');
+        const petNotes = document.getElementById('petNotes');
+        const petAvatar = document.getElementById('petAvatar');
+        const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submitBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressFill = document.getElementById('progressFill');
+
+        let currentStep = 1;
+        const totalSteps = 3;
+
+        // ==========================================
+        // UPDATE PET AVATAR
+        // ==========================================
+        function updateAvatar() {
+            const type = petType.value;
+            const emojis = {
+                'dog': '🐕',
+                'cat': '🐈',
+                'bird': '🐦',
+                'rabbit': '🐇',
+                'fish': '🐟',
+                'hamster': '🐹',
+                'turtle': '🐢',
+                'other': '🐾'
+            };
+            petAvatar.textContent = emojis[type] || '🐶';
+        }
+
+        petType.addEventListener('change', updateAvatar);
+
+        // ==========================================
+        // NAVIGATION
+        // ==========================================
+        function updateUI() {
+            document.getElementById('step1Content').classList.add('hidden');
+            document.getElementById('step2Content').classList.add('hidden');
+            document.getElementById('step3Content').classList.add('hidden');
+
+            document.getElementById('step' + currentStep + 'Content').classList.remove('hidden');
+
+            for (let i = 1; i <= totalSteps; i++) {
+                const dot = document.getElementById('step' + i);
+                dot.className = 'step-dot';
+                if (i < currentStep) dot.classList.add('done');
+                if (i === currentStep) dot.classList.add('active');
+            }
+
+            const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+            progressFill.style.width = progress + '%';
+
+            prevBtn.style.display = currentStep === 1 ? 'none' : 'block';
+            nextBtn.style.display = currentStep === totalSteps ? 'none' : 'block';
+            submitBtn.classList.toggle('hidden', currentStep !== totalSteps);
+        }
+
+        nextBtn.addEventListener('click', function() {
+            if (currentStep === 1) {
+                if (!petName.value.trim()) {
+                    showMessage(messageDiv, 'Please enter your pet\'s name.', 'error');
+                    petName.focus();
+                    return;
+                }
+                if (!petType.value) {
+                    showMessage(messageDiv, 'Please select your pet\'s type.', 'error');
+                    petType.focus();
+                    return;
+                }
+                if (!petGender.value) {
+                    showMessage(messageDiv, 'Please select your pet\'s gender.', 'error');
+                    petGender.focus();
+                    return;
+                }
+            }
+            clearMessages();
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            }
+        });
+
+        prevBtn.addEventListener('click', function() {
+            clearMessages();
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        });
+
+        // ==========================================
+        // SUBMIT
+        // ==========================================
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+            showMessage(messageDiv, 'Saving pet information...', 'info');
+
+            const petData = {
+                name: petName.value.trim(),
+                type: petType.value,
+                gender: petGender.value,
+                breed: petBreed.value.trim(),
+                age: petAge.value.trim(),
+                weight: petWeight.value.trim(),
+                color: petColor.value.trim(),
+                collarId: petCollarId.value.trim() || 'SPC-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+                notes: petNotes.value.trim(),
+                createdAt: new Date().toISOString(),
+                email: auth.currentUser ? auth.currentUser.email : ''
+            };
+
+            try {
+                let pets = JSON.parse(localStorage.getItem('pets') || '[]');
+                pets.push(petData);
+                localStorage.setItem('pets', JSON.stringify(pets));
+                localStorage.setItem('currentPet', JSON.stringify(petData));
+
+                console.log('✅ Pet saved:', petData);
+                showMessage(messageDiv, '✅ Pet added successfully! Redirecting...', 'success');
+
+                setTimeout(function() {
+                    window.location.href = 'dashboard.html';
+                }, 1200);
+
+            } catch (error) {
+                console.error('❌ Save error:', error);
+                showMessage(messageDiv, '❌ Error saving pet data: ' + error.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🐾 Add Pet & Go to Dashboard';
+            }
+        });
+
+        // ==========================================
+        // MESSAGE HELPERS
+        // ==========================================
+        function showMessage(el, msg, type) {
+            el.textContent = msg;
+            el.className = type;
+            el.style.display = 'block';
+        }
+
+        function clearMessages() {
+            messageDiv.className = '';
+            messageDiv.textContent = '';
+            messageDiv.style.display = 'none';
+        }
+
+        // ==========================================
+        // INIT
+        // ==========================================
+        updateUI();
+        console.log('✅ Pet Setup page ready!');
+    </script>
+
+</body>
+</html>

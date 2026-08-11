@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartCollars - Sign In</title>
+
+    <!-- STYLES -->
+    <link rel="stylesheet" href="login.css">
+
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <main class="login-page">
+        <div class="login-card">
+            <!-- LEFT VISUAL -->
+            <section class="login-visual">
+                <a href="index.html" class="brand">
+                    <div class="brand-icon">♥</div>
+                    <div class="brand-name">Smart<span>Collars</span></div>
+                </a>
+                <div class="pet-image-container">
+                    <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=900&h=700&fit=crop&crop=center"
+                         alt="Happy pet" class="pet-image">
+                </div>
+                <div class="visual-content">
+                    <h1>Every paw has a story.<span>We help you tell it.</span></h1>
+                    <p>Know where they are and how they're doing — all from one smart collar.</p>
+                </div>
+                <div class="mini-features">
+                    <div class="mini-feature">
+                        <div class="feature-icon gps">●</div>
+                        <div><strong>GPS & Safe Zones</strong><span>Real-time location tracking with custom alerts.</span></div>
+                    </div>
+                    <div class="mini-feature">
+                        <div class="feature-icon heart">♥</div>
+                        <div><strong>Health Monitoring</strong><span>Monitor heart rate and other vital information.</span></div>
+                    </div>
+                    <div class="mini-feature">
+                        <div class="feature-icon activity">⌁</div>
+                        <div><strong>Activity Tracking</strong><span>Understand your pet's daily activity and behavior.</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: LOGIN FORM -->
+            <section class="login-form-section">
+                <a href="landing.html" class="back-link"><span>←</span> Back to Home</a>
+                <div class="form-wrapper">
+                    <div class="form-heading">
+                        <span class="eyebrow">OWNER SIGN IN</span>
+                        <h2>Good to see you again.</h2>
+                        <p>Sign in to check on your pet's location, activity, and health in real time.</p>
+                    </div>
+
+                    <!-- STATUS -->
+                    <div class="login-status">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Not logged in</span>
+                    </div>
+
+                    <!-- LOGIN FORM -->
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email" autofocus>
+                        </div>
+                        <div class="form-group">
+                            <div class="label-row"><label for="password">Password</label></div>
+                            <div class="password-wrapper">
+                                <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                                <button type="button" class="show-password" id="showPassword" aria-label="Toggle password visibility">Show</button>
+                            </div>
+                        </div>
+                        <div class="form-options">
+                            <label class="remember">
+                                <input type="checkbox" id="remember">
+                                <span>Remember this device</span>
+                            </label>
+                            <a href="#" class="forgot-password">Forgot password?</a>
+                        </div>
+                        <button type="submit" class="sign-in-btn" id="signInBtn">
+                            <span>Sign in</span>
+                            <span class="arrow">→</span>
+                        </button>
+                    </form>
+
+                    <!-- REGISTER LINK -->
+                    <div class="register-text">
+                        New to SmartCollars? <a href="register.html">Create an account</a>
+                    </div>
+
+                    <!-- DIVIDER -->
+                    <div class="divider"><span></span><p>or</p><span></span></div>
+                    <button type="button" class="google-btn" id="googleBtn">
+                        <span class="google-icon">G</span>
+                        <span>Continue with Google</span>
+                    </button>
+                    <div class="security-note">
+                        <span class="security-icon">✓</span>
+                        <p>Your information is securely protected.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- PAGE-SPECIFIC SCRIPT (ES Module) -->
+    <script type="module">
+        // ============================================
+        // IMPORT FROM YOUR FIREBASE INIT
+        // ============================================
+        import { 
+            auth,
+            signInWithEmail,
+            signInWithGoogle,
+            onAuthStateChanged
+        } from './firebase-init.js';
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const showPasswordBtn = document.getElementById('showPassword');
+        const loginForm = document.getElementById('loginForm');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+        const signInBtn = document.getElementById('signInBtn');
+        const googleBtn = document.getElementById('googleBtn');
+        const rememberCheckbox = document.getElementById('remember');
+
+        // ============================================
+        // PASSWORD TOGGLE
+        // ============================================
+        showPasswordBtn.addEventListener('click', function() {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            this.textContent = isPassword ? 'Hide' : 'Show';
+        });
+
+        // ============================================
+        // STATUS HELPER
+        // ============================================
+        function updateStatus(message, isSuccess = false) {
+            statusText.textContent = message;
+            statusDot.classList.toggle('success', isSuccess);
+        }
+
+        // ============================================
+        // LOADING STATE
+        // ============================================
+        function setLoading(isLoading) {
+            signInBtn.disabled = isLoading;
+            signInBtn.innerHTML = isLoading
+                ? '<span class="spinner">⟳</span> Signing in...'
+                : '<span>Sign in</span><span class="arrow">→</span>';
+        }
+
+        // ============================================
+        // EMAIL VALIDATION
+        // ============================================
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        // ============================================
+        // CHECK AUTH STATE ON LOAD
+        // ============================================
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                updateStatus(`Welcome back, ${user.email}`, true);
+                console.log('✅ User already logged in:', user.email);
+                // Optionally redirect to dashboard
+                // window.location.href = 'dashboard.html';
+            } else {
+                updateStatus('Not logged in', false);
+            }
+        });
+
+        // ============================================
+        // LOGIN FORM SUBMIT
+        // ============================================
+        loginForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            // Validate
+            if (!email || !password) {
+                updateStatus('Please enter your email and password.', false);
+                return;
+            }
+            if (!isValidEmail(email)) {
+                updateStatus('Please enter a valid email address.', false);
+                return;
+            }
+
+            setLoading(true);
+            updateStatus('Signing in...', false);
+
+            // ✅ USE YOUR NEW signInWithEmail FUNCTION
+            const result = await signInWithEmail(email, password);
+
+            if (result.success) {
+                console.log('✅ Login success:', result.user.email);
+                updateStatus('Signed in successfully!', true);
+                // Redirect to dashboard
+                setTimeout(() => window.location.href = 'dashboard.html', 500);
+            } else {
+                const messages = {
+                    'auth/user-not-found': 'No account found with this email.',
+                    'auth/wrong-password': 'Incorrect password.',
+                    'auth/invalid-email': 'Invalid email address.',
+                    'auth/too-many-requests': 'Too many attempts. Try again later.'
+                };
+                updateStatus(messages[result.error] || result.message || 'Login failed.', false);
+                setLoading(false);
+            }
+        });
+
+        // ============================================
+        // GOOGLE BUTTON
+        // ============================================
+        googleBtn.addEventListener('click', async function() {
+            updateStatus('Signing in with Google...', false);
+            
+            // ✅ USE YOUR NEW signInWithGoogle FUNCTION
+            const result = await signInWithGoogle();
+
+            if (result.success) {
+                console.log('✅ Google login success:', result.user.email);
+                updateStatus('Signed in with Google!', true);
+                setTimeout(() => window.location.href = 'dashboard.html', 500);
+            } else {
+                updateStatus('Google sign-in failed: ' + (result.message || 'Try again.'), false);
+            }
+        });
+
+        // ============================================
+        // REMEMBER ME
+        // ============================================
+        const remembered = localStorage.getItem('rememberedEmail');
+        if (remembered) {
+            emailInput.value = remembered;
+            rememberCheckbox.checked = true;
+        }
+
+        rememberCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                localStorage.setItem('rememberedEmail', emailInput.value);
+            } else {
+                localStorage.removeItem('rememberedEmail');
+            }
+        });
+
+        // ============================================
+        // FORGOT PASSWORD (placeholder)
+        // ============================================
+        document.querySelector('.forgot-password').addEventListener('click', function(e) {
+            e.preventDefault();
+            const email = emailInput.value.trim();
+            if (!email) {
+                updateStatus('Please enter your email to reset password.', false);
+                return;
+            }
+            // You can import resetPassword from firebase-init.js
+            // import { resetPassword } from './firebase-init.js';
+            // await resetPassword(email);
+            updateStatus(`Password reset link sent to ${email}`, true);
+        });
+    </script>
+</body>
+</html>

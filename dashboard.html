@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Pet Collar - Dashboard</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Dashboard CSS -->
+    <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+
+    <!-- ==========================================
+    SIDEBAR
+    ========================================== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🐾</span>
+                <h1 class="logo-text">Smart<span>Collars</span></h1>
+            </div>
+            <!-- Toggle button – always visible, bigger when collapsed -->
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
+                <span class="hamburger-icon">☰</span>
+            </button>
+        </div>
+
+        <nav class="navigation">
+            <span class="nav-label">MAIN</span>
+
+            <button class="nav-item active" data-section="overview" onclick="window.showSection('overview', this)">
+                <span class="nav-icon">📍</span>
+                <span class="nav-text">Live Tracking</span>
+            </button>
+
+            <button class="nav-item" data-section="history" onclick="window.showSection('history', this)">
+                <span class="nav-icon">📜</span>
+                <span class="nav-text">History</span>
+            </button>
+
+            <button class="nav-item" data-section="notifications" onclick="window.showSection('notifications', this)">
+                <span class="nav-icon">🔔</span>
+                <span class="nav-text">Notifications</span>
+                <span class="notification-badge">2</span>
+            </button>
+
+            <button class="nav-item" data-section="pets" onclick="window.showSection('pets', this)">
+                <span class="nav-icon">🐕</span>
+                <span class="nav-text">Pet Management</span>
+            </button>
+
+            <button class="nav-item" data-section="profile" onclick="window.showSection('profile', this)">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </button>
+
+            <button class="nav-item" data-section="settings" onclick="window.showSection('settings', this)">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">Settings</span>
+            </button>
+        </nav>
+
+        <footer class="sidebar-footer">
+            <div class="user-info">
+                <div class="avatar" id="userAvatar">👤</div>
+                <div class="user-details">
+                    <div class="name" id="userName">User</div>
+                    <div class="email" id="userEmail">user@email.com</div>
+                </div>
+            </div>
+            <button class="logout-button" id="logoutBtn">
+                <span>🚪</span>
+                <span>Logout</span>
+            </button>
+        </footer>
+    </aside>
+
+    <!-- ==========================================
+    LEFT EDGE CLICK AREA (expand sidebar)
+    ========================================== -->
+    <div class="sidebar-expand-area" id="sidebarExpandArea" title="Click to expand sidebar"></div>
+
+    <!-- ==========================================
+    FLOATING TOGGLE (visible when collapsed)
+    ========================================== -->
+    <button class="floating-toggle" id="floatingToggle" aria-label="Toggle Sidebar">
+        <span class="hamburger-icon">☰</span>
+    </button>
+
+    <!-- ==========================================
+    MAIN CONTENT
+    ========================================== -->
+    <main class="main-content" id="mainContent">
+
+        <!-- TOP BAR -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <h1><span id="greetingName">User</span></h1>
+                <p id="petDetails">No pet added yet</p>
+            </div>
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot"></span>
+                Connected
+            </div>
+        </header>
+
+        <!-- ADD PET BANNER -->
+        <div id="addPetBanner" class="add-pet-banner">
+            <div class="banner-content">
+                <span class="banner-icon">🐾</span>
+                <div>
+                    <h4>No pet added yet</h4>
+                    <p>Add your pet to see personalized health and activity data.</p>
+                </div>
+                <a href="pet-setup.html" class="btn-primary banner-btn">+ Add Your Pet</a>
+            </div>
+        </div>
+
+        <!-- GPS MAP SECTION -->
+        <div class="map-section" id="mapSection">
+            <div class="card-header">
+                <h2>📍 Live GPS Tracking</h2>
+                <span class="live-badge" id="gpsLiveBadge">
+                    <span class="live-dot" id="gpsLiveDot"></span>
+                    <span id="gpsLiveText">Initializing...</span>
+                </span>
+            </div>
+
+            <div class="gps-status-bar">
+                <div class="gps-status-item">
+                    <span class="gps-label">📍 Location:</span>
+                    <span class="gps-value" id="statLocation">Searching...</span>
+                </div>
+                <div class="gps-status-item">
+                    <span class="gps-label">📡 Signal:</span>
+                    <span class="gps-value" id="gpsStatus">Initializing...</span>
+                </div>
+                <div class="gps-status-item">
+                    <span class="gps-label">🕐 Updated:</span>
+                    <span class="gps-value" id="locationUpdate">Just now</span>
+                </div>
+            </div>
+
+            <div class="map-container" id="mapContainer">
+                <div class="map-content">
+                    <div class="map-marker" id="mapMarker">🐕</div>
+                    <h4 id="mapTitle">📍 Waiting for location...</h4>
+                    <p id="mapLocationText">Searching for GPS signal...</p>
+                    <small>GPS signal: <span id="gpsSignalStrength">Waiting</span></small>
+                </div>
+            </div>
+
+            <div class="gps-controls">
+                <button class="btn-gps" id="refreshGPSBtn" onclick="window.refreshGPS()">
+                    🔄 Refresh Location
+                </button>
+                <button class="btn-gps secondary" id="centerMapBtn" onclick="window.centerMap()">
+                    📍 Center Map
+                </button>
+                <button class="btn-gps secondary" id="toggleStatsBtn" onclick="window.toggleStats()">
+                    📊 Toggle Stats
+                </button>
+            </div>
+        </div>
+
+        <!-- STATS GRID -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="monitor-card">
+                <div class="monitor-icon">❤️</div>
+                <div>
+                    <h3>Heart Rate</h3>
+                    <div class="monitor-value"><span id="statHeartRate">--</span> <small>BPM</small></div>
+                    <p id="heartStatusText" class="normal-status">⏳ Waiting...</p>
+                </div>
+            </div>
+
+            <div class="monitor-card">
+                <div class="monitor-icon">📍</div>
+                <div>
+                    <h3>Location</h3>
+                    <div class="monitor-value" id="statLocationDisplay" style="font-size:18px;">Waiting...</div>
+                    <p id="gpsSignalDisplay">Signal: <strong>Waiting</strong></p>
+                </div>
+            </div>
+
+            <div class="monitor-card">
+                <div class="monitor-icon">🏃</div>
+                <div>
+                    <h3>Activity</h3>
+                    <div class="monitor-value activity-value" id="statActivity">--</div>
+                    <p id="activitySub">--</p>
+                </div>
+            </div>
+
+            <div class="monitor-card">
+                <div class="monitor-icon">🌡️</div>
+                <div>
+                    <h3>Temperature</h3>
+                    <div class="monitor-value"><span id="statTemp">--</span> <small>°C</small></div>
+                    <p id="tempStatus" class="normal-status">⏳ Waiting...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- LIVE MONITORING -->
+        <div class="content-card live-section" id="liveSection">
+            <div class="card-header">
+                <h2>📡 Real-time Monitoring</h2>
+                <span style="font-size:13px;color:#7a8a9e;">Live data from smart collar</span>
+            </div>
+            <div class="live-grid">
+                <div class="live-item">
+                    <div class="live-icon">❤️</div>
+                    <div class="live-info">
+                        <div class="live-label">Heart Rate</div>
+                        <div class="live-value"><span id="liveHeartRate">--</span> <span class="unit">BPM</span></div>
+                    </div>
+                    <div class="live-status normal" id="liveHeartStatus">● Waiting</div>
+                </div>
+                <div class="live-item">
+                    <div class="live-icon">📍</div>
+                    <div class="live-info">
+                        <div class="live-label">Location</div>
+                        <div class="live-value" id="liveLocation">Waiting...</div>
+                    </div>
+                    <div class="live-status normal" id="liveLocationStatus">● Searching</div>
+                </div>
+                <div class="live-item">
+                    <div class="live-icon">🏃</div>
+                    <div class="live-info">
+                        <div class="live-label">Activity</div>
+                        <div class="live-value" id="liveActivity">--</div>
+                    </div>
+                    <div class="live-status normal" id="liveActivityStatus">● Waiting</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+        PAGE SECTIONS (hidden by default)
+        ========================================== -->
+
+        <!-- HISTORY -->
+        <section id="history" class="page-section" style="display:none;">
+            <div class="section-title">
+                <h2>📜 Location History</h2>
+                <p>Track your pet's movement over time</p>
+            </div>
+            <div class="content-card history-card">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Location</th>
+                                <th>Coordinates</th>
+                                <th>Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="4" style="text-align:center;color:#7a8a9e;padding:40px;">
+                                    🐾 No location history yet
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- NOTIFICATIONS -->
+        <section id="notifications" class="page-section" style="display:none;">
+            <div class="section-title">
+                <h2>🔔 Notifications</h2>
+                <p>Stay updated with your pet's activities</p>
+            </div>
+            <div class="content-card">
+                <div class="notification-item">
+                    <div class="notification-icon">🐾</div>
+                    <div class="notification-content">
+                        <strong>Welcome to Smart Collar!</strong>
+                        <p>Add your pet to start receiving notifications</p>
+                    </div>
+                    <span class="notification-time">Just now</span>
+                </div>
+                <div class="notification-item">
+                    <div class="notification-icon">💡</div>
+                    <div class="notification-content">
+                        <strong>Tip: Add your pet</strong>
+                        <p>Go to Pet Management to set up your pet's profile</p>
+                    </div>
+                    <span class="notification-time">1 min ago</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- PET MANAGEMENT -->
+        <section id="pets" class="page-section" style="display:none;">
+            <div class="section-title">
+                <h2>🐕 Pet Management</h2>
+                <p>Manage your pet's profile and settings</p>
+            </div>
+            <div class="content-card">
+                <div class="pet-management-header">
+                    <h3>Your Pets</h3>
+                    <button class="btn-primary" onclick="window.location.href='pet-setup.html'">+ Add New Pet</button>
+                </div>
+                <div id="petListContainer">
+                    <!-- Rendered by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- PROFILE -->
+        <section id="profile" class="page-section" style="display:none;">
+            <div class="section-title">
+                <h2>👤 Profile</h2>
+                <p>Manage your account settings</p>
+            </div>
+            <div class="content-card settings-card">
+                <h3>Account Information</h3>
+                <label>Full Name</label>
+                <input type="text" id="profileName" />
+                <label>Email Address</label>
+                <input type="email" id="profileEmail" readonly />
+                <button class="btn-primary" style="margin-top:15px;" onclick="window.updateProfile()">Save Changes</button>
+            </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="settings" class="page-section" style="display:none;">
+            <div class="section-title">
+                <h2>⚙️ Settings</h2>
+                <p>Configure your app preferences</p>
+            </div>
+            <div class="content-card settings-card">
+                <h3>Preferences</h3>
+                <div class="setting-row">
+                    <span>🔔 Push Notifications</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>📍 GPS Tracking</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked id="gpsToggle" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>🌙 Dark Mode</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="darkModeToggle" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>📊 Show Stats Grid</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked id="showStatsToggle" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==========================================
+    DASHBOARD JS (ES Module)
+    ========================================== -->
+    <script type="module" src="dashboard.js"></script>
+</body>
+</html>

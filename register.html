@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartCollars - Sign Up</title>
+    <link rel="stylesheet" href="login.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <main class="login-page">
+        <div class="login-card">
+            <!-- LEFT VISUAL -->
+            <section class="login-visual">
+                <a href="index.html" class="brand">
+                    <div class="brand-icon">♥</div>
+                    <div class="brand-name">Smart<span>Collars</span></div>
+                </a>
+                <div class="pet-image-container">
+                    <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=900&h=700&fit=crop&crop=center"
+                         alt="Happy pet" class="pet-image">
+                </div>
+                <div class="visual-content">
+                    <h1>Join the pack.<span>Start your free trial.</span></h1>
+                    <p>Create your account and get full access to all features.</p>
+                </div>
+                <div class="mini-features">
+                    <div class="mini-feature">
+                        <div class="feature-icon gps">●</div>
+                        <div><strong>GPS & Safe Zones</strong><span>Real-time location tracking with custom alerts.</span></div>
+                    </div>
+                    <div class="mini-feature">
+                        <div class="feature-icon heart">♥</div>
+                        <div><strong>Health Monitoring</strong><span>Monitor heart rate and other vital information.</span></div>
+                    </div>
+                    <div class="mini-feature">
+                        <div class="feature-icon activity">⌁</div>
+                        <div><strong>Activity Tracking</strong><span>Understand your pet's daily activity and behavior.</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: REGISTRATION FORM -->
+            <section class="login-form-section">
+                <a href="landing.html" class="back-link"><span>←</span> Back to Home</a>
+                <div class="form-wrapper">
+                    <div class="form-heading">
+                        <span class="eyebrow">CREATE ACCOUNT</span>
+                        <h2>Join the SmartCollars family.</h2>
+                        <p>Set up your account and start tracking your pet's well‑being.</p>
+                    </div>
+
+                    <!-- STATUS -->
+                    <div class="login-status">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Ready to sign up</span>
+                    </div>
+
+                    <!-- REGISTER FORM -->
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label for="regEmail">Email</label>
+                            <input type="email" id="regEmail" placeholder="Enter your email" required autocomplete="email" autofocus>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Password</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="regPassword" placeholder="Create a password (min. 6 characters)" required autocomplete="new-password">
+                                <button type="button" class="show-password" id="showPasswordReg" aria-label="Toggle password visibility">Show</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="sign-in-btn" id="signUpBtn">
+                            <span>Create Account</span>
+                            <span class="arrow">→</span>
+                        </button>
+                    </form>
+
+                    <!-- LOGIN LINK -->
+                    <div class="login-text">
+                        Already have an account? <a href="index.html">Sign in</a>
+                    </div>
+
+                    <!-- DIVIDER & GOOGLE -->
+                    <div class="divider"><span></span><p>or</p><span></span></div>
+                    <button type="button" class="google-btn" id="googleRegBtn">
+                        <span class="google-icon">G</span>
+                        <span>Continue with Google</span>
+                    </button>
+                    <div class="security-note">
+                        <span class="security-icon">✓</span>
+                        <p>Your information is securely protected.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- PAGE-SPECIFIC SCRIPT (ES Module) -->
+    <script type="module">
+        // ============================================
+        // IMPORT FROM YOUR FIREBASE INIT
+        // ============================================
+        import { 
+            auth,
+            registerWithEmail,
+            signInWithGoogle,
+            onAuthStateChanged
+        } from './firebase-init.js';
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const emailInput = document.getElementById('regEmail');
+        const passwordInput = document.getElementById('regPassword');
+        const showPasswordBtn = document.getElementById('showPasswordReg');
+        const registerForm = document.getElementById('registerForm');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+        const signUpBtn = document.getElementById('signUpBtn');
+        const googleRegBtn = document.getElementById('googleRegBtn');
+
+        // ============================================
+        // PASSWORD TOGGLE
+        // ============================================
+        showPasswordBtn.addEventListener('click', function() {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            this.textContent = isPassword ? 'Hide' : 'Show';
+        });
+
+        // ============================================
+        // STATUS HELPER
+        // ============================================
+        function updateStatus(message, isSuccess = false) {
+            statusText.textContent = message;
+            statusDot.classList.toggle('success', isSuccess);
+        }
+
+        // ============================================
+        // LOADING STATE
+        // ============================================
+        function setLoading(isLoading) {
+            signUpBtn.disabled = isLoading;
+            signUpBtn.innerHTML = isLoading
+                ? '<span class="spinner">⟳</span> Creating account...'
+                : '<span>Create Account</span><span class="arrow">→</span>';
+        }
+
+        // ============================================
+        // EMAIL VALIDATION
+        // ============================================
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        // ============================================
+        // CHECK AUTH STATE (in case already logged in)
+        // ============================================
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log('✅ User already logged in:', user.email);
+                updateStatus(`Already signed in as ${user.email}`, true);
+                // Optionally redirect to dashboard
+                // window.location.href = 'dashboard.html';
+            }
+        });
+
+        // ============================================
+        // REGISTER FORM SUBMIT
+        // ============================================
+        registerForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            // Validate
+            if (!email || !password) {
+                updateStatus('Please fill in all fields.', false);
+                return;
+            }
+            if (!isValidEmail(email)) {
+                updateStatus('Please enter a valid email address.', false);
+                return;
+            }
+            if (password.length < 6) {
+                updateStatus('Password must be at least 6 characters.', false);
+                return;
+            }
+
+            setLoading(true);
+            updateStatus('Creating your account...', false);
+
+            // ✅ USE YOUR NEW registerWithEmail FUNCTION
+            const result = await registerWithEmail(email, password, '');
+
+            if (result.success) {
+                console.log('✅ Sign-up success:', result.user.email);
+                updateStatus('Account created! Verification email sent. Redirecting...', true);
+                // ✅ Redirect to login page after success
+                setTimeout(() => window.location.href = 'index.html', 2000);
+            } else {
+                const messages = {
+                    'auth/email-already-in-use': 'This email is already registered. Please sign in.',
+                    'auth/invalid-email': 'Invalid email address.',
+                    'auth/weak-password': 'Password is too weak.'
+                };
+                updateStatus(messages[result.error] || result.message || 'Sign-up failed.', false);
+                setLoading(false);
+            }
+        });
+
+        // ============================================
+        // GOOGLE BUTTON
+        // ============================================
+        googleRegBtn.addEventListener('click', async function() {
+            updateStatus('Signing up with Google...', false);
+            
+            // ✅ USE YOUR NEW signInWithGoogle FUNCTION
+            const result = await signInWithGoogle();
+
+            if (result.success) {
+                console.log('✅ Google sign-up success:', result.user.email);
+                updateStatus('Account created with Google!', true);
+                // Redirect to login or dashboard
+                setTimeout(() => window.location.href = 'index.html', 1500);
+            } else {
+                updateStatus('Google sign-up failed: ' + (result.message || 'Try again.'), false);
+            }
+        });
+    </script>
+</body>
+</html>
