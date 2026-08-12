@@ -549,7 +549,7 @@ onAuthStateChanged(auth, async (user) => {
 
         console.log('✅ User logged in:', user.email);
     } else {
-        window.location.href = 'index.html';
+        window.location.href = '../pages/login.html';
     }
 });
 
@@ -561,7 +561,7 @@ logoutBtn.addEventListener('click', async () => {
     if (liveDataInterval) clearInterval(liveDataInterval);
     const result = await signOut();
     if (result.success) {
-        window.location.href = 'index.html';
+        window.location.href = '../pages/login.html';
     } else {
         alert('Error signing out. Please try again.');
     }

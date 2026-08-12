@@ -14,7 +14,7 @@
         <div class="login-card">
             <!-- LEFT VISUAL -->
             <section class="login-visual">
-                <a href="index.html" class="brand">
+                <a href="login.html" class="brand">
                     <div class="brand-icon">♥</div>
                     <div class="brand-name">Smart<span>Collars</span></div>
                 </a>
@@ -44,7 +44,7 @@
 
             <!-- RIGHT: REGISTRATION FORM -->
             <section class="login-form-section">
-                <a href="landing.html" class="back-link"><span>←</span> Back to Home</a>
+                <a href="index.html" class="back-link"><span>←</span> Back to Home</a>
                 <div class="form-wrapper">
                     <div class="form-heading">
                         <span class="eyebrow">CREATE ACCOUNT</span>
@@ -79,7 +79,7 @@
 
                     <!-- LOGIN LINK -->
                     <div class="login-text">
-                        Already have an account? <a href="index.html">Sign in</a>
+                        Already have an account? <a href="login.html">Sign in</a>
                     </div>
 
                     <!-- DIVIDER & GOOGLE -->
@@ -200,7 +200,7 @@
                 console.log('✅ Sign-up success:', result.user.email);
                 updateStatus('Account created! Verification email sent. Redirecting...', true);
                 // ✅ Redirect to login page after success
-                setTimeout(() => window.location.href = 'index.html', 2000);
+                setTimeout(() => window.location.href = 'login.html', 2000);
             } else {
                 const messages = {
                     'auth/email-already-in-use': 'This email is already registered. Please sign in.',
@@ -225,7 +225,7 @@
                 console.log('✅ Google sign-up success:', result.user.email);
                 updateStatus('Account created with Google!', true);
                 // Redirect to login or dashboard
-                setTimeout(() => window.location.href = 'index.html', 1500);
+                setTimeout(() => window.location.href = 'login.html', 1500);
             } else {
                 updateStatus('Google sign-up failed: ' + (result.message || 'Try again.'), false);
             }

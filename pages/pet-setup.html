@@ -437,7 +437,7 @@
         // ==========================================
         auth.onAuthStateChanged(function(user) {
             if (!user) {
-                window.location.href = 'index.html';
+                window.location.href = 'login.html';
             } else {
                 console.log('✅ User is logged in:', user.email);
             }
@@ -448,9 +448,9 @@
         // ==========================================
         document.getElementById('backToLoginBtn').addEventListener('click', function() {
             auth.signOut().then(function() {
-                window.location.href = 'index.html';
+                window.location.href = 'login.html';
             }).catch(function() {
-                window.location.href = 'index.html';
+                window.location.href = 'login.html';
             });
         });
 
