@@ -1,5 +1,5 @@
 // =============================================
-// IMPORTS FROM FIREBASE INIT
+// IMPORTS FROM FIREBASE INIT (Module)
 // =============================================
 import {
     auth,
@@ -28,7 +28,7 @@ import {
     getDocs,
     addDoc,
     serverTimestamp
-} from './firebase-init.js';
+} from '../js/firebase-init.js';  // ✅ Correct path for your structure
 
 // =============================================
 // DOM ELEMENTS
@@ -98,11 +98,9 @@ function toggleSidebar() {
 if (sidebarToggle) {
     sidebarToggle.addEventListener('click', toggleSidebar);
 }
-
 if (floatingToggle) {
     floatingToggle.addEventListener('click', toggleSidebar);
 }
-
 if (expandArea) {
     expandArea.addEventListener('click', toggleSidebar);
 }
@@ -133,9 +131,9 @@ let selectedPetId = null;
 let liveDataInterval = null;
 
 // =============================================
-// NAVIGATION (Exposed to global for onclick)
+// NAVIGATION (Exposed globally for onclick)
 // =============================================
-window.showSection = function(sectionId, button) {
+function showSection(sectionId, button) {
     const sections = document.querySelectorAll('.page-section');
     const navItems = document.querySelectorAll('.nav-item');
 
@@ -179,24 +177,24 @@ window.showSection = function(sectionId, button) {
     if (sectionId === 'history') loadHistory();
     if (sectionId === 'pets') loadPetList();
     if (sectionId === 'profile') loadProfile();
-};
+}
 
 // =============================================
-// TOGGLE STATS
+// TOGGLE STATS (Exposed globally)
 // =============================================
-window.toggleStats = function() {
+function toggleStats() {
     isStatsVisible = !isStatsVisible;
     statsGrid.style.display = isStatsVisible ? 'grid' : 'none';
     if (showStatsToggle) showStatsToggle.checked = isStatsVisible;
     if (currentUserId) {
         localStorage.setItem(`statsVisible_${currentUserId}`, isStatsVisible);
     }
-};
+}
 
 // =============================================
-// GPS FUNCTIONS
+// GPS FUNCTIONS (Exposed globally)
 // =============================================
-window.refreshGPS = function() {
+function refreshGPS() {
     if (!selectedPetId || pets.length === 0) {
         updateGPSStatus('No pet', 'error');
         return;
@@ -206,9 +204,9 @@ window.refreshGPS = function() {
         const coords = getRandomCoordinates();
         updateLocation(coords.lat, coords.lng);
     }, 1000);
-};
+}
 
-window.centerMap = function() {
+function centerMap() {
     const marker = document.getElementById('mapMarker');
     if (marker) {
         marker.style.transform = 'scale(1.2)';
@@ -217,7 +215,7 @@ window.centerMap = function() {
         }, 500);
     }
     updateGPSStatus('Centered', 'good');
-};
+}
 
 // =============================================
 // UPDATE LOCATION
@@ -296,12 +294,10 @@ function getLocationName(lat, lng) {
 }
 
 // =============================================
-// SIMULATE LIVE DATA (FIXED - Only when pet exists)
+// SIMULATE LIVE DATA
 // =============================================
 function simulateLiveData() {
-    // ✅ Check if there's a selected pet
     if (!selectedPetId || pets.length === 0) {
-        // Show "No pet" indicators
         statHeartRate.textContent = '--';
         statActivity.textContent = '--';
         statTemp.textContent = '--';
@@ -319,7 +315,6 @@ function simulateLiveData() {
         return;
     }
 
-    // Only run if pet exists
     const heartRate = Math.floor(Math.random() * 60) + 60;
     const hrStatus = heartRate < 80 ? 'normal' : heartRate < 100 ? 'elevated' : 'high';
     const activity = Math.floor(Math.random() * 100);
@@ -372,7 +367,6 @@ async function loadPets() {
         loadPetList();
         if (selectedPetId) startLocationTracking();
         
-        // ✅ Start live data only if pet exists
         if (liveDataInterval) clearInterval(liveDataInterval);
         simulateLiveData();
         liveDataInterval = setInterval(simulateLiveData, 5000);
@@ -382,11 +376,8 @@ async function loadPets() {
         petDetails.textContent = 'No pet added yet';
         addPetBanner.style.display = 'block';
         
-        // ✅ Clear live data if no pet
         if (liveDataInterval) clearInterval(liveDataInterval);
-        simulateLiveData(); // This will show "No pet selected"
-        
-        // Stop GPS tracking
+        simulateLiveData();
         if (locationInterval) clearInterval(locationInterval);
         updateGPSStatus('No pet', 'error');
         statLocation.textContent = 'No pet selected';
@@ -461,21 +452,18 @@ async function loadPetList() {
     `).join('');
 }
 
-window.selectPet = function(petId) {
+function selectPet(petId) {
     selectedPetId = petId;
     const pet = pets.find(p => p.id === petId);
     if (pet) {
         petDetails.textContent = `🐕 ${pet.name || 'Pet'} • ${pet.breed || 'Mixed Breed'}`;
         startLocationTracking();
-        
-        // ✅ Restart live data when pet is selected
         if (liveDataInterval) clearInterval(liveDataInterval);
         simulateLiveData();
         liveDataInterval = setInterval(simulateLiveData, 5000);
-        
-        window.showSection('overview');
+        showSection('overview');
     }
-};
+}
 
 // =============================================
 // LOAD PROFILE
@@ -492,7 +480,7 @@ async function loadProfile() {
     }
 }
 
-window.updateProfile = async function() {
+async function updateProfile() {
     const name = profileName.value.trim();
     if (!name) { alert('Please enter your name'); return; }
     try {
@@ -512,7 +500,7 @@ window.updateProfile = async function() {
         console.error('Error updating profile:', error);
         alert('Error updating profile. Please try again.');
     }
-};
+}
 
 // =============================================
 // AUTHENTICATION STATE
@@ -537,7 +525,6 @@ onAuthStateChanged(auth, async (user) => {
 
         await loadPets();
 
-        // Restore stats visibility preference
         const savedStats = localStorage.getItem(`statsVisible_${user.uid}`);
         if (savedStats !== null) {
             isStatsVisible = savedStats === 'true';
@@ -545,7 +532,7 @@ onAuthStateChanged(auth, async (user) => {
             if (showStatsToggle) showStatsToggle.checked = isStatsVisible;
         }
 
-        window.showSection('overview');
+        showSection('overview');
 
         console.log('✅ User logged in:', user.email);
     } else {
@@ -609,6 +596,16 @@ setInterval(() => {
         `;
     }
 }, 5000);
+
+// =============================================
+// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK
+// =============================================
+window.showSection = showSection;
+window.toggleStats = toggleStats;
+window.refreshGPS = refreshGPS;
+window.centerMap = centerMap;
+window.selectPet = selectPet;
+window.updateProfile = updateProfile;
 
 console.log('🚀 Dashboard loaded successfully!');
 console.log('📡 Starting live monitoring...');

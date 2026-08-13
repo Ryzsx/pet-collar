@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forgot Password - SmartCollars</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ============================================
+           RESET & BASE
+        ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #FEFDF8;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* ============================================
+           CARD CONTAINER
+        ============================================ */
+        .forgot-container {
+            background: #FEFDF8;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(23, 34, 27, 0.12);
+            padding: 48px 40px;
+            max-width: 440px;
+            width: 100%;
+            animation: slideUp 0.5s ease-out;
+            border: 1px solid rgba(47, 143, 78, 0.08);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================
+           HEADER
+        ============================================ */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header .brand-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+            background: #F1F8F2;
+            width: 72px;
+            height: 72px;
+            line-height: 72px;
+            border-radius: 50%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #17221B;
+            margin-bottom: 8px;
+        }
+
+        .header h1 span {
+            color: #2F8F4E;
+        }
+
+        .header p {
+            color: #68756D;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* ============================================
+           FORM
+        ============================================ */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #17221B;
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #E8F5E9;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            outline: none;
+            background: #F5FAF5;
+            font-family: 'Inter', sans-serif;
+            color: #17221B;
+        }
+
+        .form-group input:focus {
+            border-color: #2F8F4E;
+            box-shadow: 0 0 0 4px rgba(47, 143, 78, 0.12);
+            background: #FEFDF8;
+        }
+
+        .form-group input::placeholder {
+            color: #68756D;
+            opacity: 0.7;
+        }
+
+        .form-group input.error {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.12);
+            background: #FEFDF8;
+        }
+
+        .form-group input.success {
+            border-color: #2F8F4E;
+            box-shadow: 0 0 0 4px rgba(47, 143, 78, 0.12);
+        }
+
+        /* ============================================
+           STATUS MESSAGE
+        ============================================ */
+        #statusMessage {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+            font-weight: 500;
+        }
+
+        #statusMessage.show {
+            display: block;
+        }
+
+        #statusMessage.error {
+            background: #FDE8E8;
+            color: #c0392b;
+            border-left: 4px solid #e74c3c;
+        }
+
+        #statusMessage.success {
+            background: #E8F5E9;
+            color: #217A3D;
+            border-left: 4px solid #2F8F4E;
+        }
+
+        #statusMessage.info {
+            background: #FFF8E7;
+            color: #8B7A3A;
+            border-left: 4px solid #D4A843;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================
+           BUTTONS
+        ============================================ */
+        .btn-reset {
+            width: 100%;
+            padding: 14px;
+            background: #2F8F4E;
+            color: #FEFDF8;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-reset:hover:not(:disabled) {
+            background: #217A3D;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(47, 143, 78, 0.3);
+        }
+
+        .btn-reset:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-reset:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            margin: 0 auto;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #FEFDF8;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .btn-reset.loading .spinner {
+            display: inline-block;
+        }
+
+        .btn-reset.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ============================================
+           FOOTER LINKS
+        ============================================ */
+        .footer-links {
+            margin-top: 28px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: #68756D;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-links a:hover {
+            color: #2F8F4E;
+            text-decoration: none;
+        }
+
+        .footer-links .divider {
+            color: #E8F5E9;
+            user-select: none;
+        }
+
+        .footer-links .back-arrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .footer-links a:hover .back-arrow {
+            transform: translateX(-3px);
+        }
+
+        /* ============================================
+           RESPONSIVE
+        ============================================ */
+        @media (max-width: 480px) {
+            .forgot-container {
+                padding: 32px 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .header p {
+                font-size: 14px;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .footer-links .divider {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================
+    HTML STRUCTURE
+    ============================================ -->
+    <div class="forgot-container">
+        <!-- Header -->
+        <div class="header">
+            <span class="brand-icon">🐾</span>
+            <h1>Forgot <span>Password</span></h1>
+            <p>Enter your email address and we'll send you a link to reset your password.</p>
+        </div>
+
+        <!-- Status Message -->
+        <div id="statusMessage"></div>
+
+        <!-- Form -->
+        <form id="forgotForm" novalidate>
+            <div class="form-group">
+                <label for="emailInput">Email Address</label>
+                <input
+                    type="email"
+                    id="emailInput"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    required
+                />
+            </div>
+
+            <button type="submit" class="btn-reset" id="resetBtn">
+                <span class="btn-text">Send Reset Link</span>
+                <span class="spinner"></span>
+            </button>
+        </form>
+
+        <!-- Footer Links -->
+        <div class="footer-links">
+            <a href="login.html" id="backToLogin">
+                <span class="back-arrow">←</span> Back to Login
+            </a>
+            <span class="divider">•</span>
+            <a href="register.html" id="createAccount">
+                Create Account →
+            </a>
+        </div>
+    </div>
+
+    <!-- ============================================
+    JAVASCRIPT
+    ============================================ -->
+    <script>
+        // ============================================
+        // DOM REFERENCES
+        // ============================================
+        const form = document.getElementById('forgotForm');
+        const emailInput = document.getElementById('emailInput');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // ============================================
+        // PRE-FILL EMAIL FROM LOGIN PAGE
+        // ============================================
+        const savedEmail = localStorage.getItem('forgotPasswordEmail');
+        if (savedEmail) {
+            emailInput.value = savedEmail;
+            localStorage.removeItem('forgotPasswordEmail');
+            console.log('📧 Email pre-filled from login page:', savedEmail);
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function updateStatus(message, type, isHTML = false) {
+            statusMessage.className = 'show ' + type;
+            statusMessage.innerHTML = isHTML ? message : message;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusMessage.className = '';
+                }, 8000);
+            }
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                resetBtn.classList.add('loading');
+                resetBtn.disabled = true;
+                emailInput.disabled = true;
+            } else {
+                resetBtn.classList.remove('loading');
+                resetBtn.disabled = false;
+                emailInput.disabled = false;
+            }
+        }
+
+        function validateEmail(email) {
+            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return regex.test(email);
+        }
+
+        function clearFieldState() {
+            emailInput.classList.remove('error', 'success');
+        }
+
+        // ============================================
+        // PASSWORD RESET FUNCTION (Firebase Ready)
+        // ============================================
+        async function handleForgotPassword(email) {
+            // ============================================
+            // 🔥 OPTION 1: USE WITH FIREBASE
+            // ============================================
+            /*
+            try {
+                const { resetPassword } = await import('../js/firebase-init.js');
+                await resetPassword(email);
+                return { success: true };
+            } catch (error) {
+                throw error;
+            }
+            */
+
+            // ============================================
+            // ⚡ OPTION 2: SIMULATION (Default)
+            // ============================================
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    if (Math.random() > 0.1) {
+                        resolve({ success: true });
+                    } else {
+                        reject({ 
+                            code: 'auth/user-not-found', 
+                            message: 'No account found with this email address.' 
+                        });
+                    }
+                }, 2000);
+            });
+        }
+
+        // ============================================
+        // FORM SUBMISSION HANDLER
+        // ============================================
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = emailInput.value.trim();
+            clearFieldState();
+
+            if (!email) {
+                emailInput.classList.add('error');
+                updateStatus('⚠️ Please enter your email address.', 'error');
+                emailInput.focus();
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                emailInput.classList.add('error');
+                updateStatus('⚠️ Please enter a valid email address (e.g., name@domain.com).', 'error');
+                emailInput.focus();
+                return;
+            }
+
+            emailInput.classList.add('success');
+            updateStatus('⏳ Sending reset link...', 'info');
+            setLoading(true);
+
+            try {
+                await handleForgotPassword(email);
+
+                emailInput.classList.remove('success');
+                emailInput.value = '';
+                updateStatus(
+                    `✅ Password reset link sent to <strong>${email}</strong>.<br />
+                    Please check your inbox and <strong>spam folder</strong>.`,
+                    'success',
+                    true
+                );
+
+            } catch (error) {
+                console.error('Password reset error:', error);
+
+                const errorMessages = {
+                    'auth/user-not-found': 'No account found with this email address.',
+                    'auth/invalid-email': 'Please enter a valid email address.',
+                    'auth/too-many-requests': 'Too many attempts. Please wait a few minutes.',
+                    'auth/network-request-failed': 'Network error. Please check your connection.'
+                };
+
+                const userMessage = errorMessages[error.code] ||
+                    error.message ||
+                    'Something went wrong. Please try again.';
+
+                emailInput.classList.add('error');
+                updateStatus(`❌ ${userMessage}`, 'error');
+
+            } finally {
+                setLoading(false);
+                setTimeout(() => {
+                    emailInput.classList.remove('error', 'success');
+                }, 3000);
+            }
+        });
+
+        // ============================================
+        // REAL-TIME VALIDATION
+        // ============================================
+        emailInput.addEventListener('input', function() {
+            if (this.value.trim()) {
+                this.classList.remove('error');
+                if (validateEmail(this.value.trim())) {
+                    this.classList.add('success');
+                } else {
+                    this.classList.remove('success');
+                }
+            } else {
+                this.classList.remove('error', 'success');
+            }
+        });
+
+        emailInput.addEventListener('blur', function() {
+            const email = this.value.trim();
+            if (email && !validateEmail(email)) {
+                this.classList.add('error');
+                this.classList.remove('success');
+            }
+        });
+
+        // ============================================
+        // FOOTER LINK HANDLERS
+        // ============================================
+        document.getElementById('backToLogin').addEventListener('click', function(e) {
+            console.log('🔙 Navigating back to login page...');
+        });
+
+        document.getElementById('createAccount').addEventListener('click', function(e) {
+            console.log('📝 Navigating to create account page...');
+        });
+
+        // ============================================
+        // KEYBOARD SHORTCUT
+        // ============================================
+        emailInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !resetBtn.disabled) {
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // ============================================
+        // INITIAL FOCUS
+        // ============================================
+        emailInput.focus();
+
+        // ============================================
+        // CONSOLE LOGS
+        // ============================================
+        console.log('✅ Forgot Password page loaded successfully!');
+        console.log('🎨 SmartCollars theme applied');
+        console.log('📍 Current page:', window.location.pathname);
+    </script>
+</body>
+</html>

@@ -63,23 +63,14 @@
                     <a href="#about">About Us</a>
                 </li>
 
-                <li>
-                    <a href="pages/login.html" class="nav-btn">
-                        Login
-                    </a>
-                </li>
+                <!-- Login button removed -->
 
             </ul>
 
-            <button/login.html
-                class="hamburger"
-                id="hamburger"
-                aria-label="Toggle navigation">
-
+            <button class="hamburger" id="hamburger" aria-label="Toggle navigation">
                 <span></span>
                 <span></span>
                 <span></span>
-
             </button>
 
         </div>
@@ -140,7 +131,8 @@
 
                 <div class="hero-buttons">
 
-                    <a href="login.html" class="btn-primary">
+                    <!-- ✅ Only Get Started remains -->
+                    <a href="pages/login.html" class="btn-primary cta-login">
 
                         Get Started
 
@@ -148,11 +140,7 @@
 
                     </a>
 
-                    <a href="#features" class="btn-secondary">
-
-                        Explore Features
-
-                    </a>
+                    <!-- ✅ REMOVED: Explore Features button -->
 
                 </div>
 
@@ -359,10 +347,6 @@
                         wander too far.
                     </p>
 
-                    <span class="feature-link">
-                        Real-time tracking →
-                    </span>
-
                 </article>
 
 
@@ -380,10 +364,6 @@
                         Monitor important health readings and identify
                         unusual changes that may require your attention.
                     </p>
-
-                    <span class="feature-link">
-                        Monitor health →
-                    </span>
 
                 </article>
 
@@ -403,10 +383,6 @@
                         walking, running, resting, and unusual activity.
                     </p>
 
-                    <span class="feature-link">
-                        Track activity →
-                    </span>
-
                 </article>
 
 
@@ -424,10 +400,6 @@
                         Receive instant notifications when something
                         unusual happens or your pet leaves a safe zone.
                     </p>
-
-                    <span class="feature-link">
-                        Stay informed →
-                    </span>
 
                 </article>
 
@@ -447,10 +419,6 @@
                         easier to understand your pet's everyday habits.
                     </p>
 
-                    <span class="feature-link">
-                        View insights →
-                    </span>
-
                 </article>
 
 
@@ -468,10 +436,6 @@
                         Your pet's information stays protected so you
                         can monitor them with confidence.
                     </p>
-
-                    <span class="feature-link">
-                        Your data matters →
-                    </span>
 
                 </article>
 
@@ -538,7 +502,7 @@
                     </div>
 
 
-                    <a href="login.html" class="btn-primary">
+                    <a href="pages/login.html" class="btn-primary cta-login">
 
                         Open Dashboard
 
@@ -866,7 +830,7 @@
 
             <div class="how-cta">
 
-                <a href="login.html" class="btn-primary">
+                <a href="pages/login.html" class="btn-primary cta-login">
 
                     Start Monitoring
 
@@ -1016,7 +980,7 @@
                         connected wherever life takes you.
                     </p>
 
-                    <a href="login.html">
+                    <a href="pages/login.html" class="cta-login">
                         Get Started →
                     </a>
 
@@ -1130,7 +1094,7 @@
                     </div>
 
 
-                    <a href="login.html" class="btn-primary">
+                    <a href="pages/login.html" class="btn-primary cta-login">
 
                         Join SmartCollars
 
@@ -1173,7 +1137,7 @@
                 and location with SmartCollars.
             </p>
 
-            <a href="login.html" class="btn-primary">
+            <a href="pages/login.html" class="btn-primary cta-login">
 
                 Get Started Today
 
@@ -1248,9 +1212,9 @@
 
                     <h4>Account</h4>
 
-                    <a href="login.html">Login</a>
-                    <a href="login.html">Create Account</a>
-                    <a href="login.html">Dashboard</a>
+                    <a href="pages/login.html">Login</a>
+                    <a href="pages/login.html">Create Account</a>
+                    <a href="pages/login.html">Dashboard</a>
 
                 </div>
 
@@ -1280,7 +1244,6 @@
     ====================================================== -->
 
     <script>
-
         /* ================================================
            MOBILE MENU
         ================================================= */
@@ -1289,22 +1252,15 @@
         const navLinks = document.getElementById("navLinks");
 
         hamburger.addEventListener("click", function () {
-
             hamburger.classList.toggle("active");
             navLinks.classList.toggle("active");
-
         });
 
-
         document.querySelectorAll(".nav-links a").forEach(link => {
-
             link.addEventListener("click", function () {
-
                 hamburger.classList.remove("active");
                 navLinks.classList.remove("active");
-
             });
-
         });
 
 
@@ -1315,47 +1271,32 @@
         const navbar = document.getElementById("navbar");
 
         window.addEventListener("scroll", function () {
-
             if (window.scrollY > 40) {
-
                 navbar.classList.add("scrolled");
-
             } else {
-
                 navbar.classList.remove("scrolled");
-
             }
-
         });
 
 
         /* ================================================
-           SMOOTH SCROLL
+           SMOOTH SCROLL FOR # LINKS
         ================================================= */
 
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-
             anchor.addEventListener("click", function (e) {
-
                 const targetId = this.getAttribute("href");
-
                 if (targetId === "#") return;
 
                 const target = document.querySelector(targetId);
-
                 if (target) {
-
                     e.preventDefault();
-
                     target.scrollIntoView({
                         behavior: "smooth",
                         block: "start"
                     });
-
                 }
-
             });
-
         });
 
 
@@ -1364,37 +1305,25 @@
         ================================================= */
 
         const observer = new IntersectionObserver(
-
             (entries) => {
-
                 entries.forEach(entry => {
-
                     if (entry.isIntersecting) {
-
                         entry.target.classList.add("visible");
-
                     }
-
                 });
-
             },
-
             {
                 threshold: 0.12,
                 rootMargin: "0px 0px -40px 0px"
             }
-
         );
-
 
         document
             .querySelectorAll(
                 ".feature-card, .step-card, .benefit-item, .dashboard-preview, .about-pet-card"
             )
             .forEach(element => {
-
                 observer.observe(element);
-
             });
 
 
@@ -1406,38 +1335,55 @@
         const navItems = document.querySelectorAll(".nav-links a[href^='#']");
 
         window.addEventListener("scroll", () => {
-
             let currentSection = "";
-
             sections.forEach(section => {
-
                 const sectionTop = section.offsetTop - 160;
-
                 if (window.scrollY >= sectionTop) {
-
                     currentSection = section.getAttribute("id");
-
                 }
-
             });
 
-
             navItems.forEach(link => {
-
                 link.classList.remove("active");
-
-                if (
-                    link.getAttribute("href") === "#" + currentSection
-                ) {
-
+                if (link.getAttribute("href") === "#" + currentSection) {
                     link.classList.add("active");
-
                 }
+            });
+        });
 
+
+        /* ================================================
+           ===== ENSURE ALL CTA BUTTONS WORK =====
+        ================================================= */
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const loginButtons = document.querySelectorAll(
+                '.btn-primary, .cta-login, .nav-btn[href*="login.html"], .footer-links a[href*="login.html"]'
+            );
+
+            loginButtons.forEach(btn => {
+                btn.addEventListener("click", function (e) {
+                    const href = this.getAttribute("href");
+                    if (!href || href === "#" || href.startsWith("#")) return;
+
+                    if (!href.includes("login.html")) {
+                        e.preventDefault();
+                        window.location.href = "pages/login.html";
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-primary, .cta-login').forEach(btn => {
+                if (!btn.getAttribute("href") || btn.getAttribute("href") === "#") {
+                    btn.addEventListener("click", function (e) {
+                        e.preventDefault();
+                        window.location.href = "pages/login.html";
+                    });
+                }
             });
 
         });
-
     </script>
 
 </body>
