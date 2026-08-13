@@ -22,7 +22,6 @@
                 <span class="logo-icon">🐾</span>
                 <h1 class="logo-text">Smart<span>Collars</span></h1>
             </div>
-            <!-- Toggle button – always visible, bigger when collapsed -->
             <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
                 <span class="hamburger-icon">☰</span>
             </button>
@@ -31,33 +30,33 @@
         <nav class="navigation">
             <span class="nav-label">MAIN</span>
 
-            <button class="nav-item active" data-section="overview" onclick="window.showSection('overview', this)">
+            <button class="nav-item active" data-section="overview">
                 <span class="nav-icon">📍</span>
                 <span class="nav-text">Live Tracking</span>
             </button>
 
-            <button class="nav-item" data-section="history" onclick="window.showSection('history', this)">
+            <button class="nav-item" data-section="history">
                 <span class="nav-icon">📜</span>
                 <span class="nav-text">History</span>
             </button>
 
-            <button class="nav-item" data-section="notifications" onclick="window.showSection('notifications', this)">
+            <button class="nav-item" data-section="notifications">
                 <span class="nav-icon">🔔</span>
                 <span class="nav-text">Notifications</span>
                 <span class="notification-badge">2</span>
             </button>
 
-            <button class="nav-item" data-section="pets" onclick="window.showSection('pets', this)">
+            <button class="nav-item" data-section="pets">
                 <span class="nav-icon">🐕</span>
                 <span class="nav-text">Pet Management</span>
             </button>
 
-            <button class="nav-item" data-section="profile" onclick="window.showSection('profile', this)">
+            <button class="nav-item" data-section="profile">
                 <span class="nav-icon">👤</span>
                 <span class="nav-text">Profile</span>
             </button>
 
-            <button class="nav-item" data-section="settings" onclick="window.showSection('settings', this)">
+            <button class="nav-item" data-section="settings">
                 <span class="nav-icon">⚙️</span>
                 <span class="nav-text">Settings</span>
             </button>
@@ -154,15 +153,9 @@
             </div>
 
             <div class="gps-controls">
-                <button class="btn-gps" id="refreshGPSBtn" onclick="window.refreshGPS()">
-                    🔄 Refresh Location
-                </button>
-                <button class="btn-gps secondary" id="centerMapBtn" onclick="window.centerMap()">
-                    📍 Center Map
-                </button>
-                <button class="btn-gps secondary" id="toggleStatsBtn" onclick="window.toggleStats()">
-                    📊 Toggle Stats
-                </button>
+                <button class="btn-gps" id="refreshGPSBtn">🔄 Refresh Location</button>
+                <button class="btn-gps secondary" id="centerMapBtn">📍 Center Map</button>
+                <button class="btn-gps secondary" id="toggleStatsBtn">📊 Toggle Stats</button>
             </div>
         </div>
 
@@ -307,7 +300,7 @@
             <div class="content-card">
                 <div class="pet-management-header">
                     <h3>Your Pets</h3>
-                    <button class="btn-primary" onclick="window.location.href='pet-setup.html'">+ Add New Pet</button>
+                    <button class="btn-primary" id="addPetBtn">+ Add New Pet</button>
                 </div>
                 <div id="petListContainer">
                     <!-- Rendered by JavaScript -->
@@ -327,7 +320,7 @@
                 <input type="text" id="profileName" />
                 <label>Email Address</label>
                 <input type="email" id="profileEmail" readonly />
-                <button class="btn-primary" style="margin-top:15px;" onclick="window.updateProfile()">Save Changes</button>
+                <button class="btn-primary" style="margin-top:15px;" id="saveProfileBtn">Save Changes</button>
             </div>
         </section>
 

@@ -8,6 +8,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Add importmap for consistent module resolution -->
+    <script type="importmap">
+        {
+            "imports": {
+                "../js/firebase-init.js": "../js/firebase-init.js"
+            }
+        }
+    </script>
 </head>
 <body>
     <main class="login-page">
@@ -58,6 +66,10 @@
                         <span id="statusText">Ready to sign up</span>
                     </div>
 
+                    <!-- Message placeholders -->
+                    <div id="errorMessage" class="error-message" style="display:none;"></div>
+                    <div id="successMessage" class="success-message" style="display:none;"></div>
+
                     <!-- REGISTER FORM -->
                     <form id="registerForm">
                         <div class="form-group">
@@ -97,7 +109,9 @@
         </div>
     </main>
 
-    <!-- PAGE-SPECIFIC SCRIPT (ES Module) -->
+    <!-- ========================================================= -->
+    <!-- ✅ USING ES MODULES – SAME AS LOGIN & DASHBOARD            -->
+    <!-- ========================================================= -->
     <script type="module">
         // ============================================
         // IMPORT FROM YOUR FIREBASE INIT
@@ -106,8 +120,9 @@
             auth,
             registerWithEmail,
             signInWithGoogle,
-            onAuthStateChanged
-        } from './firebase-init.js';
+            onAuthStateChanged,
+            getCurrentUser
+        } from '../js/firebase-init.js';
 
         // ============================================
         // DOM ELEMENTS
@@ -120,6 +135,8 @@
         const statusDot = document.getElementById('statusDot');
         const signUpBtn = document.getElementById('signUpBtn');
         const googleRegBtn = document.getElementById('googleRegBtn');
+        const errorMsg = document.getElementById('errorMessage');
+        const successMsg = document.getElementById('successMessage');
 
         // ============================================
         // PASSWORD TOGGLE
@@ -131,11 +148,29 @@
         });
 
         // ============================================
-        // STATUS HELPER
+        // MESSAGE HELPERS
         // ============================================
         function updateStatus(message, isSuccess = false) {
             statusText.textContent = message;
             statusDot.classList.toggle('success', isSuccess);
+            console.log('[Status]', message, isSuccess ? '✅' : '❌');
+        }
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.style.display = 'block';
+            successMsg.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successMsg.textContent = message;
+            successMsg.style.display = 'block';
+            errorMsg.style.display = 'none';
+        }
+
+        function hideMessages() {
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
         }
 
         // ============================================
@@ -146,6 +181,13 @@
             signUpBtn.innerHTML = isLoading
                 ? '<span class="spinner">⟳</span> Creating account...'
                 : '<span>Create Account</span><span class="arrow">→</span>';
+        }
+
+        function setGoogleLoading(isLoading) {
+            googleRegBtn.disabled = isLoading;
+            googleRegBtn.innerHTML = isLoading
+                ? '<span class="spinner">⟳</span> Signing up...'
+                : '<span class="google-icon">G</span><span>Continue with Google</span>';
         }
 
         // ============================================
@@ -164,6 +206,8 @@
                 updateStatus(`Already signed in as ${user.email}`, true);
                 // Optionally redirect to dashboard
                 // window.location.href = 'dashboard.html';
+            } else {
+                console.log('ℹ️ No user signed in. Ready to register.');
             }
         });
 
@@ -172,42 +216,65 @@
         // ============================================
         registerForm.addEventListener('submit', async function(event) {
             event.preventDefault();
+            hideMessages();
 
             const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
 
             // Validate
             if (!email || !password) {
+                showError('Please fill in all fields.');
                 updateStatus('Please fill in all fields.', false);
                 return;
             }
             if (!isValidEmail(email)) {
-                updateStatus('Please enter a valid email address.', false);
+                showError('Please enter a valid email address.');
+                updateStatus('Invalid email address.', false);
                 return;
             }
             if (password.length < 6) {
-                updateStatus('Password must be at least 6 characters.', false);
+                showError('Password must be at least 6 characters.');
+                updateStatus('Password too short.', false);
                 return;
             }
 
             setLoading(true);
             updateStatus('Creating your account...', false);
 
-            // ✅ USE YOUR NEW registerWithEmail FUNCTION
-            const result = await registerWithEmail(email, password, '');
+            try {
+                // 🔥 CALL THE FIREBASE FUNCTION
+                const result = await registerWithEmail(email, password, '');
 
-            if (result.success) {
-                console.log('✅ Sign-up success:', result.user.email);
-                updateStatus('Account created! Verification email sent. Redirecting...', true);
-                // ✅ Redirect to login page after success
-                setTimeout(() => window.location.href = 'login.html', 2000);
-            } else {
-                const messages = {
-                    'auth/email-already-in-use': 'This email is already registered. Please sign in.',
-                    'auth/invalid-email': 'Invalid email address.',
-                    'auth/weak-password': 'Password is too weak.'
-                };
-                updateStatus(messages[result.error] || result.message || 'Sign-up failed.', false);
+                console.log('✅ registerWithEmail result:', result);
+
+                if (result.success) {
+                    showSuccess('✅ Account created successfully! Please check your email to verify.');
+                    updateStatus('Account created! Redirecting...', true);
+                    
+                    // Redirect to login page after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 3000);
+                } else {
+                    // ❌ Show the actual Firebase error
+                    const errorMessages = {
+                        'auth/email-already-in-use': 'This email is already registered. Please sign in.',
+                        'auth/invalid-email': 'Invalid email address.',
+                        'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
+                        'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Contact support.',
+                        'auth/network-request-failed': 'Network error. Please check your internet connection.'
+                    };
+                    const userMessage = errorMessages[result.error] || result.message || 'Sign-up failed.';
+                    showError(userMessage);
+                    updateStatus('Registration failed', false);
+                    console.error('❌ Registration error:', result);
+                    setLoading(false);
+                }
+            } catch (err) {
+                // Catch any unexpected errors
+                console.error('💥 Unexpected error:', err);
+                showError('An unexpected error occurred. Please try again.');
+                updateStatus('Registration failed', false);
                 setLoading(false);
             }
         });
@@ -216,20 +283,45 @@
         // GOOGLE BUTTON
         // ============================================
         googleRegBtn.addEventListener('click', async function() {
+            hideMessages();
+            setGoogleLoading(true);
             updateStatus('Signing up with Google...', false);
-            
-            // ✅ USE YOUR NEW signInWithGoogle FUNCTION
-            const result = await signInWithGoogle();
 
-            if (result.success) {
-                console.log('✅ Google sign-up success:', result.user.email);
-                updateStatus('Account created with Google!', true);
-                // Redirect to login or dashboard
-                setTimeout(() => window.location.href = 'login.html', 1500);
-            } else {
-                updateStatus('Google sign-up failed: ' + (result.message || 'Try again.'), false);
+            try {
+                const result = await signInWithGoogle();
+
+                console.log('✅ Google sign-in result:', result);
+
+                if (result.success) {
+                    console.log('✅ Google sign-up success:', result.user.email);
+                    showSuccess('✅ Account created with Google!');
+                    updateStatus('Account created with Google! ✅', true);
+                    
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                } else {
+                    const errorMessages = {
+                        'auth/popup-closed-by-user': 'Sign-up cancelled. Please try again.',
+                        'auth/account-exists-with-different-credential': 'An account already exists with the same email but different sign-in method.',
+                        'auth/popup-blocked': 'Please allow pop-ups for this site and try again.',
+                        'auth/network-request-failed': 'Network error. Please check your connection.'
+                    };
+                    const userMessage = errorMessages[result.error] || result.message || 'Google sign-up failed.';
+                    showError(userMessage);
+                    updateStatus('Google sign-up failed', false);
+                }
+            } catch (err) {
+                console.error('💥 Unexpected Google error:', err);
+                showError('An unexpected error occurred. Please try again.');
+                updateStatus('Google sign-up failed', false);
+            } finally {
+                setGoogleLoading(false);
             }
         });
+
+        console.log('✅ Registration page ready (ES Module version)!');
+        console.log('🔥 Using the SAME Firebase instance as login.html');
     </script>
 </body>
 </html>

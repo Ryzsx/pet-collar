@@ -28,7 +28,7 @@ import {
     getDocs,
     addDoc,
     serverTimestamp
-} from '../js/firebase-init.js';  // ✅ Correct path for your structure
+} from '../js/firebase-init.js';
 
 // =============================================
 // DOM ELEMENTS
@@ -93,6 +93,10 @@ function toggleSidebar() {
     sidebar.classList.toggle('collapsed');
     const isCollapsed = sidebar.classList.contains('collapsed');
     localStorage.setItem('sidebarCollapsed', isCollapsed);
+    // Toggle floating button visibility
+    if (floatingToggle) {
+        floatingToggle.style.display = isCollapsed ? 'flex' : 'none';
+    }
 }
 
 if (sidebarToggle) {
@@ -115,6 +119,13 @@ document.addEventListener('keydown', function(e) {
 const savedSidebarState = localStorage.getItem('sidebarCollapsed');
 if (savedSidebarState === 'true' && sidebar) {
     sidebar.classList.add('collapsed');
+    if (floatingToggle) {
+        floatingToggle.style.display = 'flex';
+    }
+} else {
+    if (floatingToggle) {
+        floatingToggle.style.display = 'none';
+    }
 }
 
 console.log('✅ Sidebar toggle ready!');
@@ -129,9 +140,10 @@ let isStatsVisible = true;
 let locationInterval = null;
 let selectedPetId = null;
 let liveDataInterval = null;
+let locationUnsubscribe = null;
 
 // =============================================
-// NAVIGATION (Exposed globally for onclick)
+// NAVIGATION
 // =============================================
 function showSection(sectionId, button) {
     const sections = document.querySelectorAll('.page-section');
@@ -180,7 +192,7 @@ function showSection(sectionId, button) {
 }
 
 // =============================================
-// TOGGLE STATS (Exposed globally)
+// TOGGLE STATS
 // =============================================
 function toggleStats() {
     isStatsVisible = !isStatsVisible;
@@ -192,7 +204,7 @@ function toggleStats() {
 }
 
 // =============================================
-// GPS FUNCTIONS (Exposed globally)
+// GPS FUNCTIONS
 // =============================================
 function refreshGPS() {
     if (!selectedPetId || pets.length === 0) {
@@ -361,8 +373,11 @@ async function loadPets() {
     const result = await getPetsForUser(currentUserId);
     if (result.success && result.pets.length > 0) {
         pets = result.pets;
-        selectedPetId = pets[0].id;
-        petDetails.textContent = `🐕 ${pets[0].name || 'Pet'} • ${pets[0].breed || 'Mixed Breed'}`;
+        // Restore last selected pet from localStorage
+        const lastPetId = localStorage.getItem(`lastPet_${currentUserId}`);
+        selectedPetId = pets.find(p => p.id === lastPetId)?.id || pets[0].id;
+        const pet = pets.find(p => p.id === selectedPetId);
+        petDetails.textContent = `🐕 ${pet.name || 'Pet'} • ${pet.breed || 'Mixed Breed'}`;
         addPetBanner.style.display = 'none';
         loadPetList();
         if (selectedPetId) startLocationTracking();
@@ -439,7 +454,7 @@ async function loadPetList() {
         return;
     }
     container.innerHTML = pets.map(pet => `
-        <div class="pet-card" onclick="window.selectPet('${pet.id}')">
+        <div class="pet-card" data-pet-id="${pet.id}">
             <div class="pet-avatar">🐕</div>
             <div class="pet-details">
                 <h3>${pet.name || 'Pet'}</h3>
@@ -450,10 +465,19 @@ async function loadPetList() {
             </div>
         </div>
     `).join('');
+
+    // Add click listeners to pet cards
+    document.querySelectorAll('.pet-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const petId = this.dataset.petId;
+            selectPet(petId);
+        });
+    });
 }
 
 function selectPet(petId) {
     selectedPetId = petId;
+    localStorage.setItem(`lastPet_${currentUserId}`, petId);
     const pet = pets.find(p => p.id === petId);
     if (pet) {
         petDetails.textContent = `🐕 ${pet.name || 'Pet'} • ${pet.breed || 'Mixed Breed'}`;
@@ -510,6 +534,11 @@ onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         currentUserId = user.uid;
 
+        // --- Store user info for "Continue as" ---
+        localStorage.setItem('lastUserEmail', user.email);
+        localStorage.setItem('lastUserName', user.displayName || user.email.split('@')[0]);
+        localStorage.setItem('lastUserAvatar', user.photoURL || '👤');
+
         userNameDisplay.textContent = user.displayName || 'User';
         userEmailDisplay.textContent = user.email || '';
         greetingName.textContent = user.displayName || 'User';
@@ -546,6 +575,17 @@ onAuthStateChanged(auth, async (user) => {
 logoutBtn.addEventListener('click', async () => {
     if (locationInterval) clearInterval(locationInterval);
     if (liveDataInterval) clearInterval(liveDataInterval);
+    if (locationUnsubscribe) {
+        locationUnsubscribe();
+        locationUnsubscribe = null;
+    }
+
+    if (currentUser) {
+        localStorage.setItem('lastUserEmail', currentUser.email);
+        localStorage.setItem('lastUserName', currentUser.displayName || currentUser.email.split('@')[0]);
+        localStorage.setItem('lastUserAvatar', currentUser.photoURL || '👤');
+    }
+
     const result = await signOut();
     if (result.success) {
         window.location.href = '../pages/login.html';
@@ -580,25 +620,65 @@ if (darkModeToggle) {
 }
 
 // =============================================
-// CONNECTION STATUS
+// CONNECTION STATUS (using events instead of interval)
 // =============================================
 const connectionStatus = document.getElementById('connectionStatus');
-const statusDot = connectionStatus?.querySelector('.status-dot');
-setInterval(() => {
+
+function updateConnectionStatus() {
     const isOnline = navigator.onLine;
-    if (statusDot) {
-        statusDot.style.background = isOnline ? '#10b981' : '#ef4444';
-    }
     if (connectionStatus) {
         connectionStatus.innerHTML = `
             <span class="status-dot" style="background:${isOnline ? '#10b981' : '#ef4444'};"></span>
             ${isOnline ? 'Connected' : 'Disconnected'}
         `;
     }
-}, 5000);
+}
+
+window.addEventListener('online', updateConnectionStatus);
+window.addEventListener('offline', updateConnectionStatus);
+updateConnectionStatus(); // Initial check
 
 // =============================================
-// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK
+// ATTACH EVENT LISTENERS FOR ALL INTERACTIVE ELEMENTS
+// =============================================
+
+// 1. Navigation items
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+        const section = this.dataset.section;
+        if (section) showSection(section, this);
+    });
+});
+
+// 2. GPS Control Buttons
+document.getElementById('refreshGPSBtn')?.addEventListener('click', refreshGPS);
+document.getElementById('centerMapBtn')?.addEventListener('click', centerMap);
+document.getElementById('toggleStatsBtn')?.addEventListener('click', toggleStats);
+
+// 3. Add Pet buttons
+document.querySelector('.banner-btn')?.addEventListener('click', function() {
+    window.location.href = 'pet-setup.html';
+});
+document.getElementById('addPetBtn')?.addEventListener('click', function() {
+    window.location.href = 'pet-setup.html';
+});
+
+// 4. Save Profile button
+document.getElementById('saveProfileBtn')?.addEventListener('click', updateProfile);
+
+// 5. Settings toggle for GPS (optional extra)
+document.getElementById('gpsToggle')?.addEventListener('change', function() {
+    if (this.checked) {
+        startLocationTracking();
+    } else {
+        if (locationInterval) clearInterval(locationInterval);
+        updateGPSStatus('GPS Off', 'error');
+        gpsStatus.textContent = '⏹️ GPS Disabled';
+    }
+});
+
+// =============================================
+// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK (backup)
 // =============================================
 window.showSection = showSection;
 window.toggleStats = toggleStats;

@@ -1,5 +1,5 @@
 // =====================================================
-// FIREBASE INITIALIZATION
+// FIREBASE INIT – COMPACT & CLEAN
 // =====================================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -18,8 +18,6 @@ import {
     fetchSignInMethodsForEmail,
     setPersistence,
     browserLocalPersistence,
-    browserSessionPersistence,
-    inMemoryPersistence,
     reauthenticateWithPopup,
     reauthenticateWithCredential,
     EmailAuthProvider,
@@ -67,10 +65,6 @@ import {
     getMetadata
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// =====================================================
-// CONFIGURATION
-// =====================================================
-
 const firebaseConfig = {
     apiKey: "AIzaSyDlevN1yTTphNyW-ILvVrU2xBcrfadZZB8",
     authDomain: "smart-pet-collar-24818.firebaseapp.com",
@@ -81,10 +75,6 @@ const firebaseConfig = {
     measurementId: "G-0BWRWZQ3HZ"
 };
 
-// =====================================================
-// INITIALIZE
-// =====================================================
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -92,31 +82,29 @@ const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
-// Set persistence
-try {
-    await setPersistence(auth, browserLocalPersistence);
-    console.log('✅ Auth persistence set to LOCAL');
-} catch (e) {
-    console.warn('⚠️ Could not set persistence:', e);
-}
+(async () => {
+    try {
+        await setPersistence(auth, browserLocalPersistence);
+        console.log('✅ Auth persistence set to LOCAL');
+    } catch (e) {
+        console.warn('⚠️ Could not set persistence:', e);
+    }
+})();
 
-console.log('✅ Firebase initialized successfully');
+console.log('✅ Firebase initialized');
 
-// =====================================================
-// EXPORTED FUNCTIONS
-// =====================================================
-
-export function clearAuthCache() {
-    const keys = Object.keys(localStorage);
-    keys.forEach(key => {
+// ------------------------------------------------------------
+// AUTH FUNCTIONS
+// ------------------------------------------------------------
+function clearAuthCache() {
+    Object.keys(localStorage).forEach(key => {
         if (key.startsWith('firebase:authUser')) localStorage.removeItem(key);
         if (key.startsWith('firebase:previous_websocket_failures')) localStorage.removeItem(key);
     });
     sessionStorage.clear();
-    console.log('🧹 Auth cache cleared.');
 }
 
-export async function signInWithEmail(email, password) {
+async function signInWithEmail(email, password) {
     try {
         const cred = await signInWithEmailAndPassword(auth, email, password);
         return { success: true, user: cred.user };
@@ -125,7 +113,7 @@ export async function signInWithEmail(email, password) {
     }
 }
 
-export async function registerWithEmail(email, password, displayName = '') {
+async function registerWithEmail(email, password, displayName = '') {
     try {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         if (displayName) await updateProfile(cred.user, { displayName });
@@ -137,20 +125,18 @@ export async function registerWithEmail(email, password, displayName = '') {
     }
 }
 
-// ✅ SIGN IN WITH GOOGLE - EXPORTED CORRECTLY
-export async function signInWithGoogle() {
+async function signInWithGoogle() {
     try {
         clearAuthCache();
         const result = await signInWithPopup(auth, provider);
         return { success: true, user: result.user };
     } catch (error) {
-        console.error('❌ Google sign-in error:', error);
+        console.error('Google sign-in error:', error);
         return { success: false, error: error.code, message: error.message };
     }
 }
 
-// ✅ SIGN OUT - EXPORTED CORRECTLY
-export async function signOutUser() {
+async function signOutUser() {
     try {
         await signOut(auth);
         clearAuthCache();
@@ -160,7 +146,7 @@ export async function signOutUser() {
     }
 }
 
-export async function resetPassword(email) {
+async function resetPassword(email) {
     try {
         const settings = { url: window.location.origin + '/pages/login.html', handleCodeInApp: true };
         await sendPasswordResetEmail(auth, email, settings);
@@ -170,7 +156,7 @@ export async function resetPassword(email) {
     }
 }
 
-export async function resendVerification(user) {
+async function resendVerification(user) {
     try {
         const target = user || auth.currentUser;
         if (!target) return { success: false, message: 'No user' };
@@ -184,7 +170,7 @@ export async function resendVerification(user) {
     }
 }
 
-export async function handleEmailVerification(code) {
+async function handleEmailVerification(code) {
     try {
         const info = await checkActionCode(auth, code);
         await applyActionCode(auth, code);
@@ -196,7 +182,7 @@ export async function handleEmailVerification(code) {
     }
 }
 
-export async function handlePasswordReset(code, newPassword) {
+async function handlePasswordReset(code, newPassword) {
     try {
         const email = await verifyPasswordResetCode(auth, code);
         await confirmPasswordReset(auth, code, newPassword);
@@ -208,7 +194,7 @@ export async function handlePasswordReset(code, newPassword) {
     }
 }
 
-export async function signInWithMagicLink(email, link) {
+async function signInWithMagicLink(email, link) {
     try {
         const cred = await firebaseSignInWithEmailLink(auth, email, link);
         return { success: true, user: cred.user };
@@ -217,11 +203,11 @@ export async function signInWithMagicLink(email, link) {
     }
 }
 
-export function isEmailLink(url) {
+function isEmailLink(url) {
     return isSignInWithEmailLink(auth, url);
 }
 
-export async function checkActionCodeStatus(code) {
+async function checkActionCodeStatus(code) {
     try {
         const info = await checkActionCode(auth, code);
         return { success: true, data: { email: info.data.email, fromEmail: info.data.fromEmail, operation: info.operation } };
@@ -232,7 +218,7 @@ export async function checkActionCodeStatus(code) {
     }
 }
 
-export async function updateUserProfile(displayName, photoURL = null) {
+async function updateUserProfile(displayName, photoURL = null) {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error('No user');
@@ -246,7 +232,7 @@ export async function updateUserProfile(displayName, photoURL = null) {
     }
 }
 
-export async function reauthenticateUser(password) {
+async function reauthenticateUser(password) {
     try {
         const user = auth.currentUser;
         if (!user || !user.email) throw new Error('No user or email');
@@ -258,7 +244,7 @@ export async function reauthenticateUser(password) {
     }
 }
 
-export async function reauthenticateWithGoogle() {
+async function reauthenticateWithGoogle() {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error('No user');
@@ -269,7 +255,7 @@ export async function reauthenticateWithGoogle() {
     }
 }
 
-export async function deleteUserAccount() {
+async function deleteUserAccount() {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error('No user');
@@ -280,7 +266,7 @@ export async function deleteUserAccount() {
     }
 }
 
-export async function changePassword(newPassword) {
+async function changePassword(newPassword) {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error('No user');
@@ -291,7 +277,7 @@ export async function changePassword(newPassword) {
     }
 }
 
-export async function changeEmail(newEmail) {
+async function changeEmail(newEmail) {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error('No user');
@@ -302,20 +288,25 @@ export async function changeEmail(newEmail) {
     }
 }
 
-export async function checkEmailExists(email) {
+const emailCheckCache = new Map();
+async function checkEmailExists(email) {
+    if (emailCheckCache.has(email)) return emailCheckCache.get(email);
     try {
         const methods = await fetchSignInMethodsForEmail(auth, email);
-        return methods.length > 0;
+        const exists = methods.length > 0;
+        emailCheckCache.set(email, exists);
+        setTimeout(() => emailCheckCache.delete(email), 5 * 60 * 1000);
+        return exists;
     } catch (e) {
         return false;
     }
 }
 
-export function getCurrentUser() { return auth.currentUser; }
-export function isLoggedIn() { return !!auth.currentUser; }
-export function isEmailVerified() { return auth.currentUser?.emailVerified || false; }
+function getCurrentUser() { return auth.currentUser; }
+function isLoggedIn() { return !!auth.currentUser; }
+function isEmailVerified() { return auth.currentUser?.emailVerified || false; }
 
-export async function reloadUser() {
+async function reloadUser() {
     try {
         await reload(auth.currentUser);
         return { success: true, user: auth.currentUser };
@@ -324,80 +315,159 @@ export async function reloadUser() {
     }
 }
 
-export function monitorConnection(callback) {
+let connectionTimeout = null;
+function monitorConnection(callback) {
     let online = navigator.onLine;
     let connected = false;
-    const handleOnline = () => { online = true; if (callback) callback({ online, connected }); };
-    const handleOffline = () => { online = false; if (callback) callback({ online, connected }); };
+    let unsub = null;
+
+    const handleOnline = () => {
+        online = true;
+        if (callback) callback({ online, connected });
+    };
+    const handleOffline = () => {
+        online = false;
+        if (callback) callback({ online, connected });
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    const unsub = onSnapshot(doc(db, 'connection', 'status'),
-        () => { connected = true; if (callback) callback({ online, connected: true }); },
-        () => { connected = false; if (callback) callback({ online, connected: false }); }
+
+    unsub = onSnapshot(doc(db, 'connection', 'status'),
+        () => {
+            connected = true;
+            if (callback) callback({ online, connected: true });
+        },
+        (err) => {
+            console.error('Firestore connection error:', err);
+            connected = false;
+            if (callback) callback({ online: navigator.onLine, connected: false });
+        }
     );
-    if (callback) setTimeout(() => callback({ online, connected }), 1000);
-    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); unsub(); };
+
+    if (connectionTimeout) clearTimeout(connectionTimeout);
+    connectionTimeout = setTimeout(() => {
+        if (callback) callback({ online, connected });
+        connectionTimeout = null;
+    }, 1000);
+
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+        if (unsub) unsub();
+        if (connectionTimeout) {
+            clearTimeout(connectionTimeout);
+            connectionTimeout = null;
+        }
+    };
 }
 
-// =====================================================
+// ------------------------------------------------------------
 // FIRESTORE HELPERS
-// =====================================================
-
-export async function saveUserData(uid, data) {
-    try { await setDoc(doc(db, 'users', uid), { ...data, updatedAt: serverTimestamp() }, { merge: true }); return { success: true }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+// ------------------------------------------------------------
+async function saveUserData(uid, data) {
+    try {
+        await setDoc(doc(db, 'users', uid), { ...data, updatedAt: serverTimestamp() }, { merge: true });
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function getUserData(uid) {
-    try { const snap = await getDoc(doc(db, 'users', uid)); if (snap.exists()) return { success: true, data: { id: snap.id, ...snap.data() } }; return { success: false, message: 'Not found' }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function getUserData(uid) {
+    try {
+        const snap = await getDoc(doc(db, 'users', uid));
+        if (snap.exists()) return { success: true, data: { id: snap.id, ...snap.data() } };
+        return { success: false, message: 'Not found' };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function savePet(data, uid) {
-    try { const ref = await addDoc(collection(db, 'pets'), { ...data, userId: uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); return { success: true, id: ref.id }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function savePet(data, uid) {
+    try {
+        const ref = await addDoc(collection(db, 'pets'), { ...data, userId: uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        return { success: true, id: ref.id };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function updatePet(id, data) {
-    try { await updateDoc(doc(db, 'pets', id), { ...data, updatedAt: serverTimestamp() }); return { success: true }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function updatePet(id, data) {
+    try {
+        await updateDoc(doc(db, 'pets', id), { ...data, updatedAt: serverTimestamp() });
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function deletePet(id) {
-    try { await deleteDoc(doc(db, 'pets', id)); return { success: true }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function deletePet(id) {
+    try {
+        await deleteDoc(doc(db, 'pets', id));
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function getPet(id) {
-    try { const snap = await getDoc(doc(db, 'pets', id)); if (snap.exists()) return { success: true, pet: { id: snap.id, ...snap.data() } }; return { success: false, message: 'Not found' }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function getPet(id) {
+    try {
+        const snap = await getDoc(doc(db, 'pets', id));
+        if (snap.exists()) return { success: true, pet: { id: snap.id, ...snap.data() } };
+        return { success: false, message: 'Not found' };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function getPetsForUser(uid) {
-    try { const q = query(collection(db, 'pets'), where('userId', '==', uid), orderBy('createdAt', 'desc')); const snap = await getDocs(q); const pets = []; snap.forEach(d => pets.push({ id: d.id, ...d.data() })); return { success: true, pets }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function getPetsForUser(uid) {
+    try {
+        const q = query(collection(db, 'pets'), where('userId', '==', uid), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const pets = [];
+        snap.forEach(d => pets.push({ id: d.id, ...d.data() }));
+        return { success: true, pets };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function saveLocation(data, uid) {
-    try { const ref = await addDoc(collection(db, 'locations'), { ...data, userId: uid, timestamp: serverTimestamp() }); return { success: true, id: ref.id }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function saveLocation(data, uid) {
+    try {
+        const ref = await addDoc(collection(db, 'locations'), { ...data, userId: uid, timestamp: serverTimestamp() });
+        return { success: true, id: ref.id };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function getLocationHistory(uid, limitCount = 50) {
-    try { const q = query(collection(db, 'locations'), where('userId', '==', uid), orderBy('timestamp', 'desc'), limit(limitCount)); const snap = await getDocs(q); const locations = []; snap.forEach(d => locations.push({ id: d.id, ...d.data() })); return { success: true, locations }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function getLocationHistory(uid, limitCount = 50) {
+    try {
+        const q = query(collection(db, 'locations'), where('userId', '==', uid), orderBy('timestamp', 'desc'), limit(limitCount));
+        const snap = await getDocs(q);
+        const locations = [];
+        snap.forEach(d => locations.push({ id: d.id, ...d.data() }));
+        return { success: true, locations };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export function listenToLocations(uid, cb) {
+function listenToLocations(uid, cb) {
     const q = query(collection(db, 'locations'), where('userId', '==', uid), orderBy('timestamp', 'desc'), limit(20));
-    return onSnapshot(q, snap => { const locations = []; snap.forEach(d => locations.push({ id: d.id, ...d.data() })); if (cb) cb(locations); }, err => { if (cb) cb(null, err); });
+    return onSnapshot(q, snap => {
+        const locations = [];
+        snap.forEach(d => locations.push({ id: d.id, ...d.data() }));
+        if (cb) cb(locations);
+    }, err => {
+        if (cb) cb(null, err);
+    });
 }
 
-// =====================================================
+// ------------------------------------------------------------
 // STORAGE HELPERS
-// =====================================================
-
-export async function uploadPetImage(file, uid, petId = null, onProgress = null) {
+// ------------------------------------------------------------
+async function uploadPetImage(file, uid, petId = null, onProgress = null, saveToFirestore = false) {
     try {
         const ts = Date.now();
         const ext = file.name.split('.').pop();
@@ -405,10 +475,10 @@ export async function uploadPetImage(file, uid, petId = null, onProgress = null)
         let path = `users/${uid}/pets/`;
         if (petId) path += `${petId}/images/${name}`;
         else path += `images/${name}`;
-        const ref = ref(storage, path);
+        const storageRef = ref(storage, path);
         let task;
         if (onProgress) {
-            task = uploadBytesResumable(ref, file);
+            task = uploadBytesResumable(storageRef, file);
             await new Promise((resolve, reject) => {
                 task.on('state_changed',
                     snap => onProgress((snap.bytesTransferred / snap.totalBytes) * 100),
@@ -417,32 +487,45 @@ export async function uploadPetImage(file, uid, petId = null, onProgress = null)
                 );
             });
         } else {
-            await uploadBytes(ref, file);
+            await uploadBytes(storageRef, file);
         }
-        const url = await getDownloadURL(ref);
+        const url = await getDownloadURL(storageRef);
+        if (saveToFirestore && petId) {
+            await updateDoc(doc(db, 'pets', petId), { imageUrl: url, updatedAt: serverTimestamp() });
+        }
         return { success: true, url, path, name };
-    } catch (e) { return { success: false, error: e.code, message: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function uploadProfileImage(file, uid) {
+async function uploadProfileImage(file, uid) {
     try {
         const ts = Date.now();
         const ext = file.name.split('.').pop();
         const name = `profile_${ts}.${ext}`;
         const path = `users/${uid}/profile/${name}`;
-        const ref = ref(storage, path);
-        await uploadBytes(ref, file);
-        const url = await getDownloadURL(ref);
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        await updateProfile(auth.currentUser, { photoURL: url });
+        await setDoc(doc(db, 'users', uid), { profileImage: url, updatedAt: serverTimestamp() }, { merge: true });
         return { success: true, url, path };
-    } catch (e) { return { success: false, error: e.code, message: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function deleteImage(path) {
-    try { await deleteObject(ref(storage, path)); return { success: true }; }
-    catch (e) { return { success: false, error: e.code, message: e.message }; }
+async function deleteImage(path) {
+    try {
+        await deleteObject(ref(storage, path));
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-export async function getPetImages(uid, petId) {
+async function getPetImages(uid, petId) {
     try {
         const path = `users/${uid}/pets/${petId}/images/`;
         const result = await listAll(ref(storage, path));
@@ -452,17 +535,23 @@ export async function getPetImages(uid, petId) {
             return { url, name: item.name, size: meta.size, contentType: meta.contentType, created: meta.timeCreated };
         }));
         return { success: true, images };
-    } catch (e) { return { success: false, error: e.code, message: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.code, message: e.message };
+    }
 }
 
-// =====================================================
+// ------------------------------------------------------------
 // UTILITIES
-// =====================================================
-
-export function getServerTimestamp() { return serverTimestamp(); }
-export function timestampToDate(ts) { return ts instanceof Timestamp ? ts.toDate() : ts; }
-export function formatDate(date) { if (!date) return 'N/A'; const d = new Date(date); if (isNaN(d)) return 'Invalid'; return d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }); }
-export function timeAgo(date) {
+// ------------------------------------------------------------
+function getServerTimestamp() { return serverTimestamp(); }
+function timestampToDate(ts) { return ts instanceof Timestamp ? ts.toDate() : ts; }
+function formatDate(date) {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    if (isNaN(d)) return 'Invalid';
+    return d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true });
+}
+function timeAgo(date) {
     if (!date) return 'N/A';
     const d = new Date(date);
     if (isNaN(d)) return 'Invalid';
@@ -477,16 +566,17 @@ export function timeAgo(date) {
     return `${Math.floor(diff / 31536000)}y ago`;
 }
 
-// =====================================================
-// FINAL EXPORT LIST (EVERYTHING)
-// =====================================================
-
+// ------------------------------------------------------------
+// ✅ SINGLE EXPORT – NO DUPLICATES
+// ------------------------------------------------------------
 export {
+    // Firebase instances
     app,
     auth,
     db,
     storage,
     provider,
+    // Auth
     onAuthStateChanged,
     signInWithEmail,
     registerWithEmail,
@@ -562,4 +652,4 @@ export {
     timeAgo
 };
 
-console.log('🚀 Firebase init complete. Exports:', Object.keys({ signInWithGoogle, signInWithEmail, auth }));
+console.log('✅ firebase-init.js loaded – no duplicates.');

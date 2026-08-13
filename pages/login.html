@@ -4,20 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartCollars - Sign In</title>
-
-    <!-- External CSS -->
     <link rel="stylesheet" href="../css/login.css">
-
-    <!-- Firebase CDN (compat) - no module imports -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-
-    <!-- Google Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- Tiny inline style for spinners (can also be moved to login.css if desired) -->
     <style>
         .spinner {
             display: inline-block;
@@ -31,7 +21,6 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
-        /* status messages */
         .error-message, .success-message {
             padding: 8px 12px;
             border-radius: 8px;
@@ -147,29 +136,28 @@
     </main>
 
     <!-- ========================================================= -->
-    <!-- JAVASCRIPT - Using Firebase directly (no module imports)   -->
+    <!-- ✅ USING ES MODULES – SAME AS REGISTER & DASHBOARD         -->
     <!-- ========================================================= -->
-    <script>
-        // ============================================
-        // FIREBASE CONFIGURATION
-        // ============================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyDlevN1yTTphNyW-ILvVrU2xBcrfadZZB8",
-            authDomain: "smart-pet-collar-24818.firebaseapp.com",
-            projectId: "smart-pet-collar-24818",
-            storageBucket: "smart-pet-collar-24818.firebasestorage.app",
-            messagingSenderId: "596089260489",
-            appId: "1:596089260489:web:20358a460725ae342507a8",
-            measurementId: "G-0BWRWZQ3HZ"
-        };
+    <script type="importmap">
+        {
+            "imports": {
+                "../js/firebase-init.js": "../js/firebase-init.js"
+            }
+        }
+    </script>
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const provider = new firebase.auth.GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-
-        console.log('✅ Firebase initialized from CDN');
+    <script type="module">
+        // ============================================
+        // IMPORT FROM YOUR FIREBASE INIT (SAME AS REGISTER)
+        // ============================================
+        import { 
+            auth,
+            signInWithEmail,
+            signInWithGoogle,
+            onAuthStateChanged,
+            getCurrentUser,
+            signOut
+        } from '../js/firebase-init.js';
 
         // ============================================
         // DOM REFS
@@ -237,16 +225,6 @@
             return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         }
 
-        function clearAuthCache() {
-            const keys = Object.keys(localStorage);
-            keys.forEach(key => {
-                if (key.startsWith('firebase:authUser')) localStorage.removeItem(key);
-                if (key.startsWith('firebase:previous_websocket_failures')) localStorage.removeItem(key);
-            });
-            sessionStorage.clear();
-            console.log('🧹 Auth cache cleared.');
-        }
-
         // ============================================
         // 1. PASSWORD TOGGLE
         // ============================================
@@ -261,7 +239,7 @@
         // ============================================
         // 2. AUTH STATE
         // ============================================
-        auth.onAuthStateChanged((user) => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
                 updateStatus(`Welcome back, ${user.email}`, true);
                 console.log('✅ User logged in:', user.email);
@@ -269,6 +247,8 @@
                     showError('⚠️ Please verify your email before signing in.');
                 } else {
                     hideMessages();
+                    // If already logged in, redirect to dashboard
+                    setTimeout(() => window.location.href = 'dashboard.html', 1000);
                 }
             } else {
                 updateStatus('Not logged in', false);
@@ -299,29 +279,46 @@
             updateStatus('Signing in...', false);
 
             try {
-                const result = await auth.signInWithEmailAndPassword(email, password);
-                console.log('✅ Login success:', result.user.email);
-                showSuccess('Signed in successfully!');
-                updateStatus('Signed in! ✅', true);
+                // ✅ Use the imported signInWithEmail function
+                const result = await signInWithEmail(email, password);
+                
+                console.log('✅ Login result:', result);
 
-                if (!result.user.emailVerified) {
-                    showError('⚠️ Please verify your email first. Check your inbox.');
-                    await result.user.sendEmailVerification();
-                    setTimeout(() => window.location.href = 'verify-email.html', 1500);
-                    return;
+                if (result.success) {
+                    console.log('✅ Login success:', result.user.email);
+                    showSuccess('Signed in successfully!');
+                    updateStatus('Signed in! ✅', true);
+
+                    // Check if email is verified
+                    if (!result.user.emailVerified) {
+                        showError('⚠️ Please verify your email first. Check your inbox.');
+                        // Resend verification
+                        await result.user.sendEmailVerification();
+                        setTimeout(() => window.location.href = 'verify-email.html', 1500);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Redirect to dashboard
+                    setTimeout(() => window.location.href = 'dashboard.html', 500);
+                } else {
+                    // ❌ Show the actual Firebase error
+                    console.error('❌ Login error:', result);
+                    const errorMessages = {
+                        'auth/user-not-found': 'No account found with this email.',
+                        'auth/wrong-password': 'Incorrect password.',
+                        'auth/invalid-email': 'Invalid email address.',
+                        'auth/too-many-requests': 'Too many attempts. Try again later.',
+                        'auth/invalid-credential': 'Invalid credentials. Please try again.',
+                        'auth/network-request-failed': 'Network error. Please check your connection.'
+                    };
+                    showError(errorMessages[result.error] || result.message || 'Login failed.');
+                    updateStatus('Login failed', false);
+                    setLoading(false);
                 }
-
-                setTimeout(() => window.location.href = 'dashboard.html', 500);
             } catch (error) {
-                console.error('❌ Login error:', error);
-                const errorMessages = {
-                    'auth/user-not-found': 'No account found with this email.',
-                    'auth/wrong-password': 'Incorrect password.',
-                    'auth/invalid-email': 'Invalid email address.',
-                    'auth/too-many-requests': 'Too many attempts. Try again later.',
-                    'auth/invalid-credential': 'Invalid credentials. Please try again.'
-                };
-                showError(errorMessages[error.code] || error.message || 'Login failed.');
+                console.error('❌ Unexpected login error:', error);
+                showError('An unexpected error occurred. Please try again.');
                 updateStatus('Login failed', false);
                 setLoading(false);
             }
@@ -336,30 +333,39 @@
             updateStatus('Signing in with Google...', false);
 
             try {
-                clearAuthCache();
-                const result = await auth.signInWithPopup(provider);
-                console.log('✅ Google login success:', result.user.email);
-                showSuccess('Signed in with Google!');
-                updateStatus('Signed in with Google! ✅', true);
+                // ✅ Use the imported signInWithGoogle function
+                const result = await signInWithGoogle();
+                
+                console.log('✅ Google login result:', result);
 
-                if (!result.user.emailVerified) {
-                    showError('⚠️ Please verify your email first. Check your inbox.');
-                    await result.user.sendEmailVerification();
-                    setTimeout(() => window.location.href = 'verify-email.html', 1500);
-                    return;
+                if (result.success) {
+                    console.log('✅ Google login success:', result.user.email);
+                    showSuccess('Signed in with Google!');
+                    updateStatus('Signed in with Google! ✅', true);
+
+                    if (!result.user.emailVerified) {
+                        showError('⚠️ Please verify your email first. Check your inbox.');
+                        await result.user.sendEmailVerification();
+                        setTimeout(() => window.location.href = 'verify-email.html', 1500);
+                        setGoogleLoading(false);
+                        return;
+                    }
+
+                    setTimeout(() => window.location.href = 'dashboard.html', 500);
+                } else {
+                    console.error('❌ Google sign-in error:', result);
+                    const errorMessages = {
+                        'auth/popup-closed-by-user': 'Sign-in cancelled. Please try again.',
+                        'auth/account-exists-with-different-credential': 'An account already exists with the same email but different sign-in method.',
+                        'auth/popup-blocked': 'Please allow pop-ups for this site and try again.',
+                        'auth/network-request-failed': 'Network error. Please check your connection.'
+                    };
+                    showError(errorMessages[result.error] || result.message || 'Google sign-in failed.');
+                    updateStatus('Google sign-in failed', false);
                 }
-
-                setTimeout(() => window.location.href = 'dashboard.html', 500);
             } catch (error) {
-                console.error('❌ Google sign-in error:', error);
-                const errorMessages = {
-                    'auth/invalid-credential': '⚠️ Your Google session expired. Please try again or use email login.',
-                    'auth/popup-closed-by-user': 'Sign-in cancelled. Please try again.',
-                    'auth/account-exists-with-different-credential': 'An account already exists with the same email but different sign-in method.',
-                    'auth/popup-blocked': 'Please allow pop-ups for this site and try again.',
-                    'auth/network-request-failed': 'Network error. Please check your connection.'
-                };
-                showError(errorMessages[error.code] || error.message || 'Google sign-in failed.');
+                console.error('❌ Unexpected Google sign-in error:', error);
+                showError('An unexpected error occurred. Please try again.');
                 updateStatus('Google sign-in failed', false);
             } finally {
                 setGoogleLoading(false);
@@ -395,11 +401,12 @@
                 if (email && isValidEmail(email)) {
                     localStorage.setItem('forgotPasswordEmail', email);
                 }
-                window.location.href = 'forgot-password.html';
+                window.location.href = 'forgotpass.html';
             });
         }
 
-        console.log('✅ Login page ready!');
+        console.log('✅ Login page ready (ES Module version)!');
+        console.log('🔥 Using the SAME Firebase instance as register.html');
     </script>
 </body>
 </html>
