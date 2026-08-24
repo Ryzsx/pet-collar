@@ -247,8 +247,10 @@
                     showError('⚠️ Please verify your email before signing in.');
                 } else {
                     hideMessages();
-                    // If already logged in, redirect to dashboard
-                    setTimeout(() => window.location.href = 'dashboard.html', 1000);
+                    // Keep the login page visible when it was opened from the
+                    // landing page. A successful form or Google sign-in still
+                    // redirects to the dashboard in its own handler below.
+                    updateStatus(`Signed in as ${user.email}. Sign in to continue or choose another account.`, true);
                 }
             } else {
                 updateStatus('Not logged in', false);

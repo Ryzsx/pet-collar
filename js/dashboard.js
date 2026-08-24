@@ -1,691 +1,792 @@
-// =============================================
-// IMPORTS FROM FIREBASE INIT (Module)
-// =============================================
 import {
     auth,
-    db,
     signOut,
     onAuthStateChanged,
-    getCurrentUser,
     getUserData,
-    getPetsForUser,
-    saveLocation,
-    getLocationHistory,
-    listenToLocations,
-    formatDate,
-    timeAgo,
-    updateUserProfile,
-    saveUserData,
-    collection,
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    query,
-    where,
-    orderBy,
-    limit,
-    getDocs,
-    addDoc,
-    serverTimestamp
+    getPetsForUser
 } from '../js/firebase-init.js';
 
-// =============================================
-// DOM ELEMENTS
-// =============================================
-const userNameDisplay = document.getElementById('userName');
-const userEmailDisplay = document.getElementById('userEmail');
-const userAvatar = document.getElementById('userAvatar');
-const greetingName = document.getElementById('greetingName');
-const petDetails = document.getElementById('petDetails');
-const logoutBtn = document.getElementById('logoutBtn');
+const placeholderPhotos = [
+    'https://images.unsplash.com/photo-1552053831-71594a27632d?w=320&h=320&fit=crop',
+    'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=320&h=320&fit=crop',
+    'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=320&h=320&fit=crop'
+];
 
-// Stats
-const statHeartRate = document.getElementById('statHeartRate');
-const statLocationDisplay = document.getElementById('statLocationDisplay');
-const statActivity = document.getElementById('statActivity');
-const statTemp = document.getElementById('statTemp');
-const heartStatusText = document.getElementById('heartStatusText');
-const tempStatus = document.getElementById('tempStatus');
-const gpsSignalDisplay = document.getElementById('gpsSignalDisplay');
-const activitySub = document.getElementById('activitySub');
-
-// GPS
-const statLocation = document.getElementById('statLocation');
-const gpsStatus = document.getElementById('gpsStatus');
-const locationUpdate = document.getElementById('locationUpdate');
-const gpsSignalStrength = document.getElementById('gpsSignalStrength');
-const mapTitle = document.getElementById('mapTitle');
-const mapLocationText = document.getElementById('mapLocationText');
-const gpsLiveText = document.getElementById('gpsLiveText');
-const gpsLiveDot = document.getElementById('gpsLiveDot');
-
-// Live monitoring
-const liveHeartRate = document.getElementById('liveHeartRate');
-const liveLocation = document.getElementById('liveLocation');
-const liveActivity = document.getElementById('liveActivity');
-const liveHeartStatus = document.getElementById('liveHeartStatus');
-const liveLocationStatus = document.getElementById('liveLocationStatus');
-const liveActivityStatus = document.getElementById('liveActivityStatus');
-
-// Profile
-const profileName = document.getElementById('profileName');
-const profileEmail = document.getElementById('profileEmail');
-
-// Add Pet Banner
-const addPetBanner = document.getElementById('addPetBanner');
-
-// Settings
-const showStatsToggle = document.getElementById('showStatsToggle');
-const statsGrid = document.getElementById('statsGrid');
-const darkModeToggle = document.getElementById('darkModeToggle');
-
-// =============================================
-// SIDEBAR TOGGLE
-// =============================================
-const sidebar = document.getElementById('sidebar');
-const sidebarToggle = document.getElementById('sidebarToggle');
-const floatingToggle = document.getElementById('floatingToggle');
-const expandArea = document.getElementById('sidebarExpandArea');
-
-function toggleSidebar() {
-    if (!sidebar) return;
-    sidebar.classList.toggle('collapsed');
-    const isCollapsed = sidebar.classList.contains('collapsed');
-    localStorage.setItem('sidebarCollapsed', isCollapsed);
-    // Toggle floating button visibility
-    if (floatingToggle) {
-        floatingToggle.style.display = isCollapsed ? 'flex' : 'none';
+// =====================================================
+// LIVE MONITORING PROTOTYPE DATA
+// Replace this array with C# API / Supabase device data later.
+// This data is intentionally separate from Firebase pet data.
+// =====================================================
+const liveTrackingPets = [
+    {
+        id: 'max',
+        name: 'Max',
+        photo: placeholderPhotos[0],
+        collarOnline: true,
+        gpsAvailable: true,
+        coordinates: [14.6760, 121.0437],
+        lastKnownCoordinates: [14.6760, 121.0437],
+        locationName: 'Diliman, Quezon City',
+        safeZone: { name: 'Home', center: [14.6764, 121.0439], radius: 100 },
+        safeZoneStatus: 'inside',
+        lastKnownSafeZoneStatus: 'inside',
+        battery: 78,
+        updated: '3:42 PM',
+        heartRate: { value: 86, status: 'normal', available: true, updated: '3:42 PM' },
+        temperature: { value: 38.1, status: 'normal', available: true, updated: '3:42 PM' },
+        activity: { value: 'Walking', available: true, updated: '3:42 PM' }
+    },
+    {
+        id: 'luna',
+        name: 'Luna',
+        photo: placeholderPhotos[1],
+        collarOnline: true,
+        gpsAvailable: false,
+        coordinates: null,
+        lastKnownCoordinates: [14.6728, 121.0478],
+        locationName: 'Last known near Maginhawa Street',
+        safeZone: { name: 'Home', center: [14.6764, 121.0439], radius: 100 },
+        safeZoneStatus: null,
+        lastKnownSafeZoneStatus: 'outside',
+        battery: 23,
+        updated: '3:35 PM',
+        heartRate: { value: 112, status: 'normal', available: true, updated: '3:34 PM' },
+        temperature: { value: 38.4, status: 'normal', available: true, updated: '3:34 PM' },
+        activity: { value: 'Resting', available: true, updated: '3:33 PM' }
+    },
+    {
+        id: 'bruno',
+        name: 'Bruno',
+        photo: placeholderPhotos[2],
+        collarOnline: false,
+        gpsAvailable: false,
+        coordinates: null,
+        lastKnownCoordinates: [14.6805, 121.0384],
+        locationName: 'Last known near University Avenue',
+        safeZone: { name: 'Home', center: [14.6764, 121.0439], radius: 100 },
+        safeZoneStatus: null,
+        lastKnownSafeZoneStatus: 'inside',
+        battery: 61,
+        updated: '2:58 PM',
+        heartRate: { value: 79, status: 'normal', available: false, updated: '2:58 PM' },
+        temperature: { value: 38.0, status: 'normal', available: false, updated: '2:58 PM' },
+        activity: { value: 'Resting', available: false, updated: '2:58 PM' }
     }
-}
+];
 
-if (sidebarToggle) {
-    sidebarToggle.addEventListener('click', toggleSidebar);
-}
-if (floatingToggle) {
-    floatingToggle.addEventListener('click', toggleSidebar);
-}
-if (expandArea) {
-    expandArea.addEventListener('click', toggleSidebar);
-}
-
-document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        toggleSidebar();
+const demoPets = [
+    {
+        id: 'buddy', name: 'Buddy', type: 'Dog', breed: 'Golden Retriever', gender: 'Male',
+        photo: placeholderPhotos[0], deviceId: 'SC-2026-1048', online: true, battery: 86,
+        safe: true, geofence: 'Home safe zone', radius: 300, updated: 'Just now',
+        location: 'Home · Quezon City', heartRate: 82, temperature: 38.5, activity: 'Walking'
+    },
+    {
+        id: 'luna', name: 'Luna', type: 'Cat', breed: 'Domestic Shorthair', gender: 'Female',
+        photo: placeholderPhotos[1], deviceId: 'SC-2026-2195', online: true, battery: 64,
+        safe: true, geofence: 'Home safe zone', radius: 250, updated: '2 min ago',
+        location: 'Riverside Park', heartRate: 118, temperature: 38.2, activity: 'Resting'
     }
-});
+];
 
-const savedSidebarState = localStorage.getItem('sidebarCollapsed');
-if (savedSidebarState === 'true' && sidebar) {
-    sidebar.classList.add('collapsed');
-    if (floatingToggle) {
-        floatingToggle.style.display = 'flex';
-    }
-} else {
-    if (floatingToggle) {
-        floatingToggle.style.display = 'none';
-    }
-}
+const notifications = [
+    { id: 1, category: 'location', icon: 'bi-geo-alt-fill', title: 'Geofence alert', pet: 'Buddy', message: 'Buddy briefly left the Home safe zone and returned.', time: 'Today, 10:18 AM', unread: true },
+    { id: 2, category: 'device', icon: 'bi-battery-half', title: 'Low battery alert', pet: 'Luna', message: 'Luna’s collar battery is at 18%. Charge it soon.', time: 'Today, 9:46 AM', unread: true },
+    { id: 3, category: 'device', icon: 'bi-wifi-off', title: 'Collar offline alert', pet: 'Buddy', message: 'The collar was offline for 4 minutes. Connection restored.', time: 'Today, 8:31 AM', unread: true },
+    { id: 4, category: 'health', icon: 'bi-heart-pulse', title: 'Heart rate alert', pet: 'Luna', message: 'A heart rate reading was above the normal placeholder range.', time: 'Yesterday, 6:22 PM', unread: true },
+    { id: 5, category: 'health', icon: 'bi-thermometer-high', title: 'Temperature alert', pet: 'Buddy', message: 'Body temperature was above the normal placeholder range.', time: 'Yesterday, 2:14 PM', unread: false },
+    { id: 6, category: 'health', icon: 'bi-heart-pulse-fill', title: 'Heart rate data unavailable', pet: 'Buddy', message: 'No heart rate data was received for 15 minutes.', time: 'Aug 22, 11:40 AM', unread: false },
+    { id: 7, category: 'health', icon: 'bi-thermometer', title: 'Temperature data unavailable', pet: 'Luna', message: 'The temperature sensor did not report a reading.', time: 'Aug 22, 10:05 AM', unread: false },
+    { id: 8, category: 'device', icon: 'bi-activity', title: 'Activity data unavailable', pet: 'Buddy', message: 'Activity classification is temporarily unavailable.', time: 'Aug 21, 4:30 PM', unread: false },
+    { id: 9, category: 'location', icon: 'bi-pin-map', title: 'GPS data unavailable', pet: 'Luna', message: 'The latest GPS position could not be determined.', time: 'Aug 21, 1:12 PM', unread: false }
+];
 
-console.log('✅ Sidebar toggle ready!');
+const pageMeta = {
+    'live-tracking': ['Live Monitoring', "Monitor your pet's location, health, and activity in real time."],
+    'pet-management': ['Pet Management', 'Manage pet profiles, paired collars, and safe zones.'],
+    notifications: ['Notifications', 'Review important collar, location, and health alerts.'],
+    history: ['History', 'Explore recorded location, health, and activity data.'],
+    settings: ['Settings', 'Manage account information, security, and alert preferences.']
+};
 
-// =============================================
-// STATE
-// =============================================
+let pets = demoPets.map(pet => ({ ...pet }));
+let selectedPetId = pets[0].id;
+let selectedLivePetId = liveTrackingPets[0].id;
+let liveTrackingMap = null;
+let liveSafeZoneCircle = null;
+let liveSafeZoneCenter = null;
+const livePetMarkers = new Map();
 let currentUser = null;
-let currentUserId = null;
-let pets = [];
-let isStatsVisible = true;
-let locationInterval = null;
-let selectedPetId = null;
-let liveDataInterval = null;
-let locationUnsubscribe = null;
+let deletePetId = null;
+let currentNotificationFilter = 'all';
 
-// =============================================
-// NAVIGATION
-// =============================================
-function showSection(sectionId, button) {
-    const sections = document.querySelectorAll('.page-section');
-    const navItems = document.querySelectorAll('.nav-item');
+const $ = selector => document.querySelector(selector);
+const $$ = selector => [...document.querySelectorAll(selector)];
+const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 
-    sections.forEach(section => {
-        section.style.display = 'none';
-    });
-
-    navItems.forEach(item => {
-        item.classList.remove('active');
-    });
-
-    if (sectionId === 'overview') {
-        document.getElementById('mapSection').style.display = 'block';
-        document.getElementById('statsGrid').style.display = isStatsVisible ? 'grid' : 'none';
-        document.getElementById('liveSection').style.display = 'block';
-        document.getElementById('addPetBanner').style.display = pets.length === 0 ? 'block' : 'none';
-        document.getElementById('greetingName').textContent = currentUser?.displayName || 'User';
-
-        if (button) {
-            button.classList.add('active');
-        } else {
-            document.querySelector('[data-section="overview"]')?.classList.add('active');
-        }
-        return;
-    }
-
-    document.getElementById('mapSection').style.display = 'none';
-    document.getElementById('statsGrid').style.display = 'none';
-    document.getElementById('liveSection').style.display = 'none';
-    document.getElementById('addPetBanner').style.display = 'none';
-
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-
-    if (button) {
-        button.classList.add('active');
-    }
-
-    if (sectionId === 'history') loadHistory();
-    if (sectionId === 'pets') loadPetList();
-    if (sectionId === 'profile') loadProfile();
+function showToast(message, icon = 'bi-check-circle-fill') {
+    const toastElement = $('#appToast');
+    if (!toastElement || !window.bootstrap) return;
+    $('#toastMessage').textContent = message;
+    toastElement.querySelector('.toast-body > i').className = `bi ${icon}`;
+    window.bootstrap.Toast.getOrCreateInstance(toastElement, { delay: 2600 }).show();
 }
 
-// =============================================
-// TOGGLE STATS
-// =============================================
-function toggleStats() {
-    isStatsVisible = !isStatsVisible;
-    statsGrid.style.display = isStatsVisible ? 'grid' : 'none';
-    if (showStatsToggle) showStatsToggle.checked = isStatsVisible;
-    if (currentUserId) {
-        localStorage.setItem(`statsVisible_${currentUserId}`, isStatsVisible);
+function closeSidebar() {
+    $('#sidebar')?.classList.remove('open');
+    $('#sidebarBackdrop')?.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function openSidebar() {
+    $('#sidebar')?.classList.add('open');
+    $('#sidebarBackdrop')?.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function showSection(sectionId) {
+    if (!pageMeta[sectionId]) return;
+    $$('.dashboard-section').forEach(section => section.classList.toggle('active', section.id === sectionId));
+    $$('.sidebar-nav [data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === sectionId));
+    $('#pageTitle').textContent = pageMeta[sectionId][0];
+    $('#pageSubtitle').textContent = pageMeta[sectionId][1];
+    history.replaceState(null, '', `#${sectionId}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    closeSidebar();
+    if (sectionId === 'live-tracking' && liveTrackingMap) {
+        setTimeout(() => liveTrackingMap.invalidateSize(), 50);
     }
 }
 
-// =============================================
-// GPS FUNCTIONS
-// =============================================
-function refreshGPS() {
-    if (!selectedPetId || pets.length === 0) {
-        updateGPSStatus('No pet', 'error');
-        return;
-    }
-    updateGPSStatus('Refreshing...', 'searching');
-    setTimeout(() => {
-        const coords = getRandomCoordinates();
-        updateLocation(coords.lat, coords.lng);
-    }, 1000);
-}
-
-function centerMap() {
-    const marker = document.getElementById('mapMarker');
-    if (marker) {
-        marker.style.transform = 'scale(1.2)';
-        setTimeout(() => {
-            marker.style.transform = 'scale(1)';
-        }, 500);
-    }
-    updateGPSStatus('Centered', 'good');
-}
-
-// =============================================
-// UPDATE LOCATION
-// =============================================
-function updateLocation(lat, lng) {
-    const locationName = getLocationName(lat, lng);
-
-    statLocation.textContent = locationName;
-    statLocationDisplay.textContent = locationName;
-    liveLocation.textContent = locationName;
-    mapTitle.textContent = `📍 ${locationName}`;
-    mapLocationText.textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
-    gpsSignalStrength.textContent = 'Strong';
-    gpsSignalStrength.style.color = '#10b981';
-    gpsStatus.textContent = '✅ Connected';
-    gpsLiveText.textContent = 'Live';
-    gpsLiveDot.style.background = '#10b981';
-    liveLocationStatus.textContent = '● Active';
-    liveLocationStatus.className = 'live-status good';
-    locationUpdate.textContent = 'Just now';
-
-    if (currentUserId && selectedPetId) {
-        saveLocation({
-            petId: selectedPetId,
-            lat: lat,
-            lng: lng,
-            locationName: locationName
-        }, currentUserId);
-    }
-
-    const marker = document.getElementById('mapMarker');
-    if (marker) {
-        marker.style.transform = 'scale(1.1)';
-        setTimeout(() => {
-            marker.style.transform = 'scale(1)';
-        }, 300);
-    }
-}
-
-function updateGPSStatus(status, type = 'normal') {
-    const dot = document.getElementById('gpsLiveDot');
-    const text = document.getElementById('gpsLiveText');
-    const statusText = document.getElementById('gpsStatus');
-
-    if (type === 'searching') {
-        dot.style.background = '#f59e0b';
-        text.textContent = 'Searching...';
-        statusText.textContent = '⏳ Searching...';
-    } else if (type === 'good') {
-        dot.style.background = '#10b981';
-        text.textContent = 'Live';
-        statusText.textContent = '✅ Connected';
-    } else if (type === 'error') {
-        dot.style.background = '#ef4444';
-        text.textContent = 'No Pet';
-        statusText.textContent = '❌ No pet selected';
-    }
-}
-
-function getRandomCoordinates() {
-    const lat = 14.5995 + (Math.random() - 0.5) * 0.02;
-    const lng = 120.9842 + (Math.random() - 0.5) * 0.02;
-    return { lat, lng };
-}
-
-function getLocationName(lat, lng) {
-    const locations = [
-        '📍 Manila, Philippines',
-        '📍 Quezon City, Philippines',
-        '📍 Makati, Philippines',
-        '📍 Taguig, Philippines',
-        '📍 Pasig, Philippines',
-        '📍 Mandaluyong, Philippines'
-    ];
-    return locations[Math.floor(Math.random() * locations.length)];
-}
-
-// =============================================
-// SIMULATE LIVE DATA
-// =============================================
-function simulateLiveData() {
-    if (!selectedPetId || pets.length === 0) {
-        statHeartRate.textContent = '--';
-        statActivity.textContent = '--';
-        statTemp.textContent = '--';
-        liveHeartRate.textContent = '--';
-        liveActivity.textContent = '--';
-        heartStatusText.textContent = '⏳ No pet selected';
-        heartStatusText.className = '';
-        tempStatus.textContent = '⏳ No pet selected';
-        tempStatus.className = '';
-        liveHeartStatus.textContent = '● No pet';
-        liveHeartStatus.className = 'live-status';
-        liveActivityStatus.textContent = '● No pet';
-        liveActivityStatus.className = 'live-status';
-        activitySub.textContent = '--';
-        return;
-    }
-
-    const heartRate = Math.floor(Math.random() * 60) + 60;
-    const hrStatus = heartRate < 80 ? 'normal' : heartRate < 100 ? 'elevated' : 'high';
-    const activity = Math.floor(Math.random() * 100);
-    const activityStatus = activity < 30 ? 'resting' : activity < 70 ? 'active' : 'very active';
-    const temp = (Math.random() * 3 + 36).toFixed(1);
-    const tempStatusVal = temp < 37.5 ? 'normal' : temp < 38.5 ? 'elevated' : 'high';
-
-    statHeartRate.textContent = heartRate;
-    statActivity.textContent = activity + '%';
-    statTemp.textContent = temp;
-    liveHeartRate.textContent = heartRate;
-    liveActivity.textContent = activity + '%';
-
-    const heartStatusMap = {
-        'normal': '● Normal',
-        'elevated': '● Elevated',
-        'high': '● High'
+function normalizedPet(rawPet, index) {
+    const demo = demoPets[index % demoPets.length] || demoPets[0];
+    return {
+        ...demo,
+        id: rawPet.id || `pet-${index + 1}`,
+        name: rawPet.name || rawPet.petName || demo.name,
+        type: rawPet.type || rawPet.petType || demo.type,
+        breed: rawPet.breed || demo.breed,
+        gender: rawPet.gender || demo.gender,
+        photo: rawPet.photoURL || rawPet.photo || rawPet.imageUrl || placeholderPhotos[index % placeholderPhotos.length],
+        deviceId: rawPet.deviceId || rawPet.deviceID || `SC-2026-${String(3100 + index).padStart(4, '0')}`,
+        online: rawPet.status ? rawPet.status === 'active' || rawPet.status === 'online' : true,
+        battery: Number(rawPet.battery ?? demo.battery),
+        safe: rawPet.safeZoneStatus ? rawPet.safeZoneStatus !== 'outside' : true,
+        geofence: rawPet.geofenceName || demo.geofence,
+        radius: Number(rawPet.geofenceRadius || demo.radius)
     };
-    const tempStatusMap = {
-        'normal': '✅ Normal',
-        'elevated': '⚠️ Elevated',
-        'high': '⚠️ High'
+}
+
+function renderPetSelectors() {
+    const options = pets.map(pet => `<option value="${escapeHtml(pet.id)}">${escapeHtml(pet.name)}</option>`).join('');
+    ['#healthPetSelect', '#historyPetSelect'].forEach(selector => {
+        const select = $(selector);
+        if (!select) return;
+        select.innerHTML = options || '<option>No pets available</option>';
+        if (pets.some(pet => pet.id === selectedPetId)) select.value = selectedPetId;
+    });
+}
+
+function getLivePetState(pet) {
+    if (!pet.collarOnline) {
+        return {
+            key: 'offline',
+            label: 'Offline',
+            title: 'Collar Offline',
+            description: 'Showing Last Known Location',
+            icon: 'bi-wifi-off'
+        };
+    }
+    if (!pet.gpsAvailable) {
+        return {
+            key: 'gps-unavailable',
+            label: 'GPS unavailable',
+            title: 'GPS Data Unavailable',
+            description: 'Showing Last Known Location',
+            icon: 'bi-pin-map'
+        };
+    }
+    return {
+        key: 'online',
+        label: 'Online',
+        title: 'Current Location',
+        description: 'Live GPS position is available',
+        icon: 'bi-broadcast-pin'
     };
-
-    heartStatusText.textContent = heartStatusMap[hrStatus] || '⏳ Waiting...';
-    heartStatusText.className = hrStatus === 'normal' ? 'normal-status' : 'warning-status';
-    tempStatus.textContent = tempStatusMap[tempStatusVal] || '⏳ Waiting...';
-    tempStatus.className = tempStatusVal === 'normal' ? 'normal-status' : 'warning-status';
-
-    liveHeartStatus.textContent = '● ' + (hrStatus === 'normal' ? 'Normal' : hrStatus === 'elevated' ? 'Elevated' : 'High');
-    liveHeartStatus.className = 'live-status ' + (hrStatus === 'normal' ? 'good' : hrStatus === 'elevated' ? 'warning' : 'danger');
-
-    liveActivityStatus.textContent = '● ' + activityStatus.charAt(0).toUpperCase() + activityStatus.slice(1);
-    liveActivityStatus.className = 'live-status ' + (activityStatus === 'resting' ? 'good' : activityStatus === 'active' ? 'warning' : 'danger');
-
-    activitySub.textContent = activityStatus.charAt(0).toUpperCase() + activityStatus.slice(1);
 }
 
-// =============================================
-// LOAD PETS
-// =============================================
-async function loadPets() {
-    if (!currentUserId) return;
-    const result = await getPetsForUser(currentUserId);
-    if (result.success && result.pets.length > 0) {
-        pets = result.pets;
-        // Restore last selected pet from localStorage
-        const lastPetId = localStorage.getItem(`lastPet_${currentUserId}`);
-        selectedPetId = pets.find(p => p.id === lastPetId)?.id || pets[0].id;
-        const pet = pets.find(p => p.id === selectedPetId);
-        petDetails.textContent = `🐕 ${pet.name || 'Pet'} • ${pet.breed || 'Mixed Breed'}`;
-        addPetBanner.style.display = 'none';
-        loadPetList();
-        if (selectedPetId) startLocationTracking();
-        
-        if (liveDataInterval) clearInterval(liveDataInterval);
-        simulateLiveData();
-        liveDataInterval = setInterval(simulateLiveData, 5000);
-    } else {
-        pets = [];
-        selectedPetId = null;
-        petDetails.textContent = 'No pet added yet';
-        addPetBanner.style.display = 'block';
-        
-        if (liveDataInterval) clearInterval(liveDataInterval);
-        simulateLiveData();
-        if (locationInterval) clearInterval(locationInterval);
-        updateGPSStatus('No pet', 'error');
-        statLocation.textContent = 'No pet selected';
-        statLocationDisplay.textContent = 'No pet';
-        liveLocation.textContent = 'No pet';
-        mapTitle.textContent = '📍 No pet selected';
-        mapLocationText.textContent = 'Add a pet to start tracking';
-        gpsSignalStrength.textContent = 'N/A';
-        gpsSignalStrength.style.color = '#94a3b8';
-    }
+function getDisplayedCoordinates(pet) {
+    return pet.gpsAvailable && pet.coordinates ? pet.coordinates : pet.lastKnownCoordinates;
 }
 
-function startLocationTracking() {
-    if (locationInterval) clearInterval(locationInterval);
-    if (!selectedPetId || pets.length === 0) return;
-    
-    const coords = getRandomCoordinates();
-    updateLocation(coords.lat, coords.lng);
-    locationInterval = setInterval(() => {
-        if (selectedPetId && pets.length > 0) {
-            const newCoords = getRandomCoordinates();
-            updateLocation(newCoords.lat, newCoords.lng);
-            document.getElementById('locationUpdate').textContent = 'Just now';
-        }
-    }, 10000);
+function getDisplayedSafeZoneStatus(pet) {
+    return pet.gpsAvailable ? pet.safeZoneStatus : pet.lastKnownSafeZoneStatus;
 }
 
-// =============================================
-// LOAD HISTORY
-// =============================================
-async function loadHistory() {
-    const tbody = document.getElementById('historyTableBody');
-    if (!currentUserId || !selectedPetId) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:40px;">🐾 No location history yet</td></tr>`;
-        return;
-    }
-    const result = await getLocationHistory(currentUserId, 50);
-    if (result.success && result.locations.length > 0) {
-        tbody.innerHTML = result.locations.map(loc => `
-            <tr>
-                <td>${formatDate(loc.timestamp) || 'Just now'}</td>
-                <td>${loc.locationName || 'Unknown location'}</td>
-                <td>${loc.lat ? loc.lat.toFixed(6) + ', ' + loc.lng.toFixed(6) : '--'}</td>
-                <td>${loc.activity || 'Walking'}</td>
-            </tr>
-        `).join('');
-    } else {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:40px;">🐾 No location history yet</td></tr>`;
-    }
+function getSafeZoneLabel(pet) {
+    const status = getDisplayedSafeZoneStatus(pet);
+    const prefix = pet.gpsAvailable ? '' : 'Last known: ';
+    return `${prefix}${status === 'inside' ? 'Inside Safe Zone' : 'Outside Safe Zone'}`;
 }
 
-// =============================================
-// LOAD PET LIST
-// =============================================
-async function loadPetList() {
-    const container = document.getElementById('petListContainer');
-    if (pets.length === 0) {
-        container.innerHTML = `<div style="text-align:center;padding:40px;color:#94a3b8;"><p>🐾 No pets added yet</p><small>Click "Add New Pet" to get started</small></div>`;
-        return;
-    }
-    container.innerHTML = pets.map(pet => `
-        <div class="pet-card" data-pet-id="${pet.id}">
-            <div class="pet-avatar">🐕</div>
-            <div class="pet-details">
-                <h3>${pet.name || 'Pet'}</h3>
-                <p>${pet.breed || 'Mixed Breed'} • ${pet.age || 'Unknown'} yrs</p>
-            </div>
-            <div style="margin-left:auto;padding:4px 12px;border-radius:20px;font-size:12px;background:${pet.status === 'active' ? '#ecfdf5' : '#f1f5f9'};color:${pet.status === 'active' ? '#10b981' : '#94a3b8'};">
-                ${pet.status === 'active' ? '● Online' : '● Offline'}
+function createLivePetMarkerIcon(pet) {
+    const state = getLivePetState(pet);
+    const selectedClass = pet.id === selectedLivePetId ? 'selected' : '';
+    return window.L.divIcon({
+        className: 'pet-leaflet-icon',
+        html: `<div class="pet-map-marker ${state.key} ${selectedClass}"><img class="pet-map-photo" src="${escapeHtml(pet.photo)}" alt=""><span class="pet-map-name">${escapeHtml(pet.name)}</span></div>`,
+        iconSize: [76, 62],
+        iconAnchor: [38, 48],
+        popupAnchor: [0, -45]
+    });
+}
+
+function createLivePetPopup(pet) {
+    const state = getLivePetState(pet);
+    const safeStatus = getSafeZoneLabel(pet);
+    const safeClass = getDisplayedSafeZoneStatus(pet) === 'inside' ? 'good' : 'warning';
+    return `
+        <div class="marker-popup">
+            <div class="marker-popup-header"><img src="${escapeHtml(pet.photo)}" alt=""><div><strong>${escapeHtml(pet.name)}</strong><span>${escapeHtml(pet.locationName)}</span></div></div>
+            <div class="marker-popup-grid">
+                <div><span>Location Status</span><strong class="${state.key === 'online' ? 'good' : state.key}">${escapeHtml(state.title)}</strong></div>
+                <div><span>Safe Zone</span><strong class="${safeClass}">${escapeHtml(safeStatus)}</strong></div>
+                <div><span>Collar</span><strong class="${pet.collarOnline ? 'good' : 'offline'}">${pet.collarOnline ? 'Online' : 'Offline'}</strong></div>
+                <div><span>Battery</span><strong class="${pet.battery <= 25 ? 'warning' : ''}">${pet.battery}%</strong></div>
+                <div><span>Last Updated</span><strong>${escapeHtml(pet.updated)}</strong></div>
             </div>
         </div>
-    `).join('');
+    `;
+}
 
-    // Add click listeners to pet cards
-    document.querySelectorAll('.pet-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const petId = this.dataset.petId;
-            selectPet(petId);
-        });
+function renderLivePetSelector() {
+    const container = $('#livePetSelector');
+    if (!container) return;
+    container.innerHTML = liveTrackingPets.map(pet => {
+        const state = getLivePetState(pet);
+        return `
+            <button class="live-pet-option ${pet.id === selectedLivePetId ? 'active' : ''}" type="button" data-live-pet-id="${pet.id}" aria-pressed="${pet.id === selectedLivePetId}">
+                <img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">
+                <span class="option-copy"><strong>${escapeHtml(pet.name)}</strong><small><i class="option-state ${state.key}" aria-hidden="true"></i>${escapeHtml(state.label)}</small></span>
+                <i class="bi bi-check-lg option-check" aria-hidden="true"></i>
+            </button>
+        `;
+    }).join('');
+    const onlineCount = liveTrackingPets.filter(pet => pet.collarOnline).length;
+    $('#collarContext').textContent = `${onlineCount} ${onlineCount === 1 ? 'collar' : 'collars'} active`;
+}
+
+function renderSelectedLivePet() {
+    const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
+    const container = $('#selectedPetPanel');
+    const safeZoneContainer = $('#selectedSafeZonePanel');
+    if (!pet || !container || !safeZoneContainer) return;
+    const state = getLivePetState(pet);
+    const safeStatus = getSafeZoneLabel(pet);
+    const safeClass = getDisplayedSafeZoneStatus(pet) === 'inside' ? 'good' : 'warning';
+    const locationLabel = pet.gpsAvailable ? 'Current location' : 'Last known location';
+    const safeLabel = pet.gpsAvailable ? 'Safe zone status' : 'Last known safe zone status';
+    container.innerHTML = `
+        <div class="selected-pet-heading"><img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}"><div><strong>${escapeHtml(pet.name)}</strong><span>Selected pet</span></div><span class="badge tracking-badge ${state.key}">${escapeHtml(state.label)}</span></div>
+        <div class="selected-state ${state.key}"><i class="bi ${state.icon}"></i><div><strong>${escapeHtml(state.title)}</strong><span>${escapeHtml(state.description)}</span></div></div>
+        <div class="selected-location-list">
+            <div class="selected-info-row"><i class="bi bi-geo-alt"></i><span><small>${locationLabel}</small><strong>${escapeHtml(pet.locationName)}</strong></span></div>
+            <div class="selected-info-row"><i class="bi bi-shield-check"></i><span><small>${safeLabel}</small><strong class="${safeClass}">${escapeHtml(safeStatus)}</strong></span></div>
+            <div class="selected-info-row"><i class="bi bi-router"></i><span><small>Collar status</small><strong>${pet.collarOnline ? 'Online' : 'Offline'}</strong></span></div>
+            <div class="selected-info-row"><i class="bi bi-battery-half"></i><span><small>Battery level</small><strong class="${pet.battery <= 25 ? 'battery-low' : ''}">${pet.battery}%</strong></span></div>
+            <div class="selected-info-row"><i class="bi bi-clock"></i><span><small>Last updated</small><strong>${escapeHtml(pet.updated)}</strong></span></div>
+        </div>
+        ${pet.gpsAvailable ? '' : '<p class="safe-zone-note"><i class="bi bi-info-circle"></i> The last known position is for reference and is not treated as a new geofence check.</p>'}
+    `;
+
+    safeZoneContainer.innerHTML = `
+        <div class="side-panel-heading"><i class="bi bi-geo-fill"></i><div><h3>Safe Zone</h3><span>${escapeHtml(pet.safeZone.name)}</span></div></div>
+        <div class="safe-zone-side-details"><span>Radius</span><strong>${pet.safeZone.radius} m</strong></div>
+        <p><i class="bi bi-eye"></i> Display only. Edit geofences in Pet Management.</p>
+    `;
+
+    const badge = $('#mapDataBadge');
+    if (badge) {
+        const badgeClass = state.key === 'online' ? 'success' : state.key === 'gps-unavailable' ? 'warning' : 'danger';
+        badge.className = `badge soft-badge ${badgeClass}`;
+        badge.innerHTML = `<i class="bi ${state.icon}"></i> ${escapeHtml(state.title)}`;
+    }
+}
+
+function getReadingState(reading, unavailableLabel = 'Data Unavailable') {
+    if (!reading.available) return { label: unavailableLabel, className: 'warning' };
+    return { label: 'Data Available', className: 'success' };
+}
+
+function renderLiveMonitoringCards() {
+    const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
+    const container = $('#liveMonitoringCards');
+    if (!pet || !container) return;
+
+    const heartDataState = getReadingState(pet.heartRate);
+    const temperatureDataState = getReadingState(pet.temperature);
+    const activityDataState = getReadingState(pet.activity, 'Activity Data Unavailable');
+    const heartStatus = pet.heartRate.status === 'normal' ? 'Normal' : 'Abnormal';
+    const temperatureStatus = pet.temperature.status === 'normal' ? 'Normal' : 'Abnormal';
+    const heartStatusClass = pet.heartRate.status === 'normal' ? 'success' : 'danger';
+    const temperatureStatusClass = pet.temperature.status === 'normal' ? 'success' : 'danger';
+
+    container.innerHTML = `
+        <div class="col-md-6 col-xl-3">
+            <article class="card monitoring-reading-card h-100">
+                <div class="monitoring-reading-head"><span class="monitoring-reading-icon heart"><i class="bi bi-heart-pulse"></i></span><span class="badge soft-badge ${heartDataState.className}">${heartDataState.label}</span></div>
+                <span class="monitoring-reading-label">Heart Rate</span>
+                <strong class="monitoring-reading-value">${pet.heartRate.value}<small>BPM</small></strong>
+                <span class="reading-condition ${heartStatusClass}"><i class="bi ${pet.heartRate.status === 'normal' ? 'bi-check-circle' : 'bi-exclamation-triangle'}"></i>${heartStatus}${pet.heartRate.available ? '' : ' &middot; Last stored value'}</span>
+                <small class="reading-updated"><i class="bi bi-clock"></i> Updated: ${escapeHtml(pet.heartRate.updated)}</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="card monitoring-reading-card h-100">
+                <div class="monitoring-reading-head"><span class="monitoring-reading-icon temperature"><i class="bi bi-thermometer-half"></i></span><span class="badge soft-badge ${temperatureDataState.className}">${temperatureDataState.label}</span></div>
+                <span class="monitoring-reading-label">Body Temperature</span>
+                <strong class="monitoring-reading-value">${pet.temperature.value.toFixed(1)}<small>&deg;C</small></strong>
+                <span class="reading-condition ${temperatureStatusClass}"><i class="bi ${pet.temperature.status === 'normal' ? 'bi-check-circle' : 'bi-exclamation-triangle'}"></i>${temperatureStatus}${pet.temperature.available ? '' : ' &middot; Last stored value'}</span>
+                <small class="reading-updated"><i class="bi bi-clock"></i> Updated: ${escapeHtml(pet.temperature.updated)}</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="card monitoring-reading-card h-100">
+                <div class="monitoring-reading-head"><span class="monitoring-reading-icon activity"><i class="bi bi-activity"></i></span><span class="badge soft-badge ${activityDataState.className}">${activityDataState.label}</span></div>
+                <span class="monitoring-reading-label">Current Activity</span>
+                <strong class="monitoring-reading-value word">${escapeHtml(pet.activity.value)}</strong>
+                <span class="reading-condition info"><i class="bi bi-person-walking"></i>${pet.activity.available ? 'Current activity' : 'Last recorded activity'}</span>
+                <small class="reading-updated"><i class="bi bi-clock"></i> Updated: ${escapeHtml(pet.activity.updated)}</small>
+            </article>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <article class="card monitoring-reading-card h-100">
+                <div class="monitoring-reading-head"><span class="monitoring-reading-icon collar"><i class="bi bi-router"></i></span><span class="badge soft-badge ${pet.collarOnline ? 'success' : 'danger'}">${pet.collarOnline ? 'Online' : 'Offline'}</span></div>
+                <span class="monitoring-reading-label">Collar Status</span>
+                <strong class="monitoring-reading-value word">${pet.collarOnline ? 'Online' : 'Offline'}</strong>
+                <div class="collar-reading-details"><span><i class="bi bi-battery-half"></i> Battery<strong class="${pet.battery <= 25 ? 'battery-low' : ''}">${pet.battery}%</strong></span><span><i class="bi bi-geo-alt"></i> GPS<strong>${pet.gpsAvailable ? 'Available' : 'Unavailable'}</strong></span></div>
+                <small class="reading-updated"><i class="bi bi-clock"></i> ${pet.collarOnline ? 'Updated' : 'Last connection'}: ${escapeHtml(pet.updated)}</small>
+            </article>
+        </div>
+    `;
+}
+
+function updateLiveMapSelection(openPopup = false) {
+    const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
+    if (!pet || !liveTrackingMap) return;
+    const coordinates = getDisplayedCoordinates(pet);
+
+    livePetMarkers.forEach((marker, petId) => {
+        const markerPet = liveTrackingPets.find(item => item.id === petId);
+        marker.setIcon(createLivePetMarkerIcon(markerPet));
     });
+
+    if (liveSafeZoneCircle) liveTrackingMap.removeLayer(liveSafeZoneCircle);
+    if (liveSafeZoneCenter) liveTrackingMap.removeLayer(liveSafeZoneCenter);
+    liveSafeZoneCircle = window.L.circle(pet.safeZone.center, {
+        radius: pet.safeZone.radius,
+        color: '#2f8f50',
+        fillColor: '#2f8f50',
+        fillOpacity: .1,
+        opacity: .75,
+        weight: 2,
+        dashArray: '7 6'
+    }).addTo(liveTrackingMap).bindTooltip(`${escapeHtml(pet.safeZone.name)} safe zone - ${pet.safeZone.radius} m`, {
+        permanent: true,
+        direction: 'top',
+        className: 'safe-zone-map-label',
+        offset: [0, -5]
+    });
+    liveSafeZoneCenter = window.L.circleMarker(pet.safeZone.center, {
+        radius: 5,
+        color: '#ffffff',
+        fillColor: '#2f8f50',
+        fillOpacity: 1,
+        weight: 2
+    }).addTo(liveTrackingMap).bindTooltip(`${escapeHtml(pet.safeZone.name)} safe-zone center`, { direction: 'top' });
+
+    liveTrackingMap.setView(coordinates, 16, { animate: true });
+    if (openPopup) livePetMarkers.get(pet.id)?.openPopup();
+}
+
+function initializeLiveTrackingMap() {
+    if (liveTrackingMap || !$('#trackingMap')) return;
+    if (!window.L) {
+        $('#trackingMap').innerHTML = '<div class="data-notice m-3"><i class="bi bi-exclamation-circle"></i><div><strong>Map unavailable</strong><span>Leaflet could not be loaded. Check the internet connection and refresh the page.</span></div></div>';
+        return;
+    }
+
+    liveTrackingMap = window.L.map('trackingMap', { zoomControl: true, attributionControl: true });
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(liveTrackingMap);
+
+    liveTrackingPets.forEach(pet => {
+        const marker = window.L.marker(getDisplayedCoordinates(pet), { icon: createLivePetMarkerIcon(pet), riseOnHover: true })
+            .addTo(liveTrackingMap)
+            .bindPopup(createLivePetPopup(pet), { className: 'pet-location-popup', maxWidth: 250 });
+        marker.on('click', () => selectLiveTrackingPet(pet.id, true));
+        livePetMarkers.set(pet.id, marker);
+    });
+    updateLiveMapSelection(false);
+    setTimeout(() => liveTrackingMap.invalidateSize(), 50);
+}
+
+function selectLiveTrackingPet(petId, openPopup = true) {
+    if (!liveTrackingPets.some(pet => pet.id === petId)) return;
+    selectedLivePetId = petId;
+    renderLivePetSelector();
+    renderSelectedLivePet();
+    renderLiveMonitoringCards();
+    updateLiveMapSelection(openPopup);
+}
+
+function initializeLiveTracking() {
+    renderLivePetSelector();
+    renderSelectedLivePet();
+    renderLiveMonitoringCards();
+    initializeLiveTrackingMap();
 }
 
 function selectPet(petId) {
+    const pet = pets.find(item => item.id === petId);
+    if (!pet) return;
     selectedPetId = petId;
-    localStorage.setItem(`lastPet_${currentUserId}`, petId);
-    const pet = pets.find(p => p.id === petId);
-    if (pet) {
-        petDetails.textContent = `🐕 ${pet.name || 'Pet'} • ${pet.breed || 'Mixed Breed'}`;
-        startLocationTracking();
-        if (liveDataInterval) clearInterval(liveDataInterval);
-        simulateLiveData();
-        liveDataInterval = setInterval(simulateLiveData, 5000);
-        showSection('overview');
+    if (currentUser?.uid) localStorage.setItem(`lastPet_${currentUser.uid}`, petId);
+    renderPetList();
+    renderPetDetail();
+    renderPetSelectors();
+    updateHealthData(petId);
+}
+
+function renderPetList() {
+    const container = $('#petList');
+    if (!container) return;
+    container.innerHTML = pets.map(pet => `
+        <button class="management-pet-item ${pet.id === selectedPetId ? 'active' : ''}" type="button" data-pet-id="${escapeHtml(pet.id)}">
+            <img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">
+            <div><strong>${escapeHtml(pet.name)}</strong><span>${escapeHtml(pet.type)} · ${escapeHtml(pet.breed)}</span></div>
+            <i class="bi bi-chevron-right"></i>
+        </button>
+    `).join('') || '<div class="text-center py-5 text-secondary"><i class="bi bi-person-hearts fs-3 d-block mb-2"></i>No pet profiles yet.</div>';
+    $('#petCapacity').textContent = `${pets.length} of 3 profiles used.`;
+    const addButton = $('#addPetBtn');
+    if (addButton) {
+        addButton.disabled = pets.length >= 3;
+        addButton.title = pets.length >= 3 ? 'Maximum of 3 pets reached' : '';
     }
 }
 
-// =============================================
-// LOAD PROFILE
-// =============================================
-async function loadProfile() {
-    if (!currentUser) return;
-    profileName.value = currentUser.displayName || '';
-    profileEmail.value = currentUser.email || '';
-    if (currentUserId) {
-        const result = await getUserData(currentUserId);
-        if (result.success && result.data && result.data.fullName) {
-            profileName.value = result.data.fullName;
-        }
+function renderPetDetail() {
+    const container = $('#petDetail');
+    if (!container) return;
+    const pet = pets.find(item => item.id === selectedPetId);
+    if (!pet) {
+        container.innerHTML = '<div class="text-center py-5 text-secondary"><i class="bi bi-person-hearts fs-2 d-block mb-2"></i>Select or add a pet to view details.</div>';
+        return;
     }
+    container.innerHTML = `
+        <div class="pet-detail-hero">
+            <img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">
+            <div><h3>${escapeHtml(pet.name)}</h3><p>${escapeHtml(pet.breed)} · ${escapeHtml(pet.gender)}</p><span class="status-chip ${pet.online ? 'online' : 'offline'}">${pet.online ? 'Collar online' : 'Collar offline'}</span></div>
+            <div class="pet-detail-actions">
+                <button class="btn btn-soft" id="editPetPhotoBtn" type="button"><i class="bi bi-camera"></i> Edit photo</button>
+                <button class="btn btn-danger-soft" type="button" data-delete-pet="${escapeHtml(pet.id)}" data-bs-toggle="modal" data-bs-target="#deletePetModal"><i class="bi bi-trash3"></i> Delete</button>
+            </div>
+        </div>
+        <div class="detail-grid">
+            <div class="detail-field"><span>Pet name</span><strong>${escapeHtml(pet.name)}</strong></div>
+            <div class="detail-field"><span>Pet type</span><strong>${escapeHtml(pet.type)}</strong></div>
+            <div class="detail-field"><span>Breed</span><strong>${escapeHtml(pet.breed)}</strong></div>
+            <div class="detail-field"><span>Gender</span><strong>${escapeHtml(pet.gender)}</strong></div>
+            <div class="detail-field"><span>Device ID · Read only</span><strong class="device-value">${escapeHtml(pet.deviceId)} <i class="bi bi-lock-fill"></i></strong></div>
+            <div class="detail-field"><span>Collar status</span><strong>${pet.online ? 'Connected' : 'Offline'} · ${pet.battery}%</strong></div>
+        </div>
+        <div class="geofence-summary"><i class="bi bi-shield-check"></i><div><strong>${escapeHtml(pet.geofence)}</strong><span>${pet.radius} m radius · ${pet.safe ? 'Pet is currently inside' : 'Pet is currently outside'}</span></div><button class="btn btn-soft" type="button" data-bs-toggle="modal" data-bs-target="#geofenceModal"><i class="bi bi-pencil"></i> Edit geofence</button></div>
+    `;
 }
 
-async function updateProfile() {
-    const name = profileName.value.trim();
-    if (!name) { alert('Please enter your name'); return; }
+function renderAllPets() {
+    if (!pets.some(pet => pet.id === selectedPetId)) selectedPetId = pets[0]?.id || null;
+    renderPetSelectors();
+    renderPetList();
+    renderPetDetail();
+    if (selectedPetId) updateHealthData(selectedPetId);
+}
+
+function updateHealthData(petId) {
+    const pet = pets.find(item => item.id === petId);
+    if (!pet) return;
+    $('#healthHeartRate').textContent = pet.heartRate;
+    $('#healthTemperature').textContent = pet.temperature.toFixed(1);
+    $('#healthActivity').textContent = pet.activity;
+    $('#healthUpdated').textContent = pet.updated === 'Just now' ? 'Today, just now' : `Today, ${pet.updated}`;
+}
+
+function renderNotifications() {
+    const container = $('#notificationList');
+    if (!container) return;
+    container.innerHTML = notifications.map(item => `
+        <article class="notification-item ${item.unread ? 'unread' : ''} ${currentNotificationFilter !== 'all' && (currentNotificationFilter === 'unread' ? !item.unread : item.category !== currentNotificationFilter) ? 'hidden' : ''}" data-notification-id="${item.id}">
+            <span class="notification-type-icon ${item.category}"><i class="bi ${item.icon}"></i></span>
+            <div class="notification-content"><strong>${escapeHtml(item.title)} · ${escapeHtml(item.pet)}</strong><p>${escapeHtml(item.message)}</p><small>${item.unread ? 'Unread notification' : 'Read notification'}</small></div>
+            <span class="notification-time">${escapeHtml(item.time)}</span>
+        </article>
+    `).join('');
+    const unread = notifications.filter(item => item.unread).length;
+    $('#notificationCount').textContent = unread;
+    $('#notificationCount').style.display = unread ? '' : 'none';
+    $('#unreadFilterCount').textContent = unread;
+}
+
+function setUserInterface(name, email, photoUrl = '') {
+    const safeName = name || 'User';
+    const initial = safeName.charAt(0).toUpperCase();
+    ['#userName', '#greetingName', '#profileName'].forEach(selector => { if ($(selector)) $(selector).textContent = safeName; });
+    $('#profileName').value = safeName;
+    $('#userEmail').textContent = email || '';
+    $('#profileEmail').value = email || '';
+    ['#userAvatar', '#headerAvatar', '#settingsAvatar'].forEach(selector => {
+        const element = $(selector);
+        if (!element) return;
+        element.innerHTML = photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(safeName)}">` : initial;
+    });
+}
+
+async function loadUserPets(userId) {
     try {
-        if (currentUser) {
-            await currentUser.updateProfile({ displayName: name });
+        const result = await getPetsForUser(userId);
+        if (result?.success && result.pets?.length) {
+            pets = result.pets.slice(0, 3).map(normalizedPet);
         }
-        if (currentUserId) {
-            await setDoc(doc(db, 'users', currentUserId), {
-                fullName: name,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-        }
-        userNameDisplay.textContent = name;
-        greetingName.textContent = name;
-        alert('Profile updated successfully!');
     } catch (error) {
-        console.error('Error updating profile:', error);
-        alert('Error updating profile. Please try again.');
+        console.warn('Using prototype pets because saved pet profiles were unavailable.', error);
     }
+    selectedPetId = pets.find(pet => pet.id === localStorage.getItem(`lastPet_${userId}`))?.id || pets[0]?.id || null;
+    renderAllPets();
 }
 
-// =============================================
-// AUTHENTICATION STATE
-// =============================================
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        currentUser = user;
-        currentUserId = user.uid;
+function attachStaticEvents() {
+    $$('.sidebar-nav [data-section]').forEach(button => button.addEventListener('click', () => showSection(button.dataset.section)));
+    $$('[data-section-trigger]').forEach(button => button.addEventListener('click', () => showSection(button.dataset.sectionTrigger)));
+    $('#mobileMenu')?.addEventListener('click', openSidebar);
+    $('#sidebarClose')?.addEventListener('click', closeSidebar);
+    $('#sidebarBackdrop')?.addEventListener('click', closeSidebar);
 
-        // --- Store user info for "Continue as" ---
-        localStorage.setItem('lastUserEmail', user.email);
-        localStorage.setItem('lastUserName', user.displayName || user.email.split('@')[0]);
-        localStorage.setItem('lastUserAvatar', user.photoURL || '👤');
-
-        userNameDisplay.textContent = user.displayName || 'User';
-        userEmailDisplay.textContent = user.email || '';
-        greetingName.textContent = user.displayName || 'User';
-        userAvatar.textContent = user.displayName ? user.displayName.charAt(0).toUpperCase() : '👤';
-        profileEmail.value = user.email || '';
-
-        const result = await getUserData(user.uid);
-        if (result.success && result.data && result.data.fullName) {
-            userNameDisplay.textContent = result.data.fullName;
-            greetingName.textContent = result.data.fullName;
-            profileName.value = result.data.fullName;
-        }
-
-        await loadPets();
-
-        const savedStats = localStorage.getItem(`statsVisible_${user.uid}`);
-        if (savedStats !== null) {
-            isStatsVisible = savedStats === 'true';
-            statsGrid.style.display = isStatsVisible ? 'grid' : 'none';
-            if (showStatsToggle) showStatsToggle.checked = isStatsVisible;
-        }
-
-        showSection('overview');
-
-        console.log('✅ User logged in:', user.email);
-    } else {
-        window.location.href = '../pages/login.html';
-    }
-});
-
-// =============================================
-// LOGOUT
-// =============================================
-logoutBtn.addEventListener('click', async () => {
-    if (locationInterval) clearInterval(locationInterval);
-    if (liveDataInterval) clearInterval(liveDataInterval);
-    if (locationUnsubscribe) {
-        locationUnsubscribe();
-        locationUnsubscribe = null;
-    }
-
-    if (currentUser) {
-        localStorage.setItem('lastUserEmail', currentUser.email);
-        localStorage.setItem('lastUserName', currentUser.displayName || currentUser.email.split('@')[0]);
-        localStorage.setItem('lastUserAvatar', currentUser.photoURL || '👤');
-    }
-
-    const result = await signOut();
-    if (result.success) {
-        window.location.href = '../pages/login.html';
-    } else {
-        alert('Error signing out. Please try again.');
-    }
-});
-
-// =============================================
-// SETTINGS TOGGLES
-// =============================================
-if (showStatsToggle) {
-    showStatsToggle.addEventListener('change', function() {
-        isStatsVisible = this.checked;
-        statsGrid.style.display = isStatsVisible ? 'grid' : 'none';
-        if (currentUserId) {
-            localStorage.setItem(`statsVisible_${currentUserId}`, isStatsVisible);
-        }
+    document.addEventListener('click', event => {
+        const livePetTarget = event.target.closest('[data-live-pet-id]');
+        if (livePetTarget) selectLiveTrackingPet(livePetTarget.dataset.livePetId);
+        const petTarget = event.target.closest('[data-pet-id]');
+        if (petTarget) selectPet(petTarget.dataset.petId);
+        const deleteTarget = event.target.closest('[data-delete-pet]');
+        if (deleteTarget) deletePetId = deleteTarget.dataset.deletePet;
     });
-}
 
-if (darkModeToggle) {
-    darkModeToggle.addEventListener('change', function() {
-        document.body.classList.toggle('dark-mode', this.checked);
-        localStorage.setItem('darkMode', this.checked);
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeSidebar();
     });
-    const darkModePref = localStorage.getItem('darkMode');
-    if (darkModePref === 'true') {
-        darkModeToggle.checked = true;
-        document.body.classList.add('dark-mode');
-    }
-}
 
-// =============================================
-// CONNECTION STATUS (using events instead of interval)
-// =============================================
-const connectionStatus = document.getElementById('connectionStatus');
+    $('#healthPetSelect')?.addEventListener('change', event => selectPet(event.target.value));
+    $('#historyPetSelect')?.addEventListener('change', event => selectPet(event.target.value));
+
+    $('#refreshTrackingBtn')?.addEventListener('click', event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Refreshing';
+        setTimeout(() => {
+            $('#lastSync').textContent = 'just now';
+            const selectedPet = liveTrackingPets.find(pet => pet.id === selectedLivePetId);
+            if (selectedPet?.gpsAvailable) selectedPet.updated = 'Just now';
+            if (selectedPet?.heartRate.available) selectedPet.heartRate.updated = 'Just now';
+            if (selectedPet?.temperature.available) selectedPet.temperature.updated = 'Just now';
+            if (selectedPet?.activity.available) selectedPet.activity.updated = 'Just now';
+            if (selectedPet) livePetMarkers.get(selectedPet.id)?.setPopupContent(createLivePetPopup(selectedPet));
+            renderSelectedLivePet();
+            renderLiveMonitoringCards();
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+            showToast('Tracking data refreshed.');
+        }, 700);
+    });
+    $('#centerMapBtn')?.addEventListener('click', () => {
+        updateLiveMapSelection(false);
+        const selectedPet = liveTrackingPets.find(pet => pet.id === selectedLivePetId);
+        showToast(`Map centered on ${selectedPet?.name || 'the selected pet'}.`, 'bi-crosshair');
+    });
+
+    $$('.filter-tabs [data-notification-filter]').forEach(button => button.addEventListener('click', () => {
+        currentNotificationFilter = button.dataset.notificationFilter;
+        $$('.filter-tabs button').forEach(item => item.classList.toggle('active', item === button));
+        renderNotifications();
+    }));
+    $('#markAllReadBtn')?.addEventListener('click', () => {
+        notifications.forEach(item => { item.unread = false; });
+        renderNotifications();
+        showToast('All notifications marked as read.');
+    });
+
+    $$('.history-type-tabs [data-history-type]').forEach(button => button.addEventListener('click', () => {
+        $$('.history-type-tabs button').forEach(item => item.classList.toggle('active', item === button));
+        $$('.history-panel').forEach(panel => panel.classList.toggle('active', panel.id === `history-${button.dataset.historyType}`));
+    }));
+    $('#historyRange')?.addEventListener('change', event => showToast(`${event.target.options[event.target.selectedIndex].text} selected.`, 'bi-calendar-check'));
+
+    $$('.settings-nav [data-settings-target]').forEach(button => button.addEventListener('click', () => {
+        $$('.settings-nav button').forEach(item => item.classList.toggle('active', item === button));
+        $$('.settings-panel').forEach(panel => panel.classList.toggle('active', panel.id === `settings-${button.dataset.settingsTarget}`));
+    }));
+    $$('[data-password-toggle]').forEach(button => button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.passwordToggle);
+        input.type = input.type === 'password' ? 'text' : 'password';
+        button.innerHTML = `<i class="bi ${input.type === 'password' ? 'bi-eye' : 'bi-eye-slash'}"></i>`;
+    }));
+
+    $('#accountForm')?.addEventListener('submit', event => {
+        event.preventDefault();
+        const name = $('#profileName').value.trim();
+        if (!name) return;
+        setUserInterface(name, $('#profileEmail').value, currentUser?.photoURL || '');
+        showToast('Profile preview updated. Authentication data was not changed.');
+    });
+    $('#passwordForm')?.addEventListener('submit', event => {
+        event.preventDefault();
+        if ($('#newPassword').value !== $('#confirmPassword').value) {
+            showToast('New passwords do not match.', 'bi-exclamation-circle-fill');
+            return;
+        }
+        event.currentTarget.reset();
+        showToast('Password form validated. Backend update is not enabled in this prototype.');
+    });
+    $('#savePreferencesBtn')?.addEventListener('click', () => showToast('Notification preferences saved for this prototype.'));
+
+    $('#changeProfilePhotoBtn')?.addEventListener('click', () => $('#profilePhotoInput').click());
+    $('#profilePhotoInput')?.addEventListener('change', event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) return showToast('Choose an image smaller than 2 MB.', 'bi-exclamation-circle-fill');
+        const reader = new FileReader();
+        reader.onload = () => {
+            ['#settingsAvatar', '#headerAvatar', '#userAvatar'].forEach(selector => { $(selector).innerHTML = `<img src="${reader.result}" alt="Profile preview">`; });
+            showToast('Profile photo preview updated.');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    $('#addPetForm')?.addEventListener('submit', event => {
+        event.preventDefault();
+        if (pets.length >= 3) return showToast('The maximum of 3 pets has been reached.', 'bi-exclamation-circle-fill');
+        const index = pets.length;
+        const newPet = {
+            ...demoPets[0], id: `prototype-${Date.now()}`, name: $('#newPetName').value.trim(),
+            type: $('#newPetType').value, breed: $('#newPetBreed').value.trim(), gender: $('#newPetGender').value,
+            deviceId: $('#newDeviceId').value.trim(), photo: placeholderPhotos[index % placeholderPhotos.length],
+            battery: 100, heartRate: 78, temperature: 38.4, activity: 'Resting', updated: 'Just now'
+        };
+        pets.push(newPet);
+        selectedPetId = newPet.id;
+        renderAllPets();
+        window.bootstrap.Modal.getInstance($('#addPetModal'))?.hide();
+        event.currentTarget.reset();
+        showToast(`${newPet.name} was added to the prototype.`);
+    });
+
+    $('#confirmDeletePetBtn')?.addEventListener('click', () => {
+        const pet = pets.find(item => item.id === deletePetId);
+        pets = pets.filter(item => item.id !== deletePetId);
+        selectedPetId = pets[0]?.id || null;
+        renderAllPets();
+        showToast(`${pet?.name || 'Pet'} was removed from this prototype.`, 'bi-trash3-fill');
+    });
+
+    document.addEventListener('click', event => {
+        if (!event.target.closest('#editPetPhotoBtn')) return;
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept = 'image/png,image/jpeg';
+        input.addEventListener('change', () => {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const pet = pets.find(item => item.id === selectedPetId);
+                if (pet) pet.photo = reader.result;
+                renderAllPets();
+                showToast('Pet photo preview updated.');
+            };
+            reader.readAsDataURL(file);
+        });
+        input.click();
+    });
+
+    $('#geofenceRadius')?.addEventListener('input', event => { $('#radiusValue').textContent = event.target.value; });
+    $('#saveGeofenceBtn')?.addEventListener('click', () => {
+        const pet = pets.find(item => item.id === selectedPetId);
+        if (!pet) return;
+        pet.radius = Number($('#geofenceRadius').value);
+        pet.geofence = $('#geofenceName').value.trim() || 'Safe zone';
+        renderPetDetail();
+        showToast('Geofence preview updated.');
+    });
+
+    $('#confirmLogoutBtn')?.addEventListener('click', handleLogout);
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+}
 
 function updateConnectionStatus() {
-    const isOnline = navigator.onLine;
-    if (connectionStatus) {
-        connectionStatus.innerHTML = `
-            <span class="status-dot" style="background:${isOnline ? '#10b981' : '#ef4444'};"></span>
-            ${isOnline ? 'Connected' : 'Disconnected'}
-        `;
+    const status = $('#connectionStatus');
+    if (!status) return;
+    const online = navigator.onLine;
+    status.classList.toggle('offline', !online);
+    status.innerHTML = `<span class="status-pulse"></span><div><strong>${online ? 'System online' : 'System offline'}</strong><small>${online ? 'All services operational' : 'Check your connection'}</small></div>`;
+}
+
+async function handleLogout() {
+    const button = $('#confirmLogoutBtn');
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Logging out';
+    try {
+        if (currentUser) {
+            localStorage.setItem('lastUserEmail', currentUser.email || '');
+            localStorage.setItem('lastUserName', currentUser.displayName || currentUser.email?.split('@')[0] || 'User');
+            localStorage.setItem('lastUserAvatar', currentUser.photoURL || '');
+        }
+        const result = await signOut();
+        if (!result?.success) throw new Error(result?.error || 'Sign out failed');
+        window.location.href = '../pages/login.html';
+    } catch (error) {
+        console.error('Logout failed:', error);
+        button.disabled = false;
+        button.textContent = 'Yes, logout';
+        showToast('Could not log out. Please try again.', 'bi-exclamation-circle-fill');
     }
 }
 
-window.addEventListener('online', updateConnectionStatus);
-window.addEventListener('offline', updateConnectionStatus);
-updateConnectionStatus(); // Initial check
+attachStaticEvents();
+renderAllPets();
+renderNotifications();
+updateConnectionStatus();
+initializeLiveTracking();
 
-// =============================================
-// ATTACH EVENT LISTENERS FOR ALL INTERACTIVE ELEMENTS
-// =============================================
+const initialSection = location.hash.slice(1);
+showSection(pageMeta[initialSection] ? initialSection : 'live-tracking');
 
-// 1. Navigation items
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function(e) {
-        const section = this.dataset.section;
-        if (section) showSection(section, this);
-    });
-});
-
-// 2. GPS Control Buttons
-document.getElementById('refreshGPSBtn')?.addEventListener('click', refreshGPS);
-document.getElementById('centerMapBtn')?.addEventListener('click', centerMap);
-document.getElementById('toggleStatsBtn')?.addEventListener('click', toggleStats);
-
-// 3. Add Pet buttons
-document.querySelector('.banner-btn')?.addEventListener('click', function() {
-    window.location.href = 'pet-setup.html';
-});
-document.getElementById('addPetBtn')?.addEventListener('click', function() {
-    window.location.href = 'pet-setup.html';
-});
-
-// 4. Save Profile button
-document.getElementById('saveProfileBtn')?.addEventListener('click', updateProfile);
-
-// 5. Settings toggle for GPS (optional extra)
-document.getElementById('gpsToggle')?.addEventListener('change', function() {
-    if (this.checked) {
-        startLocationTracking();
-    } else {
-        if (locationInterval) clearInterval(locationInterval);
-        updateGPSStatus('GPS Off', 'error');
-        gpsStatus.textContent = '⏹️ GPS Disabled';
+onAuthStateChanged(auth, async user => {
+    if (!user) {
+        window.location.href = '../pages/login.html';
+        return;
     }
+    currentUser = user;
+    let name = user.displayName || user.email?.split('@')[0] || 'User';
+    try {
+        const result = await getUserData(user.uid);
+        if (result?.success && result.data?.fullName) name = result.data.fullName;
+    } catch (error) {
+        console.warn('User profile details were unavailable.', error);
+    }
+    setUserInterface(name, user.email || '', user.photoURL || '');
+    localStorage.setItem('lastUserEmail', user.email || '');
+    localStorage.setItem('lastUserName', name);
+    localStorage.setItem('lastUserAvatar', user.photoURL || '');
+    await loadUserPets(user.uid);
 });
-
-// =============================================
-// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK (backup)
-// =============================================
-window.showSection = showSection;
-window.toggleStats = toggleStats;
-window.refreshGPS = refreshGPS;
-window.centerMap = centerMap;
-window.selectPet = selectPet;
-window.updateProfile = updateProfile;
-
-console.log('🚀 Dashboard loaded successfully!');
-console.log('📡 Starting live monitoring...');

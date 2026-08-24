@@ -1,373 +1,165 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Smart Pet Collar - Dashboard</title>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-
-    <!-- Dashboard CSS -->
-    <link rel="stylesheet" href="../css/dashboard.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#236b3b">
+    <title>Dashboard | SmartCollars</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="../css/dashboard.css">
 </head>
 <body>
-
-    <!-- ==========================================
-    SIDEBAR
-    ========================================== -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <span class="logo-icon">🐾</span>
-                <h1 class="logo-text">Smart<span>Collars</span></h1>
+    <div class="dashboard-shell">
+        <aside class="app-sidebar" id="sidebar" aria-label="Dashboard navigation">
+            <div class="sidebar-brand">
+                <a href="../index.html" class="brand-link" aria-label="SmartCollars home">
+                    <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
+                    <span class="brand-name">Smart<span>Collars</span></span>
+                </a>
+                <button class="sidebar-close d-lg-none" id="sidebarClose" type="button" aria-label="Close navigation"><i class="bi bi-x-lg"></i></button>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
-                <span class="hamburger-icon">☰</span>
-            </button>
-        </div>
+            <div class="sidebar-context">
+                <span class="context-label">Monitoring</span>
+                <div class="context-device"><span class="device-icon"><i class="bi bi-broadcast-pin"></i></span><div><strong id="collarContext">2 collars active</strong><span>Updated just now</span></div></div>
+            </div>
+            <nav class="sidebar-nav nav flex-column" id="dashboardNav">
+                <span class="nav-heading">Workspace</span>
+                <button class="nav-link active" type="button" data-section="live-tracking"><i class="bi bi-activity"></i><span>Live Monitoring</span></button>
+                <button class="nav-link" type="button" data-section="pet-management"><i class="bi bi-person-hearts"></i><span>Pet Management</span></button>
+                <button class="nav-link" type="button" data-section="notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
+                <button class="nav-link" type="button" data-section="history"><i class="bi bi-clock-history"></i><span>History</span></button>
+                <button class="nav-link" type="button" data-section="settings"><i class="bi bi-sliders"></i><span>Settings</span></button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-user"><span class="user-avatar" id="userAvatar">U</span><div class="user-copy"><strong id="userName">User</strong><span id="userEmail">user@email.com</span></div></div>
+                <button class="nav-link logout-link" id="logoutBtn" type="button" data-bs-toggle="modal" data-bs-target="#logoutModal"><i class="bi bi-box-arrow-right"></i><span>Logout</span></button>
+            </div>
+        </aside>
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-        <nav class="navigation">
-            <span class="nav-label">MAIN</span>
-
-            <button class="nav-item active" data-section="overview">
-                <span class="nav-icon">📍</span>
-                <span class="nav-text">Live Tracking</span>
-            </button>
-
-            <button class="nav-item" data-section="history">
-                <span class="nav-icon">📜</span>
-                <span class="nav-text">History</span>
-            </button>
-
-            <button class="nav-item" data-section="notifications">
-                <span class="nav-icon">🔔</span>
-                <span class="nav-text">Notifications</span>
-                <span class="notification-badge">2</span>
-            </button>
-
-            <button class="nav-item" data-section="pets">
-                <span class="nav-icon">🐕</span>
-                <span class="nav-text">Pet Management</span>
-            </button>
-
-            <button class="nav-item" data-section="profile">
-                <span class="nav-icon">👤</span>
-                <span class="nav-text">Profile</span>
-            </button>
-
-            <button class="nav-item" data-section="settings">
-                <span class="nav-icon">⚙️</span>
-                <span class="nav-text">Settings</span>
-            </button>
-        </nav>
-
-        <footer class="sidebar-footer">
-            <div class="user-info">
-                <div class="avatar" id="userAvatar">👤</div>
-                <div class="user-details">
-                    <div class="name" id="userName">User</div>
-                    <div class="email" id="userEmail">user@email.com</div>
+        <main class="dashboard-main">
+            <header class="topbar">
+                <div class="d-flex align-items-center gap-3 min-w-0">
+                    <button class="mobile-menu d-lg-none" id="mobileMenu" type="button" aria-label="Open navigation"><i class="bi bi-list"></i></button>
+                    <div class="page-heading"><div class="eyebrow"><i class="bi bi-grid-1x2-fill"></i> Smart monitoring dashboard</div><h1 id="pageTitle">Live Monitoring</h1><p id="pageSubtitle">Monitor your pet's location, health, and activity in real time.</p></div>
                 </div>
-            </div>
-            <button class="logout-button" id="logoutBtn">
-                <span>🚪</span>
-                <span>Logout</span>
-            </button>
-        </footer>
-    </aside>
-
-    <!-- ==========================================
-    LEFT EDGE CLICK AREA (expand sidebar)
-    ========================================== -->
-    <div class="sidebar-expand-area" id="sidebarExpandArea" title="Click to expand sidebar"></div>
-
-    <!-- ==========================================
-    FLOATING TOGGLE (visible when collapsed)
-    ========================================== -->
-    <button class="floating-toggle" id="floatingToggle" aria-label="Toggle Sidebar">
-        <span class="hamburger-icon">☰</span>
-    </button>
-
-    <!-- ==========================================
-    MAIN CONTENT
-    ========================================== -->
-    <main class="main-content" id="mainContent">
-
-        <!-- TOP BAR -->
-        <header class="topbar">
-            <div class="topbar-left">
-                <h1><span id="greetingName">User</span></h1>
-                <p id="petDetails">No pet added yet</p>
-            </div>
-            <div class="connection-status" id="connectionStatus">
-                <span class="status-dot"></span>
-                Connected
-            </div>
-        </header>
-
-        <!-- ADD PET BANNER -->
-        <div id="addPetBanner" class="add-pet-banner">
-            <div class="banner-content">
-                <span class="banner-icon">🐾</span>
-                <div>
-                    <h4>No pet added yet</h4>
-                    <p>Add your pet to see personalized health and activity data.</p>
+                <div class="topbar-actions">
+                    <div class="system-status d-none d-md-flex" id="connectionStatus"><span class="status-pulse"></span><div><strong>System online</strong><small>All services operational</small></div></div>
+                    <button class="icon-button" type="button" data-section-trigger="notifications" aria-label="Open notifications"><i class="bi bi-bell"></i><span class="alert-dot"></span></button>
+                    <div class="header-avatar" id="headerAvatar">U</div>
                 </div>
-                <a href="pet-setup.html" class="btn-primary banner-btn">+ Add Your Pet</a>
-            </div>
-        </div>
+            </header>
 
-        <!-- GPS MAP SECTION -->
-        <div class="map-section" id="mapSection">
-            <div class="card-header">
-                <h2>📍 Live GPS Tracking</h2>
-                <span class="live-badge" id="gpsLiveBadge">
-                    <span class="live-dot" id="gpsLiveDot"></span>
-                    <span id="gpsLiveText">Initializing...</span>
-                </span>
-            </div>
-
-            <div class="gps-status-bar">
-                <div class="gps-status-item">
-                    <span class="gps-label">📍 Location:</span>
-                    <span class="gps-value" id="statLocation">Searching...</span>
-                </div>
-                <div class="gps-status-item">
-                    <span class="gps-label">📡 Signal:</span>
-                    <span class="gps-value" id="gpsStatus">Initializing...</span>
-                </div>
-                <div class="gps-status-item">
-                    <span class="gps-label">🕐 Updated:</span>
-                    <span class="gps-value" id="locationUpdate">Just now</span>
-                </div>
-            </div>
-
-            <div class="map-container" id="mapContainer">
-                <div class="map-content">
-                    <div class="map-marker" id="mapMarker">🐕</div>
-                    <h4 id="mapTitle">📍 Waiting for location...</h4>
-                    <p id="mapLocationText">Searching for GPS signal...</p>
-                    <small>GPS signal: <span id="gpsSignalStrength">Waiting</span></small>
-                </div>
-            </div>
-
-            <div class="gps-controls">
-                <button class="btn-gps" id="refreshGPSBtn">🔄 Refresh Location</button>
-                <button class="btn-gps secondary" id="centerMapBtn">📍 Center Map</button>
-                <button class="btn-gps secondary" id="toggleStatsBtn">📊 Toggle Stats</button>
-            </div>
-        </div>
-
-        <!-- STATS GRID -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="monitor-card">
-                <div class="monitor-icon">❤️</div>
-                <div>
-                    <h3>Heart Rate</h3>
-                    <div class="monitor-value"><span id="statHeartRate">--</span> <small>BPM</small></div>
-                    <p id="heartStatusText" class="normal-status">⏳ Waiting...</p>
-                </div>
-            </div>
-
-            <div class="monitor-card">
-                <div class="monitor-icon">📍</div>
-                <div>
-                    <h3>Location</h3>
-                    <div class="monitor-value" id="statLocationDisplay" style="font-size:18px;">Waiting...</div>
-                    <p id="gpsSignalDisplay">Signal: <strong>Waiting</strong></p>
-                </div>
-            </div>
-
-            <div class="monitor-card">
-                <div class="monitor-icon">🏃</div>
-                <div>
-                    <h3>Activity</h3>
-                    <div class="monitor-value activity-value" id="statActivity">--</div>
-                    <p id="activitySub">--</p>
-                </div>
-            </div>
-
-            <div class="monitor-card">
-                <div class="monitor-icon">🌡️</div>
-                <div>
-                    <h3>Temperature</h3>
-                    <div class="monitor-value"><span id="statTemp">--</span> <small>°C</small></div>
-                    <p id="tempStatus" class="normal-status">⏳ Waiting...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- LIVE MONITORING -->
-        <div class="content-card live-section" id="liveSection">
-            <div class="card-header">
-                <h2>📡 Real-time Monitoring</h2>
-                <span style="font-size:13px;color:#7a8a9e;">Live data from smart collar</span>
-            </div>
-            <div class="live-grid">
-                <div class="live-item">
-                    <div class="live-icon">❤️</div>
-                    <div class="live-info">
-                        <div class="live-label">Heart Rate</div>
-                        <div class="live-value"><span id="liveHeartRate">--</span> <span class="unit">BPM</span></div>
+            <div class="dashboard-content">
+                <section class="dashboard-section active" id="live-tracking">
+                    <div class="section-toolbar">
+                        <div><span class="section-kicker">Real-time pet overview</span><h2>Live Monitoring</h2><p>Monitor your pet's location, health, and activity in real time.</p></div>
+                        <div class="toolbar-actions"><span class="last-sync"><i class="bi bi-arrow-repeat"></i> Synced <span id="lastSync">just now</span></span><button class="btn btn-brand" id="refreshTrackingBtn" type="button"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>
                     </div>
-                    <div class="live-status normal" id="liveHeartStatus">● Waiting</div>
-                </div>
-                <div class="live-item">
-                    <div class="live-icon">📍</div>
-                    <div class="live-info">
-                        <div class="live-label">Location</div>
-                        <div class="live-value" id="liveLocation">Waiting...</div>
+
+                    <div class="live-pet-selector" aria-label="Select a pet to track">
+                        <div class="selector-label"><span class="title-icon green"><i class="bi bi-person-hearts"></i></span><div><strong>Select a pet</strong><small>Up to 3 registered pets</small></div></div>
+                        <div class="selector-options" id="livePetSelector"></div>
                     </div>
-                    <div class="live-status normal" id="liveLocationStatus">● Searching</div>
-                </div>
-                <div class="live-item">
-                    <div class="live-icon">🏃</div>
-                    <div class="live-info">
-                        <div class="live-label">Activity</div>
-                        <div class="live-value" id="liveActivity">--</div>
+
+                    <div class="row g-4 align-items-stretch">
+                        <div class="col-xl-9">
+                            <article class="app-card map-card h-100">
+                                <div class="card-topline"><div><div class="card-title-row"><span class="title-icon green"><i class="bi bi-geo-alt-fill"></i></span><h3>Pet location map</h3></div><p>OpenStreetMap view with pet locations and the selected safe zone</p></div><span class="badge soft-badge success" id="mapDataBadge"><span class="status-pulse"></span> GPS available</span></div>
+                                <div class="tracking-map-wrap">
+                                    <div class="tracking-map" id="trackingMap" aria-label="Interactive pet tracking map"></div>
+                                    <button class="map-center-button" id="centerMapBtn" type="button" aria-label="Center map on selected pet" title="Center on selected pet"><i class="bi bi-crosshair"></i></button>
+                                </div>
+                            </article>
+                        </div>
+                        <div class="col-xl-3">
+                            <div class="tracking-side-stack">
+                                <aside class="selected-location-panel" id="selectedPetPanel" aria-live="polite"></aside>
+                                <aside class="safe-zone-side-panel" id="selectedSafeZonePanel"></aside>
+                                <aside class="tracking-legend-panel">
+                                    <h3>Legend</h3>
+                                    <div><span><i class="legend-dot online"></i> Current location</span></div>
+                                    <div><span><i class="legend-dot gps-unavailable"></i> Last known location - GPS unavailable</span></div>
+                                    <div><span><i class="legend-dot offline"></i> Last known location - Collar offline</span></div>
+                                    <div><span><i class="legend-ring"></i> Configured safe zone</span></div>
+                                </aside>
+                            </div>
+                        </div>
                     </div>
-                    <div class="live-status normal" id="liveActivityStatus">● Waiting</div>
-                </div>
-            </div>
-        </div>
 
-        <!-- ==========================================
-        PAGE SECTIONS (hidden by default)
-        ========================================== -->
-
-        <!-- HISTORY -->
-        <section id="history" class="page-section" style="display:none;">
-            <div class="section-title">
-                <h2>📜 Location History</h2>
-                <p>Track your pet's movement over time</p>
-            </div>
-            <div class="content-card history-card">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Location</th>
-                                <th>Coordinates</th>
-                                <th>Activity</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTableBody">
-                            <tr>
-                                <td colspan="4" style="text-align:center;color:#7a8a9e;padding:40px;">
-                                    🐾 No location history yet
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- NOTIFICATIONS -->
-        <section id="notifications" class="page-section" style="display:none;">
-            <div class="section-title">
-                <h2>🔔 Notifications</h2>
-                <p>Stay updated with your pet's activities</p>
-            </div>
-            <div class="content-card">
-                <div class="notification-item">
-                    <div class="notification-icon">🐾</div>
-                    <div class="notification-content">
-                        <strong>Welcome to Smart Collar!</strong>
-                        <p>Add your pet to start receiving notifications</p>
+                    <div class="monitoring-status-section">
+                        <div class="monitoring-section-heading">
+                            <div><h3>Current monitoring status</h3><p>Latest health, activity, and collar readings for the selected pet</p></div>
+                            <span class="prototype-label"><i class="bi bi-info-circle"></i> Prototype device data</span>
+                        </div>
+                        <div class="row g-3" id="liveMonitoringCards" aria-live="polite"></div>
                     </div>
-                    <span class="notification-time">Just now</span>
-                </div>
-                <div class="notification-item">
-                    <div class="notification-icon">💡</div>
-                    <div class="notification-content">
-                        <strong>Tip: Add your pet</strong>
-                        <p>Go to Pet Management to set up your pet's profile</p>
+                </section>
+
+                <section class="dashboard-section" id="health-activity">
+                    <div class="section-toolbar compact"><div><span class="section-kicker">Current readings</span><h2>Health &amp; Activity</h2><p>Review the latest wellness data reported by the collar.</p></div><label class="pet-select-control"><span>Viewing pet</span><select class="form-select pet-selector" id="healthPetSelect" aria-label="Select pet"></select></label></div>
+                    <div class="data-notice"><i class="bi bi-info-circle-fill"></i><div><strong>Prototype sensor data</strong><span>Readings shown below are representative placeholders. Last update: <span id="healthUpdated">Today, 10:42 AM</span></span></div><div class="state-key"><span class="soft-badge success">Normal</span><span class="soft-badge danger">Abnormal</span><span class="soft-badge neutral">Data unavailable</span></div></div>
+                    <div class="row g-4">
+                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon rose"><i class="bi bi-heart-pulse"></i></span><span class="soft-badge success">Normal</span></div><span>Heart rate</span><strong><span id="healthHeartRate">82</span><small>BPM</small></strong><div class="range-line"><span style="width:58%"></span></div><small>Normal range: 60–140 BPM</small></article></div>
+                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon orange"><i class="bi bi-thermometer-half"></i></span><span class="soft-badge success">Normal</span></div><span>Body temperature</span><strong><span id="healthTemperature">38.5</span><small>°C</small></strong><div class="range-line orange"><span style="width:52%"></span></div><small>Normal range: 37.5–39.2 °C</small></article></div>
+                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon blue"><i class="bi bi-person-walking"></i></span><span class="soft-badge info">Active</span></div><span>Activity status</span><strong class="word-value" id="healthActivity">Walking</strong><div class="activity-pills"><i></i><i class="active"></i><i></i></div><small>Changed 4 minutes ago</small></article></div>
+                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon green"><i class="bi bi-router"></i></span><span class="soft-badge success">Online</span></div><span>Collar status</span><strong class="word-value">Connected</strong><div class="signal-bars"><i></i><i></i><i></i><i></i></div><small>Strong signal · Battery 86%</small></article></div>
                     </div>
-                    <span class="notification-time">1 min ago</span>
-                </div>
-            </div>
-        </section>
+                    <div class="row g-4 mt-0">
+                        <div class="col-xl-8"><article class="app-card chart-panel h-100"><div class="card-topline"><div><h3>Health trend</h3><p>Heart rate and temperature over the last 12 hours</p></div><div class="chart-legend"><span><i class="green-line"></i> Heart rate</span><span><i class="orange-line"></i> Temperature</span></div></div><div class="line-chart"><div class="chart-y-labels"><span>120</span><span>100</span><span>80</span><span>60</span><span>40</span></div><svg viewBox="0 0 720 220" preserveAspectRatio="none" aria-label="Placeholder health graph"><defs><linearGradient id="healthFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f8f50" stop-opacity=".18"/><stop offset="1" stop-color="#2f8f50" stop-opacity="0"/></linearGradient></defs><path class="chart-area" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58 L720 220 L0 220 Z"/><path class="chart-line-primary" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58"/><path class="chart-line-secondary" d="M0 126 C60 120,85 126,130 118 S215 124,260 112 S345 116,390 110 S480 116,530 105 S620 112,720 100"/></svg><div class="chart-x-labels"><span>12 AM</span><span>3 AM</span><span>6 AM</span><span>9 AM</span><span>12 PM</span></div></div></article></div>
+                        <div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Today's activity</h3><p>Daily movement breakdown</p></div><span class="soft-badge success">On track</span></div><div class="activity-donut"><div class="donut"><div><strong>68%</strong><span>daily goal</span></div></div></div><div class="activity-breakdown"><div><span><i class="activity-dot resting"></i> Resting</span><strong>14h 20m</strong></div><div><span><i class="activity-dot walking"></i> Walking</span><strong>1h 45m</strong></div><div><span><i class="activity-dot running"></i> Running</span><strong>28m</strong></div></div></article></div>
+                    </div>
+                </section>
 
-        <!-- PET MANAGEMENT -->
-        <section id="pets" class="page-section" style="display:none;">
-            <div class="section-title">
-                <h2>🐕 Pet Management</h2>
-                <p>Manage your pet's profile and settings</p>
-            </div>
-            <div class="content-card">
-                <div class="pet-management-header">
-                    <h3>Your Pets</h3>
-                    <button class="btn-primary" id="addPetBtn">+ Add New Pet</button>
-                </div>
-                <div id="petListContainer">
-                    <!-- Rendered by JavaScript -->
-                </div>
-            </div>
-        </section>
+                <section class="dashboard-section" id="pet-management">
+                    <div class="section-toolbar compact"><div><span class="section-kicker">Pet profiles</span><h2>Pet Management</h2><p>Add collars, review pet details, and manage safe zones.</p></div><button class="btn btn-brand" id="addPetBtn" type="button" data-bs-toggle="modal" data-bs-target="#addPetModal"><i class="bi bi-plus-lg"></i> Add new pet</button></div>
+                    <div class="limit-note"><i class="bi bi-info-circle"></i> You can monitor up to 3 pets. <strong id="petCapacity">2 of 3 profiles used.</strong></div>
+                    <div class="row g-4"><div class="col-xl-4"><article class="app-card pet-list-card"><div class="card-topline"><div><h3>Your pets</h3><p>Select a profile to view details</p></div></div><div class="management-pet-list" id="petList"></div></article></div><div class="col-xl-8"><article class="app-card pet-detail-card" id="petDetail"></article></div></div>
+                </section>
 
-        <!-- PROFILE -->
-        <section id="profile" class="page-section" style="display:none;">
-            <div class="section-title">
-                <h2>👤 Profile</h2>
-                <p>Manage your account settings</p>
-            </div>
-            <div class="content-card settings-card">
-                <h3>Account Information</h3>
-                <label>Full Name</label>
-                <input type="text" id="profileName" />
-                <label>Email Address</label>
-                <input type="email" id="profileEmail" readonly />
-                <button class="btn-primary" style="margin-top:15px;" id="saveProfileBtn">Save Changes</button>
-            </div>
-        </section>
+                <section class="dashboard-section" id="notifications">
+                    <div class="section-toolbar compact"><div><span class="section-kicker">Alert center</span><h2>Notifications</h2><p>Review collar, location, health, and sensor alerts.</p></div><button class="btn btn-soft" id="markAllReadBtn" type="button"><i class="bi bi-check2-all"></i> Mark all as read</button></div>
+                    <article class="app-card notifications-card"><div class="notification-toolbar"><div class="filter-tabs" role="group" aria-label="Notification filters"><button class="active" type="button" data-notification-filter="all">All <span>9</span></button><button type="button" data-notification-filter="unread">Unread <span id="unreadFilterCount">4</span></button><button type="button" data-notification-filter="location">Location</button><button type="button" data-notification-filter="health">Health</button><button type="button" data-notification-filter="device">Device</button></div></div><div class="notification-list" id="notificationList"></div></article>
+                </section>
 
-        <!-- SETTINGS -->
-        <section id="settings" class="page-section" style="display:none;">
-            <div class="section-title">
-                <h2>⚙️ Settings</h2>
-                <p>Configure your app preferences</p>
-            </div>
-            <div class="content-card settings-card">
-                <h3>Preferences</h3>
-                <div class="setting-row">
-                    <span>🔔 Push Notifications</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" checked />
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="setting-row">
-                    <span>📍 GPS Tracking</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" checked id="gpsToggle" />
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="setting-row">
-                    <span>🌙 Dark Mode</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="darkModeToggle" />
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                <div class="setting-row">
-                    <span>📊 Show Stats Grid</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" checked id="showStatsToggle" />
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-        </section>
+                <section class="dashboard-section" id="history">
+                    <div class="section-toolbar compact"><div><span class="section-kicker">Recorded insights</span><h2>History</h2><p>Review past location, health, and activity records.</p></div><div class="history-filters"><select class="form-select pet-selector" id="historyPetSelect" aria-label="Select pet"></select><select class="form-select" id="historyRange" aria-label="Select history range"><option value="today">Today</option><option value="week">Weekly history</option></select></div></div>
+                    <div class="history-type-tabs" role="tablist"><button class="active" type="button" data-history-type="location"><i class="bi bi-geo-alt"></i> Location</button><button type="button" data-history-type="health"><i class="bi bi-heart-pulse"></i> Health</button><button type="button" data-history-type="activity"><i class="bi bi-activity"></i> Activity</button></div>
+                    <div class="history-panel active" id="history-location"><div class="row g-4"><div class="col-xl-8"><article class="app-card"><div class="card-topline"><div><h3>Route history</h3><p>Recorded path for today</p></div><span class="soft-badge neutral"><i class="bi bi-clock"></i> Last updated 10:42 AM</span></div><div class="route-map"><div class="map-road road-one"></div><div class="map-road road-two"></div><div class="route-path"></div><span class="route-point start"><i class="bi bi-house-door-fill"></i></span><span class="route-point end"><i class="bi bi-geo-alt-fill"></i></span><span class="route-label start-label">Start · 7:15 AM</span><span class="route-label end-label">Last point · 10:42 AM</span></div></article></div><div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Trip summary</h3><p>Today’s movement</p></div></div><div class="trip-stats"><div><span>Distance traveled</span><strong>3.8 km</strong></div><div><span>Time outside</span><strong>1h 42m</strong></div><div><span>Locations visited</span><strong>4 places</strong></div></div><div class="timeline"><div><i></i><span><strong>Riverside Park</strong><small>10:42 AM · Last recorded point</small></span></div><div><i></i><span><strong>Oak Street</strong><small>9:36 AM · Walking</small></span></div><div><i></i><span><strong>Home</strong><small>7:15 AM · Start point</small></span></div></div></article></div></div></div>
+                    <div class="history-panel" id="history-health"><div class="row g-4"><div class="col-xl-6"><article class="app-card chart-panel"><div class="card-topline"><div><h3>Heart rate history</h3><p>Average 84 BPM · Last updated 10:42 AM</p></div><span class="soft-badge success">Normal</span></div><div class="mini-history-chart green-chart"><svg viewBox="0 0 600 170" preserveAspectRatio="none"><path d="M0 120 C50 100,82 118,122 84 S205 110,250 70 S340 94,390 62 S480 88,600 42"/></svg></div></article></div><div class="col-xl-6"><article class="app-card chart-panel"><div class="card-topline"><div><h3>Temperature history</h3><p>Average 38.4 °C · Last updated 10:42 AM</p></div><span class="soft-badge success">Normal</span></div><div class="mini-history-chart orange-chart"><svg viewBox="0 0 600 170" preserveAspectRatio="none"><path d="M0 96 C55 92,90 100,135 88 S220 94,265 82 S355 90,405 76 S500 86,600 70"/></svg></div></article></div></div></div>
+                    <div class="history-panel" id="history-activity"><article class="app-card"><div class="card-topline"><div><h3>Weekly activity summary</h3><p>Activity duration by day · Last updated 10:42 AM</p></div><span class="soft-badge success"><i class="bi bi-graph-up-arrow"></i> 12% vs last week</span></div><div class="bar-chart"><div style="--rest:55%;--walk:24%;--run:10%"><span></span><i></i><b></b><small>Mon</small></div><div style="--rest:68%;--walk:18%;--run:7%"><span></span><i></i><b></b><small>Tue</small></div><div style="--rest:50%;--walk:30%;--run:12%"><span></span><i></i><b></b><small>Wed</small></div><div style="--rest:62%;--walk:20%;--run:9%"><span></span><i></i><b></b><small>Thu</small></div><div style="--rest:48%;--walk:34%;--run:13%"><span></span><i></i><b></b><small>Fri</small></div><div style="--rest:42%;--walk:38%;--run:16%"><span></span><i></i><b></b><small>Sat</small></div><div style="--rest:58%;--walk:26%;--run:11%"><span></span><i></i><b></b><small>Sun</small></div></div><div class="activity-total-row"><div><i class="activity-dot resting"></i><span>Resting<strong>98h 25m</strong></span></div><div><i class="activity-dot walking"></i><span>Walking<strong>12h 40m</strong></span></div><div><i class="activity-dot running"></i><span>Running<strong>3h 12m</strong></span></div></div></article></div>
+                </section>
 
-    </main>
+                <section class="dashboard-section" id="settings">
+                    <div class="section-toolbar compact"><div><span class="section-kicker">Preferences</span><h2>Settings</h2><p>Manage your account, security, and notification preferences.</p></div></div>
+                    <div class="settings-layout">
+                        <aside class="settings-nav" aria-label="Settings sections"><button class="active" type="button" data-settings-target="account"><i class="bi bi-person"></i><span>Account Information<small>Profile and contact details</small></span></button><button type="button" data-settings-target="security"><i class="bi bi-shield-lock"></i><span>Password &amp; Security<small>Manage your password</small></span></button><button type="button" data-settings-target="preferences"><i class="bi bi-bell"></i><span>Notification Preferences<small>Choose the alerts you receive</small></span></button><button type="button" data-settings-target="logout"><i class="bi bi-box-arrow-right"></i><span>Logout<small>Sign out of SmartCollars</small></span></button></aside>
+                        <div class="settings-content">
+                            <article class="app-card settings-panel active" id="settings-account"><div class="settings-panel-heading"><h3>Account Information</h3><p>Keep your profile details up to date.</p></div><div class="profile-photo-row"><div class="profile-photo" id="settingsAvatar">U</div><div><strong>Profile photo</strong><span>PNG or JPG, up to 2 MB</span><button class="btn btn-soft btn-sm" type="button" id="changeProfilePhotoBtn"><i class="bi bi-camera"></i> Change photo</button><input class="visually-hidden" type="file" id="profilePhotoInput" accept="image/png,image/jpeg"></div></div><form id="accountForm" class="settings-form"><div class="row g-3"><div class="col-md-6"><label class="form-label" for="profileName">Full name</label><input class="form-control" id="profileName" type="text" value="User"></div><div class="col-md-6"><label class="form-label" for="profileEmail">Email address</label><input class="form-control" id="profileEmail" type="email" value="user@email.com" readonly><div class="form-text">Email is managed by your sign-in provider.</div></div></div><div class="form-actions"><button class="btn btn-brand" type="submit"><i class="bi bi-check2"></i> Save changes</button></div></form></article>
+                            <article class="app-card settings-panel" id="settings-security"><div class="settings-panel-heading"><h3>Password &amp; Security</h3><p>Use a strong password you do not reuse elsewhere.</p></div><form id="passwordForm" class="settings-form narrow"><label class="form-label" for="currentPassword">Current password</label><div class="password-field"><input class="form-control" id="currentPassword" type="password" required><button type="button" data-password-toggle="currentPassword" aria-label="Show current password"><i class="bi bi-eye"></i></button></div><label class="form-label" for="newPassword">New password</label><div class="password-field"><input class="form-control" id="newPassword" type="password" minlength="8" required><button type="button" data-password-toggle="newPassword" aria-label="Show new password"><i class="bi bi-eye"></i></button></div><div class="password-strength"><span></span><span></span><span></span><span></span><small>Use at least 8 characters with a number and symbol.</small></div><label class="form-label" for="confirmPassword">Confirm new password</label><div class="password-field"><input class="form-control" id="confirmPassword" type="password" minlength="8" required><button type="button" data-password-toggle="confirmPassword" aria-label="Show confirmed password"><i class="bi bi-eye"></i></button></div><div class="form-actions"><button class="btn btn-brand" type="submit"><i class="bi bi-shield-check"></i> Update password</button></div></form></article>
+                            <article class="app-card settings-panel" id="settings-preferences"><div class="settings-panel-heading"><h3>Notification Preferences</h3><p>Choose which SmartCollars alerts you want to receive.</p></div><div class="preference-list"><label><span class="preference-icon green"><i class="bi bi-geo-alt"></i></span><span><strong>Geofence alerts</strong><small>When a pet enters or leaves a safe zone</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon orange"><i class="bi bi-battery-half"></i></span><span><strong>Low battery alerts</strong><small>When collar battery falls below 20%</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon blue"><i class="bi bi-wifi-off"></i></span><span><strong>Collar offline alerts</strong><small>When a collar loses its connection</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon rose"><i class="bi bi-heart-pulse"></i></span><span><strong>Health alerts</strong><small>For abnormal heart rate or temperature readings</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon purple"><i class="bi bi-exclamation-triangle"></i></span><span><strong>Sensor and data alerts</strong><small>When GPS, health, or activity data is unavailable</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon green"><i class="bi bi-phone"></i></span><span><strong>Push notifications</strong><small>Receive alerts on this browser or device</small></span><input class="form-check-input" type="checkbox" role="switch"></label></div><div class="form-actions"><button class="btn btn-brand" id="savePreferencesBtn" type="button"><i class="bi bi-check2"></i> Save preferences</button></div></article>
+                            <article class="app-card settings-panel danger-panel" id="settings-logout"><div class="settings-panel-heading"><h3>Logout</h3><p>End your current SmartCollars session safely.</p></div><div class="logout-card"><span><i class="bi bi-box-arrow-right"></i></span><div><strong>Sign out of this device?</strong><p>You will need to enter your credentials the next time you visit the dashboard.</p></div><button class="btn btn-danger-soft" type="button" data-bs-toggle="modal" data-bs-target="#logoutModal">Logout</button></div></article>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
 
-    <!-- ==========================================
-    DASHBOARD JS (ES Module)
-    ========================================== -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"><div class="toast app-toast" id="appToast" role="status" aria-live="polite" aria-atomic="true"><div class="toast-body"><i class="bi bi-check-circle-fill"></i><span id="toastMessage">Changes saved.</span><button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div></div>
+
+    <div class="modal fade" id="addPetModal" tabindex="-1" aria-labelledby="addPetModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><div><span class="modal-icon"><i class="bi bi-plus-lg"></i></span><h2 class="modal-title" id="addPetModalLabel">Add a new pet</h2><p>Register a profile and pair a smart collar.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><form id="addPetForm"><div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label" for="newPetName">Pet name</label><input class="form-control" id="newPetName" type="text" placeholder="e.g. Milo" required><div class="form-text">Pet names cannot be changed after registration.</div></div><div class="col-md-6"><label class="form-label" for="newPetType">Pet type</label><select class="form-select" id="newPetType"><option>Dog</option><option>Cat</option></select></div><div class="col-md-6"><label class="form-label" for="newPetGender">Gender</label><select class="form-select" id="newPetGender"><option>Male</option><option>Female</option></select></div><div class="col-12"><label class="form-label" for="newPetBreed">Breed</label><input class="form-control" id="newPetBreed" type="text" placeholder="e.g. Beagle" required></div><div class="col-12"><label class="form-label" for="newDeviceId">Device ID</label><input class="form-control" id="newDeviceId" type="text" placeholder="SC-XXXX-0000" required></div></div></div><div class="modal-footer"><button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-brand"><i class="bi bi-plus-lg"></i> Add pet</button></div></form></div></div></div>
+    <div class="modal fade" id="geofenceModal" tabindex="-1" aria-labelledby="geofenceModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-header"><div><span class="modal-icon"><i class="bi bi-shield-check"></i></span><h2 class="modal-title" id="geofenceModalLabel">Edit geofence</h2><p>Adjust the safe-zone radius for the selected pet.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="geofence-editor"><div class="geofence-preview"><div class="geofence-radius"><i class="bi bi-house-door-fill"></i></div></div><div class="geofence-controls"><label class="form-label" for="geofenceRadius">Safe-zone radius <strong><span id="radiusValue">300</span> m</strong></label><input class="form-range" id="geofenceRadius" type="range" min="100" max="1000" value="300" step="50"><div class="range-labels"><span>100 m</span><span>1 km</span></div><label class="form-label mt-4" for="geofenceName">Zone name</label><input class="form-control" id="geofenceName" value="Home safe zone"></div></div></div><div class="modal-footer"><button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-brand" id="saveGeofenceBtn" data-bs-dismiss="modal"><i class="bi bi-check2"></i> Save geofence</button></div></div></div></div>
+    <div class="modal fade" id="deletePetModal" tabindex="-1" aria-labelledby="deletePetModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content text-center"><div class="modal-body confirmation-body"><span class="confirmation-icon danger"><i class="bi bi-trash3"></i></span><h2 id="deletePetModalLabel">Delete pet profile?</h2><p>This removes the pet from this prototype dashboard. This action cannot be undone.</p><div class="d-grid gap-2"><button class="btn btn-danger" id="confirmDeletePetBtn" type="button" data-bs-dismiss="modal">Delete profile</button><button class="btn btn-soft" type="button" data-bs-dismiss="modal">Cancel</button></div></div></div></div></div>
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content text-center"><div class="modal-body confirmation-body"><span class="confirmation-icon"><i class="bi bi-box-arrow-right"></i></span><h2 id="logoutModalLabel">Ready to logout?</h2><p>You will be returned to the SmartCollars login page.</p><div class="d-grid gap-2"><button class="btn btn-brand" id="confirmLogoutBtn" type="button">Yes, logout</button><button class="btn btn-soft" type="button" data-bs-dismiss="modal">Stay logged in</button></div></div></div></div></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script type="module" src="../js/dashboard.js"></script>
 </body>
 </html>
