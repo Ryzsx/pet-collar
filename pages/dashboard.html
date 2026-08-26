@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#236b3b">
+    <meta name="theme-color" content="#217A3D">
     <title>Dashboard | SmartCollars</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,23 +21,21 @@
                     <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
                     <span class="brand-name">Smart<span>Collars</span></span>
                 </a>
-                <button class="sidebar-close d-lg-none" id="sidebarClose" type="button" aria-label="Close navigation"><i class="bi bi-x-lg"></i></button>
-            </div>
-            <div class="sidebar-context">
-                <span class="context-label">Monitoring</span>
-                <div class="context-device"><span class="device-icon"><i class="bi bi-broadcast-pin"></i></span><div><strong id="collarContext">2 collars active</strong><span>Updated just now</span></div></div>
             </div>
             <nav class="sidebar-nav nav flex-column" id="dashboardNav">
                 <span class="nav-heading">Workspace</span>
-                <button class="nav-link active" type="button" data-section="live-tracking"><i class="bi bi-activity"></i><span>Live Monitoring</span></button>
-                <button class="nav-link" type="button" data-section="pet-management"><i class="bi bi-person-hearts"></i><span>Pet Management</span></button>
-                <button class="nav-link" type="button" data-section="notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
-                <button class="nav-link" type="button" data-section="history"><i class="bi bi-clock-history"></i><span>History</span></button>
-                <button class="nav-link" type="button" data-section="settings"><i class="bi bi-sliders"></i><span>Settings</span></button>
+                <button class="nav-link active" type="button" data-section="live-tracking" title="Live Monitoring"><i class="bi bi-activity"></i><span>Live Monitoring</span></button>
+                <button class="nav-link" type="button" data-section="pet-management" title="Pet Management"><i class="bi bi-person-hearts"></i><span>Pet Management</span></button>
+                <button class="nav-link" type="button" data-section="notifications" title="Notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
+                <button class="nav-link" type="button" data-section="history" title="History"><i class="bi bi-clock-history"></i><span>History</span></button>
+                <button class="nav-link" type="button" data-section="settings" title="Settings"><i class="bi bi-sliders"></i><span>Settings</span></button>
             </nav>
             <div class="sidebar-footer">
-                <div class="sidebar-user"><span class="user-avatar" id="userAvatar">U</span><div class="user-copy"><strong id="userName">User</strong><span id="userEmail">user@email.com</span></div></div>
-                <button class="nav-link logout-link" id="logoutBtn" type="button" data-bs-toggle="modal" data-bs-target="#logoutModal"><i class="bi bi-box-arrow-right"></i><span>Logout</span></button>
+                <div class="sidebar-user">
+                    <span class="user-avatar" id="userAvatar">U</span>
+                    <div class="user-copy"><strong id="userName">User</strong><span id="userEmail">user@email.com</span></div>
+                </div>
+                <button class="nav-link logout-link" type="button" data-bs-toggle="modal" data-bs-target="#logoutModal" title="Logout"><i class="bi bi-box-arrow-right"></i><span>Logout</span></button>
             </div>
         </aside>
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -45,13 +43,11 @@
         <main class="dashboard-main">
             <header class="topbar">
                 <div class="d-flex align-items-center gap-3 min-w-0">
-                    <button class="mobile-menu d-lg-none" id="mobileMenu" type="button" aria-label="Open navigation"><i class="bi bi-list"></i></button>
-                    <div class="page-heading"><div class="eyebrow"><i class="bi bi-grid-1x2-fill"></i> Smart monitoring dashboard</div><h1 id="pageTitle">Live Monitoring</h1><p id="pageSubtitle">Monitor your pet's location, health, and activity in real time.</p></div>
-                </div>
-                <div class="topbar-actions">
-                    <div class="system-status d-none d-md-flex" id="connectionStatus"><span class="status-pulse"></span><div><strong>System online</strong><small>All services operational</small></div></div>
-                    <button class="icon-button" type="button" data-section-trigger="notifications" aria-label="Open notifications"><i class="bi bi-bell"></i><span class="alert-dot"></span></button>
-                    <div class="header-avatar" id="headerAvatar">U</div>
+                    <button class="sidebar-toggle header-sidebar-toggle" id="sidebarToggle" type="button" aria-label="Collapse navigation" aria-controls="sidebar" aria-expanded="true" title="Collapse navigation"><i class="bi bi-layout-sidebar-inset"></i></button>
+                    <div class="welcome-heading">
+                        <h1>Welcome back, <span id="welcomeName">User</span>!</h1>
+                        <p>Here is your latest pet monitoring overview.</p>
+                    </div>
                 </div>
             </header>
 
@@ -59,7 +55,13 @@
                 <section class="dashboard-section active" id="live-tracking">
                     <div class="section-toolbar">
                         <div><span class="section-kicker">Real-time pet overview</span><h2>Live Monitoring</h2><p>Monitor your pet's location, health, and activity in real time.</p></div>
-                        <div class="toolbar-actions"><span class="last-sync"><i class="bi bi-arrow-repeat"></i> Synced <span id="lastSync">just now</span></span><button class="btn btn-brand" id="refreshTrackingBtn" type="button"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>
+                        <div class="monitoring-toolbar-actions">
+                            <div class="topbar-actions monitoring-utilities">
+                                <div class="system-status d-none d-md-flex" id="connectionStatus"><span class="status-pulse"></span><div><strong>System online</strong><small>All services operational</small></div></div>
+                                <button class="icon-button" type="button" data-section-trigger="notifications" aria-label="Open notifications"><i class="bi bi-bell"></i><span class="alert-dot"></span></button>
+                            </div>
+                            <div class="toolbar-actions"><span class="last-sync"><i class="bi bi-arrow-repeat"></i> Synced <span id="lastSync">just now</span></span><button class="btn btn-brand" id="refreshTrackingBtn" type="button"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>
+                        </div>
                     </div>
 
                     <div class="live-pet-selector" aria-label="Select a pet to track">
@@ -111,7 +113,7 @@
                         <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon green"><i class="bi bi-router"></i></span><span class="soft-badge success">Online</span></div><span>Collar status</span><strong class="word-value">Connected</strong><div class="signal-bars"><i></i><i></i><i></i><i></i></div><small>Strong signal · Battery 86%</small></article></div>
                     </div>
                     <div class="row g-4 mt-0">
-                        <div class="col-xl-8"><article class="app-card chart-panel h-100"><div class="card-topline"><div><h3>Health trend</h3><p>Heart rate and temperature over the last 12 hours</p></div><div class="chart-legend"><span><i class="green-line"></i> Heart rate</span><span><i class="orange-line"></i> Temperature</span></div></div><div class="line-chart"><div class="chart-y-labels"><span>120</span><span>100</span><span>80</span><span>60</span><span>40</span></div><svg viewBox="0 0 720 220" preserveAspectRatio="none" aria-label="Placeholder health graph"><defs><linearGradient id="healthFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f8f50" stop-opacity=".18"/><stop offset="1" stop-color="#2f8f50" stop-opacity="0"/></linearGradient></defs><path class="chart-area" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58 L720 220 L0 220 Z"/><path class="chart-line-primary" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58"/><path class="chart-line-secondary" d="M0 126 C60 120,85 126,130 118 S215 124,260 112 S345 116,390 110 S480 116,530 105 S620 112,720 100"/></svg><div class="chart-x-labels"><span>12 AM</span><span>3 AM</span><span>6 AM</span><span>9 AM</span><span>12 PM</span></div></div></article></div>
+                        <div class="col-xl-8"><article class="app-card chart-panel h-100"><div class="card-topline"><div><h3>Health trend</h3><p>Heart rate and temperature over the last 12 hours</p></div><div class="chart-legend"><span><i class="green-line"></i> Heart rate</span><span><i class="orange-line"></i> Temperature</span></div></div><div class="line-chart"><div class="chart-y-labels"><span>120</span><span>100</span><span>80</span><span>60</span><span>40</span></div><svg viewBox="0 0 720 220" preserveAspectRatio="none" aria-label="Placeholder health graph"><defs><linearGradient id="healthFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F8F4E" stop-opacity=".18"/><stop offset="1" stop-color="#2F8F4E" stop-opacity="0"/></linearGradient></defs><path class="chart-area" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58 L720 220 L0 220 Z"/><path class="chart-line-primary" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58"/><path class="chart-line-secondary" d="M0 126 C60 120,85 126,130 118 S215 124,260 112 S345 116,390 110 S480 116,530 105 S620 112,720 100"/></svg><div class="chart-x-labels"><span>12 AM</span><span>3 AM</span><span>6 AM</span><span>9 AM</span><span>12 PM</span></div></div></article></div>
                         <div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Today's activity</h3><p>Daily movement breakdown</p></div><span class="soft-badge success">On track</span></div><div class="activity-donut"><div class="donut"><div><strong>68%</strong><span>daily goal</span></div></div></div><div class="activity-breakdown"><div><span><i class="activity-dot resting"></i> Resting</span><strong>14h 20m</strong></div><div><span><i class="activity-dot walking"></i> Walking</span><strong>1h 45m</strong></div><div><span><i class="activity-dot running"></i> Running</span><strong>28m</strong></div></div></article></div>
                     </div>
                 </section>

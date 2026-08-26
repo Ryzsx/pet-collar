@@ -136,25 +136,93 @@ function closeSidebar() {
     $('#sidebar')?.classList.remove('open');
     $('#sidebarBackdrop')?.classList.remove('show');
     document.body.style.overflow = '';
+    updateSidebarToggleState();
 }
 
 function openSidebar() {
     $('#sidebar')?.classList.add('open');
     $('#sidebarBackdrop')?.classList.add('show');
     document.body.style.overflow = 'hidden';
+    updateSidebarToggleState();
+}
+
+const SIDEBAR_BREAKPOINT = 992;
+const SIDEBAR_STORAGE_KEY = 'smartCollarsSidebarCollapsed';
+let desktopSidebarViewport = window.innerWidth >= SIDEBAR_BREAKPOINT;
+
+function getSavedSidebarState() {
+    try {
+        return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function updateSidebarToggleState() {
+    const sidebar = $('#sidebar');
+    const toggle = $('#sidebarToggle');
+    if (!sidebar || !toggle) return;
+
+    const isMobile = window.innerWidth < SIDEBAR_BREAKPOINT;
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    const isOpen = sidebar.classList.contains('open');
+    const label = isMobile ? `${isOpen ? 'Close' : 'Open'} navigation` : `${isCollapsed ? 'Expand' : 'Collapse'} navigation`;
+    toggle.setAttribute('aria-label', label);
+    toggle.setAttribute('title', label);
+    toggle.setAttribute('aria-expanded', String(isMobile ? isOpen : !isCollapsed));
+    toggle.querySelector('i').className = 'bi bi-layout-sidebar-inset';
+}
+
+function toggleSidebar() {
+    const sidebar = $('#sidebar');
+    if (!sidebar) return;
+    if (window.innerWidth < SIDEBAR_BREAKPOINT) {
+        if (sidebar.classList.contains('open')) closeSidebar();
+        else openSidebar();
+        return;
+    }
+
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+    try {
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isCollapsed));
+    } catch {
+        // The toggle still works when browser storage is unavailable.
+    }
+    updateSidebarToggleState();
+    setTimeout(refreshLiveMapLayout, 260);
+}
+
+function syncSidebarForViewport() {
+    const sidebar = $('#sidebar');
+    if (!sidebar) return;
+
+    if (window.innerWidth < SIDEBAR_BREAKPOINT) {
+        closeSidebar();
+        sidebar.classList.remove('collapsed');
+    } else {
+        closeSidebar();
+        sidebar.classList.toggle('collapsed', getSavedSidebarState());
+    }
+    updateSidebarToggleState();
+    setTimeout(refreshLiveMapLayout, 260);
+}
+
+function handleSidebarViewportChange() {
+    const isDesktop = window.innerWidth >= SIDEBAR_BREAKPOINT;
+    if (isDesktop === desktopSidebarViewport) return;
+    desktopSidebarViewport = isDesktop;
+    syncSidebarForViewport();
 }
 
 function showSection(sectionId) {
     if (!pageMeta[sectionId]) return;
     $$('.dashboard-section').forEach(section => section.classList.toggle('active', section.id === sectionId));
     $$('.sidebar-nav [data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === sectionId));
-    $('#pageTitle').textContent = pageMeta[sectionId][0];
-    $('#pageSubtitle').textContent = pageMeta[sectionId][1];
     history.replaceState(null, '', `#${sectionId}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     closeSidebar();
     if (sectionId === 'live-tracking' && liveTrackingMap) {
-        setTimeout(() => liveTrackingMap.invalidateSize(), 50);
+        setTimeout(refreshLiveMapLayout, 50);
     }
 }
 
@@ -272,8 +340,6 @@ function renderLivePetSelector() {
             </button>
         `;
     }).join('');
-    const onlineCount = liveTrackingPets.filter(pet => pet.collarOnline).length;
-    $('#collarContext').textContent = `${onlineCount} ${onlineCount === 1 ? 'collar' : 'collars'} active`;
 }
 
 function renderSelectedLivePet() {
@@ -371,6 +437,13 @@ function renderLiveMonitoringCards() {
     `;
 }
 
+function refreshLiveMapLayout() {
+    if (!liveTrackingMap) return;
+    liveTrackingMap.invalidateSize();
+    const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
+    if (pet) liveTrackingMap.setView(getDisplayedCoordinates(pet), liveTrackingMap.getZoom(), { animate: false });
+}
+
 function updateLiveMapSelection(openPopup = false) {
     const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
     if (!pet || !liveTrackingMap) return;
@@ -379,14 +452,15 @@ function updateLiveMapSelection(openPopup = false) {
     livePetMarkers.forEach((marker, petId) => {
         const markerPet = liveTrackingPets.find(item => item.id === petId);
         marker.setIcon(createLivePetMarkerIcon(markerPet));
+        marker.setZIndexOffset(petId === selectedLivePetId ? 1000 : 0);
     });
 
     if (liveSafeZoneCircle) liveTrackingMap.removeLayer(liveSafeZoneCircle);
     if (liveSafeZoneCenter) liveTrackingMap.removeLayer(liveSafeZoneCenter);
     liveSafeZoneCircle = window.L.circle(pet.safeZone.center, {
         radius: pet.safeZone.radius,
-        color: '#2f8f50',
-        fillColor: '#2f8f50',
+        color: '#2F8F4E',
+        fillColor: '#2F8F4E',
         fillOpacity: .1,
         opacity: .75,
         weight: 2,
@@ -400,7 +474,7 @@ function updateLiveMapSelection(openPopup = false) {
     liveSafeZoneCenter = window.L.circleMarker(pet.safeZone.center, {
         radius: 5,
         color: '#ffffff',
-        fillColor: '#2f8f50',
+        fillColor: '#2F8F4E',
         fillOpacity: 1,
         weight: 2
     }).addTo(liveTrackingMap).bindTooltip(`${escapeHtml(pet.safeZone.name)} safe-zone center`, { direction: 'top' });
@@ -409,13 +483,23 @@ function updateLiveMapSelection(openPopup = false) {
     if (openPopup) livePetMarkers.get(pet.id)?.openPopup();
 }
 
+function showMapUnavailableState(title, message) {
+    const container = $('#trackingMap');
+    if (!container) return;
+    container.innerHTML = `<div class="map-unavailable-state"><span><i class="bi bi-map"></i></span><div><strong>${escapeHtml(title)}</strong><p>${message}</p></div></div>`;
+    const centerButton = $('#centerMapBtn');
+    if (centerButton) centerButton.disabled = true;
+}
+
 function initializeLiveTrackingMap() {
     if (liveTrackingMap || !$('#trackingMap')) return;
     if (!window.L) {
-        $('#trackingMap').innerHTML = '<div class="data-notice m-3"><i class="bi bi-exclamation-circle"></i><div><strong>Map unavailable</strong><span>Leaflet could not be loaded. Check the internet connection and refresh the page.</span></div></div>';
+        showMapUnavailableState('Map unavailable', 'Leaflet could not be loaded. Check the internet connection and refresh the page.');
         return;
     }
 
+    const container = $('#trackingMap');
+    container.innerHTML = '';
     liveTrackingMap = window.L.map('trackingMap', { zoomControl: true, attributionControl: true });
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -423,14 +507,21 @@ function initializeLiveTrackingMap() {
     }).addTo(liveTrackingMap);
 
     liveTrackingPets.forEach(pet => {
-        const marker = window.L.marker(getDisplayedCoordinates(pet), { icon: createLivePetMarkerIcon(pet), riseOnHover: true })
-            .addTo(liveTrackingMap)
-            .bindPopup(createLivePetPopup(pet), { className: 'pet-location-popup', maxWidth: 250 });
+        const marker = window.L.marker(getDisplayedCoordinates(pet), {
+            icon: createLivePetMarkerIcon(pet),
+            riseOnHover: true
+        }).addTo(liveTrackingMap).bindPopup(createLivePetPopup(pet), {
+            className: 'pet-location-popup',
+            maxWidth: 270
+        });
         marker.on('click', () => selectLiveTrackingPet(pet.id, true));
         livePetMarkers.set(pet.id, marker);
     });
+
+    const centerButton = $('#centerMapBtn');
+    if (centerButton) centerButton.disabled = false;
     updateLiveMapSelection(false);
-    setTimeout(() => liveTrackingMap.invalidateSize(), 50);
+    setTimeout(refreshLiveMapLayout, 50);
 }
 
 function selectLiveTrackingPet(petId, openPopup = true) {
@@ -543,11 +634,11 @@ function renderNotifications() {
 function setUserInterface(name, email, photoUrl = '') {
     const safeName = name || 'User';
     const initial = safeName.charAt(0).toUpperCase();
-    ['#userName', '#greetingName', '#profileName'].forEach(selector => { if ($(selector)) $(selector).textContent = safeName; });
+    ['#greetingName', '#userName', '#welcomeName'].forEach(selector => { if ($(selector)) $(selector).textContent = safeName; });
     $('#profileName').value = safeName;
     $('#userEmail').textContent = email || '';
     $('#profileEmail').value = email || '';
-    ['#userAvatar', '#headerAvatar', '#settingsAvatar'].forEach(selector => {
+    ['#userAvatar', '#settingsAvatar'].forEach(selector => {
         const element = $(selector);
         if (!element) return;
         element.innerHTML = photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(safeName)}">` : initial;
@@ -570,8 +661,7 @@ async function loadUserPets(userId) {
 function attachStaticEvents() {
     $$('.sidebar-nav [data-section]').forEach(button => button.addEventListener('click', () => showSection(button.dataset.section)));
     $$('[data-section-trigger]').forEach(button => button.addEventListener('click', () => showSection(button.dataset.sectionTrigger)));
-    $('#mobileMenu')?.addEventListener('click', openSidebar);
-    $('#sidebarClose')?.addEventListener('click', closeSidebar);
+    $('#sidebarToggle')?.addEventListener('click', toggleSidebar);
     $('#sidebarBackdrop')?.addEventListener('click', closeSidebar);
 
     document.addEventListener('click', event => {
@@ -601,7 +691,9 @@ function attachStaticEvents() {
             if (selectedPet?.heartRate.available) selectedPet.heartRate.updated = 'Just now';
             if (selectedPet?.temperature.available) selectedPet.temperature.updated = 'Just now';
             if (selectedPet?.activity.available) selectedPet.activity.updated = 'Just now';
-            if (selectedPet) livePetMarkers.get(selectedPet.id)?.setPopupContent(createLivePetPopup(selectedPet));
+            if (selectedPet) {
+                livePetMarkers.get(selectedPet.id)?.setPopupContent(createLivePetPopup(selectedPet));
+            }
             renderSelectedLivePet();
             renderLiveMonitoringCards();
             button.disabled = false;
@@ -667,7 +759,7 @@ function attachStaticEvents() {
         if (file.size > 2 * 1024 * 1024) return showToast('Choose an image smaller than 2 MB.', 'bi-exclamation-circle-fill');
         const reader = new FileReader();
         reader.onload = () => {
-            ['#settingsAvatar', '#headerAvatar', '#userAvatar'].forEach(selector => { $(selector).innerHTML = `<img src="${reader.result}" alt="Profile preview">`; });
+            ['#settingsAvatar', '#userAvatar'].forEach(selector => { $(selector).innerHTML = `<img src="${reader.result}" alt="Profile preview">`; });
             showToast('Profile photo preview updated.');
         };
         reader.readAsDataURL(file);
@@ -729,6 +821,7 @@ function attachStaticEvents() {
     });
 
     $('#confirmLogoutBtn')?.addEventListener('click', handleLogout);
+    window.addEventListener('resize', handleSidebarViewportChange);
     window.addEventListener('online', updateConnectionStatus);
     window.addEventListener('offline', updateConnectionStatus);
 }
@@ -763,6 +856,7 @@ async function handleLogout() {
 }
 
 attachStaticEvents();
+syncSidebarForViewport();
 renderAllPets();
 renderNotifications();
 updateConnectionStatus();
