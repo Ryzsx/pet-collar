@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#217A3D">
+    <meta name="theme-color" content="#287B60">
     <title>Dashboard | SmartCollars</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,15 +17,16 @@
     <div class="dashboard-shell">
         <aside class="app-sidebar" id="sidebar" aria-label="Dashboard navigation">
             <div class="sidebar-brand">
-                <a href="../index.html" class="brand-link" aria-label="SmartCollars home">
-                    <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
+                <button class="brand-link brand-toggle" id="sidebarLogoToggle" type="button" aria-label="Expand navigation" aria-controls="sidebar" aria-expanded="false" title="Expand navigation">
+                    <span class="brand-mark"><i class="bi bi-heart-pulse-fill brand-logo-icon"></i><i class="bi bi-layout-sidebar-inset brand-hover-icon"></i></span>
                     <span class="brand-name">Smart<span>Collars</span></span>
-                </a>
+                </button>
+                <button class="sidebar-toggle sidebar-collapse-control" id="sidebarToggle" type="button" aria-label="Collapse navigation" aria-controls="sidebar" aria-expanded="true" title="Collapse navigation"><i class="bi bi-layout-sidebar-inset"></i></button>
             </div>
             <nav class="sidebar-nav nav flex-column" id="dashboardNav">
                 <span class="nav-heading">Workspace</span>
                 <button class="nav-link active" type="button" data-section="live-tracking" title="Live Monitoring"><i class="bi bi-activity"></i><span>Live Monitoring</span></button>
-                <button class="nav-link" type="button" data-section="pet-management" title="Pet Management"><i class="bi bi-person-hearts"></i><span>Pet Management</span></button>
+                <button class="nav-link" type="button" data-section="pet-management" title="Pet Management"><svg class="nav-paw-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><ellipse cx="6.4" cy="7.2" rx="2.15" ry="2.75"/><ellipse cx="17.6" cy="7.2" rx="2.15" ry="2.75"/><ellipse cx="10" cy="4.4" rx="2" ry="2.65"/><ellipse cx="14" cy="4.4" rx="2" ry="2.65"/><path d="M12 9.1c-2.25 0-6.15 3.65-6.15 6.85 0 2.18 1.58 3.65 3.6 3.65 1.12 0 1.75-.52 2.55-.52s1.43.52 2.55.52c2.02 0 3.6-1.47 3.6-3.65 0-3.2-3.9-6.85-6.15-6.85Z"/></svg><span>Pet Management</span></button>
                 <button class="nav-link" type="button" data-section="notifications" title="Notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
                 <button class="nav-link" type="button" data-section="history" title="History"><i class="bi bi-clock-history"></i><span>History</span></button>
                 <button class="nav-link" type="button" data-section="settings" title="Settings"><i class="bi bi-sliders"></i><span>Settings</span></button>
@@ -43,7 +44,7 @@
         <main class="dashboard-main">
             <header class="topbar">
                 <div class="d-flex align-items-center gap-3 min-w-0">
-                    <button class="sidebar-toggle header-sidebar-toggle" id="sidebarToggle" type="button" aria-label="Collapse navigation" aria-controls="sidebar" aria-expanded="true" title="Collapse navigation"><i class="bi bi-layout-sidebar-inset"></i></button>
+                    <button class="mobile-brand-toggle d-lg-none" id="mobileLogoToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" title="Open navigation"><span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span></button>
                     <div class="welcome-heading">
                         <h1>Welcome back, <span id="welcomeName">User</span>!</h1>
                         <p>Here is your latest pet monitoring overview.</p>
@@ -113,7 +114,7 @@
                         <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon green"><i class="bi bi-router"></i></span><span class="soft-badge success">Online</span></div><span>Collar status</span><strong class="word-value">Connected</strong><div class="signal-bars"><i></i><i></i><i></i><i></i></div><small>Strong signal · Battery 86%</small></article></div>
                     </div>
                     <div class="row g-4 mt-0">
-                        <div class="col-xl-8"><article class="app-card chart-panel h-100"><div class="card-topline"><div><h3>Health trend</h3><p>Heart rate and temperature over the last 12 hours</p></div><div class="chart-legend"><span><i class="green-line"></i> Heart rate</span><span><i class="orange-line"></i> Temperature</span></div></div><div class="line-chart"><div class="chart-y-labels"><span>120</span><span>100</span><span>80</span><span>60</span><span>40</span></div><svg viewBox="0 0 720 220" preserveAspectRatio="none" aria-label="Placeholder health graph"><defs><linearGradient id="healthFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F8F4E" stop-opacity=".18"/><stop offset="1" stop-color="#2F8F4E" stop-opacity="0"/></linearGradient></defs><path class="chart-area" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58 L720 220 L0 220 Z"/><path class="chart-line-primary" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58"/><path class="chart-line-secondary" d="M0 126 C60 120,85 126,130 118 S215 124,260 112 S345 116,390 110 S480 116,530 105 S620 112,720 100"/></svg><div class="chart-x-labels"><span>12 AM</span><span>3 AM</span><span>6 AM</span><span>9 AM</span><span>12 PM</span></div></div></article></div>
+                        <div class="col-xl-8"><article class="app-card chart-panel h-100"><div class="card-topline"><div><h3>Health trend</h3><p>Heart rate and temperature over the last 12 hours</p></div><div class="chart-legend"><span><i class="green-line"></i> Heart rate</span><span><i class="orange-line"></i> Temperature</span></div></div><div class="line-chart"><div class="chart-y-labels"><span>120</span><span>100</span><span>80</span><span>60</span><span>40</span></div><svg viewBox="0 0 720 220" preserveAspectRatio="none" aria-label="Placeholder health graph"><defs><linearGradient id="healthFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#359574" stop-opacity=".18"/><stop offset="1" stop-color="#359574" stop-opacity="0"/></linearGradient></defs><path class="chart-area" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58 L720 220 L0 220 Z"/><path class="chart-line-primary" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58"/><path class="chart-line-secondary" d="M0 126 C60 120,85 126,130 118 S215 124,260 112 S345 116,390 110 S480 116,530 105 S620 112,720 100"/></svg><div class="chart-x-labels"><span>12 AM</span><span>3 AM</span><span>6 AM</span><span>9 AM</span><span>12 PM</span></div></div></article></div>
                         <div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Today's activity</h3><p>Daily movement breakdown</p></div><span class="soft-badge success">On track</span></div><div class="activity-donut"><div class="donut"><div><strong>68%</strong><span>daily goal</span></div></div></div><div class="activity-breakdown"><div><span><i class="activity-dot resting"></i> Resting</span><strong>14h 20m</strong></div><div><span><i class="activity-dot walking"></i> Walking</span><strong>1h 45m</strong></div><div><span><i class="activity-dot running"></i> Running</span><strong>28m</strong></div></div></article></div>
                     </div>
                 </section>
@@ -121,7 +122,7 @@
                 <section class="dashboard-section" id="pet-management">
                     <div class="section-toolbar compact"><div><span class="section-kicker">Pet profiles</span><h2>Pet Management</h2><p>Add collars, review pet details, and manage safe zones.</p></div><button class="btn btn-brand" id="addPetBtn" type="button" data-bs-toggle="modal" data-bs-target="#addPetModal"><i class="bi bi-plus-lg"></i> Add new pet</button></div>
                     <div class="limit-note"><i class="bi bi-info-circle"></i> You can monitor up to 3 pets. <strong id="petCapacity">2 of 3 profiles used.</strong></div>
-                    <div class="row g-4"><div class="col-xl-4"><article class="app-card pet-list-card"><div class="card-topline"><div><h3>Your pets</h3><p>Select a profile to view details</p></div></div><div class="management-pet-list" id="petList"></div></article></div><div class="col-xl-8"><article class="app-card pet-detail-card" id="petDetail"></article></div></div>
+                    <div class="row g-4"><div class="col-xl-3"><article class="app-card pet-list-card"><div class="card-topline"><div><h3>Your pets</h3><p>Select a profile to view details</p></div></div><div class="management-pet-list" id="petList"></div></article></div><div class="col-xl-9"><article class="app-card pet-detail-card" id="petDetail"></article></div></div>
                 </section>
 
                 <section class="dashboard-section" id="notifications">

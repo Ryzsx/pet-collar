@@ -8,8 +8,6 @@ import {
     onAuthStateChanged,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    GoogleAuthProvider,
-    signInWithPopup,
     signOut,
     sendEmailVerification,
     sendPasswordResetEmail,
@@ -18,7 +16,6 @@ import {
     fetchSignInMethodsForEmail,
     setPersistence,
     browserLocalPersistence,
-    reauthenticateWithPopup,
     reauthenticateWithCredential,
     EmailAuthProvider,
     deleteUser,
@@ -46,6 +43,7 @@ import {
     limit,
     serverTimestamp,
     onSnapshot,
+    runTransaction,
     writeBatch,
     arrayUnion,
     arrayRemove,
@@ -79,8 +77,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: 'select_account' });
 
 (async () => {
     try {
@@ -113,26 +109,169 @@ async function signInWithEmail(email, password) {
     }
 }
 
-async function registerWithEmail(email, password, displayName = '') {
+function normalizeUsername(username) {
+    return String(username || '').trim().toLowerCase();
+}
+
+async function checkUsernameExists(username) {
     try {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        if (displayName) await updateProfile(cred.user, { displayName });
-        const settings = { url: window.location.origin + '/pages/verify-email.html', handleCodeInApp: true };
-        await sendEmailVerification(cred.user, settings);
-        return { success: true, user: cred.user };
+        const usernameSnapshot = await getDoc(doc(db, 'usernames', normalizeUsername(username)));
+        return { success: true, exists: usernameSnapshot.exists() };
     } catch (error) {
+        return {
+            success: false,
+            error: error.code === 'permission-denied' ? 'auth/username-check-unavailable' : error.code,
+            message: error.message
+        };
+    }
+}
+
+async function checkRegisteredEmail(email) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    try {
+        const emailSnapshot = await getDocs(query(
+            collection(db, 'usernames'),
+            where('email', '==', normalizedEmail),
+            limit(1)
+        ));
+        return { success: true, exists: !emailSnapshot.empty };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.code === 'permission-denied' ? 'auth/email-check-unavailable' : error.code,
+            message: error.message
+        };
+    }
+}
+
+async function signInWithIdentifier(identifier, password) {
+    const normalizedIdentifier = String(identifier || '').trim();
+    if (normalizedIdentifier.includes('@')) return signInWithEmail(normalizedIdentifier.toLowerCase(), password);
+
+    try {
+        const username = normalizeUsername(normalizedIdentifier);
+        const usernameSnapshot = await getDoc(doc(db, 'usernames', username));
+        if (!usernameSnapshot.exists() || !usernameSnapshot.data().email) {
+            return { success: false, error: 'auth/user-not-found' };
+        }
+        return signInWithEmail(usernameSnapshot.data().email, password);
+    } catch (error) {
+        return { success: false, error: error.code === 'permission-denied' ? 'auth/username-lookup-unavailable' : error.code, message: error.message };
+    }
+}
+
+async function registerWithUsername(username, email, password) {
+    const cleanUsername = String(username || '').trim();
+    const usernameLower = normalizeUsername(cleanUsername);
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const usernameRef = doc(db, 'usernames', usernameLower);
+
+    if (!/^[a-z0-9_]{3,30}$/.test(usernameLower)) {
+        return { success: false, error: 'auth/invalid-username' };
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return { success: false, error: 'auth/invalid-email' };
+    }
+    if (!(password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password))) {
+        return { success: false, error: 'auth/weak-password' };
+    }
+
+    try {
+        const existingUsername = await getDoc(usernameRef);
+        if (existingUsername.exists()) return { success: false, error: 'auth/username-already-in-use' };
+    } catch (error) {
+        return { success: false, error: error.code === 'permission-denied' ? 'auth/username-check-unavailable' : error.code, message: error.message };
+    }
+
+    let credential = null;
+    try {
+        credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+        await updateProfile(credential.user, { displayName: cleanUsername });
+
+        const userRef = doc(db, 'users', credential.user.uid);
+        await runTransaction(db, async transaction => {
+            const reservedUsername = await transaction.get(usernameRef);
+            if (reservedUsername.exists()) {
+                const usernameError = new Error('Username already exists.');
+                usernameError.code = 'auth/username-already-in-use';
+                throw usernameError;
+            }
+            transaction.set(userRef, {
+                username: cleanUsername,
+                usernameLower,
+                email: cleanEmail,
+                emailVerified: false,
+                registrationStatus: 'pending_verification',
+                createdAt: serverTimestamp()
+            });
+            transaction.set(usernameRef, {
+                uid: credential.user.uid,
+                email: cleanEmail
+            });
+        });
+
+        const registrationUrl = new URL('../pages/register.html', import.meta.url);
+        let verificationSent = true;
+        try {
+            await sendEmailVerification(credential.user, { url: registrationUrl.href, handleCodeInApp: false });
+        } catch (verificationError) {
+            verificationSent = false;
+        }
+        return { success: true, user: credential.user, verificationSent };
+    } catch (error) {
+        if (credential?.user) {
+            try { await deleteUser(credential.user); } catch { /* Best-effort rollback. */ }
+        }
         return { success: false, error: error.code, message: error.message };
     }
 }
 
-async function signInWithGoogle() {
+async function resetPasswordByIdentifier(identifier) {
+    const cleanIdentifier = String(identifier || '').trim();
+    const isEmail = cleanIdentifier.includes('@');
+    const normalizedValue = isEmail ? cleanIdentifier.toLowerCase() : normalizeUsername(cleanIdentifier);
+
+    if (isEmail) {
+        try {
+            const accountSnapshot = await getDocs(query(
+                collection(db, 'usernames'),
+                where('email', '==', normalizedValue),
+                limit(1)
+            ));
+
+            if (accountSnapshot.empty) {
+                return { success: false, error: 'auth/user-not-found' };
+            }
+
+            const deliveryEmail = String(accountSnapshot.docs[0].data().email || '').trim().toLowerCase();
+            if (!deliveryEmail) return { success: false, error: 'auth/user-not-found' };
+
+            const result = await resetPassword(deliveryEmail);
+            return result.success ? { ...result, deliveryEmail } : result;
+        } catch (error) {
+            return {
+                success: false,
+                error: 'auth/account-check-failed',
+                message: error.message
+            };
+        }
+    }
+
     try {
-        clearAuthCache();
-        const result = await signInWithPopup(auth, provider);
-        return { success: true, user: result.user };
+        const usernameSnapshot = await getDoc(doc(db, 'usernames', normalizedValue));
+        if (!usernameSnapshot.exists() || !usernameSnapshot.data().email) {
+            return { success: false, error: 'auth/user-not-found' };
+        }
+
+        const deliveryEmail = String(usernameSnapshot.data().email).trim().toLowerCase();
+        const result = await resetPassword(deliveryEmail);
+        return result.success ? { ...result, deliveryEmail } : result;
     } catch (error) {
-        console.error('Google sign-in error:', error);
-        return { success: false, error: error.code, message: error.message };
+        return {
+            success: false,
+            error: 'auth/account-check-failed',
+            message: error.message
+        };
     }
 }
 
@@ -148,8 +287,27 @@ async function signOutUser() {
 
 async function resetPassword(email) {
     try {
-        const settings = { url: window.location.origin + '/pages/login.html', handleCodeInApp: true };
+        const successPageUrl = new URL('../pages/password-reset-success.html', import.meta.url);
+        const settings = { url: successPageUrl.href, handleCodeInApp: false };
         await sendPasswordResetEmail(auth, email, settings);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.code, message: error.message };
+    }
+}
+
+async function verifyPasswordResetAction(code) {
+    try {
+        const email = await verifyPasswordResetCode(auth, code);
+        return { success: true, email };
+    } catch (error) {
+        return { success: false, error: error.code, message: error.message };
+    }
+}
+
+async function completePasswordReset(code, newPassword) {
+    try {
+        await confirmPasswordReset(auth, code, newPassword);
         return { success: true };
     } catch (error) {
         return { success: false, error: error.code, message: error.message };
@@ -162,7 +320,8 @@ async function resendVerification(user) {
         if (!target) return { success: false, message: 'No user' };
         await reload(target);
         if (target.emailVerified) return { success: true, alreadyVerified: true };
-        const settings = { url: window.location.origin + '/pages/verify-email.html', handleCodeInApp: true };
+        const registrationUrl = new URL('../pages/register.html', import.meta.url);
+        const settings = { url: registrationUrl.href, handleCodeInApp: false };
         await sendEmailVerification(target, settings);
         return { success: true, alreadyVerified: false };
     } catch (error) {
@@ -238,17 +397,6 @@ async function reauthenticateUser(password) {
         if (!user || !user.email) throw new Error('No user or email');
         const cred = EmailAuthProvider.credential(user.email, password);
         await reauthenticateWithCredential(user, cred);
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e.code, message: e.message };
-    }
-}
-
-async function reauthenticateWithGoogle() {
-    try {
-        const user = auth.currentUser;
-        if (!user) throw new Error('No user');
-        await reauthenticateWithPopup(user, provider);
         return { success: true };
     } catch (e) {
         return { success: false, error: e.code, message: e.message };
@@ -575,14 +723,18 @@ export {
     auth,
     db,
     storage,
-    provider,
     // Auth
     onAuthStateChanged,
     signInWithEmail,
-    registerWithEmail,
-    signInWithGoogle,
+    signInWithIdentifier,
+    checkUsernameExists,
+    checkRegisteredEmail,
+    registerWithUsername,
     signOutUser as signOut,
     resetPassword,
+    resetPasswordByIdentifier,
+    verifyPasswordResetAction,
+    completePasswordReset,
     resendVerification,
     handleEmailVerification,
     handlePasswordReset,
@@ -591,7 +743,6 @@ export {
     isEmailLink,
     updateUserProfile,
     reauthenticateUser,
-    reauthenticateWithGoogle,
     deleteUserAccount,
     changePassword,
     changeEmail,
@@ -617,6 +768,7 @@ export {
     limit,
     serverTimestamp,
     onSnapshot,
+    runTransaction,
     writeBatch,
     arrayUnion,
     arrayRemove,

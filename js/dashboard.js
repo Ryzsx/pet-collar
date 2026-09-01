@@ -147,30 +147,33 @@ function openSidebar() {
 }
 
 const SIDEBAR_BREAKPOINT = 992;
-const SIDEBAR_STORAGE_KEY = 'smartCollarsSidebarCollapsed';
 let desktopSidebarViewport = window.innerWidth >= SIDEBAR_BREAKPOINT;
-
-function getSavedSidebarState() {
-    try {
-        return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
-    } catch {
-        return false;
-    }
-}
 
 function updateSidebarToggleState() {
     const sidebar = $('#sidebar');
     const toggle = $('#sidebarToggle');
-    if (!sidebar || !toggle) return;
+    const logoToggle = $('#sidebarLogoToggle');
+    const mobileLogoToggle = $('#mobileLogoToggle');
+    if (!sidebar) return;
 
     const isMobile = window.innerWidth < SIDEBAR_BREAKPOINT;
     const isCollapsed = sidebar.classList.contains('collapsed');
     const isOpen = sidebar.classList.contains('open');
-    const label = isMobile ? `${isOpen ? 'Close' : 'Open'} navigation` : `${isCollapsed ? 'Expand' : 'Collapse'} navigation`;
-    toggle.setAttribute('aria-label', label);
-    toggle.setAttribute('title', label);
-    toggle.setAttribute('aria-expanded', String(isMobile ? isOpen : !isCollapsed));
-    toggle.querySelector('i').className = 'bi bi-layout-sidebar-inset';
+    const isExpanded = isMobile ? isOpen : !isCollapsed;
+    const label = `${isExpanded ? 'Collapse' : 'Expand'} navigation`;
+
+    if (toggle) {
+        toggle.setAttribute('aria-label', label);
+        toggle.setAttribute('title', label);
+        toggle.setAttribute('aria-expanded', String(isExpanded));
+        toggle.querySelector('i').className = 'bi bi-layout-sidebar-inset';
+    }
+    [logoToggle, mobileLogoToggle].forEach(button => {
+        if (!button) return;
+        button.setAttribute('aria-label', label);
+        button.setAttribute('title', label);
+        button.setAttribute('aria-expanded', String(isExpanded));
+    });
 }
 
 function toggleSidebar() {
@@ -182,12 +185,7 @@ function toggleSidebar() {
         return;
     }
 
-    const isCollapsed = sidebar.classList.toggle('collapsed');
-    try {
-        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isCollapsed));
-    } catch {
-        // The toggle still works when browser storage is unavailable.
-    }
+    sidebar.classList.toggle('collapsed');
     updateSidebarToggleState();
     setTimeout(refreshLiveMapLayout, 260);
 }
@@ -201,7 +199,7 @@ function syncSidebarForViewport() {
         sidebar.classList.remove('collapsed');
     } else {
         closeSidebar();
-        sidebar.classList.toggle('collapsed', getSavedSidebarState());
+        sidebar.classList.add('collapsed');
     }
     updateSidebarToggleState();
     setTimeout(refreshLiveMapLayout, 260);
@@ -459,8 +457,8 @@ function updateLiveMapSelection(openPopup = false) {
     if (liveSafeZoneCenter) liveTrackingMap.removeLayer(liveSafeZoneCenter);
     liveSafeZoneCircle = window.L.circle(pet.safeZone.center, {
         radius: pet.safeZone.radius,
-        color: '#2F8F4E',
-        fillColor: '#2F8F4E',
+        color: '#359574',
+        fillColor: '#359574',
         fillOpacity: .1,
         opacity: .75,
         weight: 2,
@@ -474,7 +472,7 @@ function updateLiveMapSelection(openPopup = false) {
     liveSafeZoneCenter = window.L.circleMarker(pet.safeZone.center, {
         radius: 5,
         color: '#ffffff',
-        fillColor: '#2F8F4E',
+        fillColor: '#359574',
         fillOpacity: 1,
         weight: 2
     }).addTo(liveTrackingMap).bindTooltip(`${escapeHtml(pet.safeZone.name)} safe-zone center`, { direction: 'top' });
@@ -578,23 +576,42 @@ function renderPetDetail() {
         return;
     }
     container.innerHTML = `
-        <div class="pet-detail-hero">
-            <img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">
-            <div><h3>${escapeHtml(pet.name)}</h3><p>${escapeHtml(pet.breed)} · ${escapeHtml(pet.gender)}</p><span class="status-chip ${pet.online ? 'online' : 'offline'}">${pet.online ? 'Collar online' : 'Collar offline'}</span></div>
-            <div class="pet-detail-actions">
-                <button class="btn btn-soft" id="editPetPhotoBtn" type="button"><i class="bi bi-camera"></i> Edit photo</button>
-                <button class="btn btn-danger-soft" type="button" data-delete-pet="${escapeHtml(pet.id)}" data-bs-toggle="modal" data-bs-target="#deletePetModal"><i class="bi bi-trash3"></i> Delete</button>
+        <div class="pet-profile-showcase">
+            <div class="pet-profile-facts pet-profile-facts-left">
+                <div><span>Pet name</span><strong>${escapeHtml(pet.name)}</strong></div>
+                <div><span>Pet type</span><strong>${escapeHtml(pet.type)}</strong></div>
+                <div><span>Breed</span><strong>${escapeHtml(pet.breed)}</strong></div>
+            </div>
+            <div class="pet-profile-center">
+                <div class="pet-profile-title">
+                    <span aria-hidden="true"><i class="bi bi-heart-fill"></i></span>
+                    <h3>${escapeHtml(pet.name)}</h3>
+                    <span aria-hidden="true"><i class="bi bi-star-fill"></i></span>
+                </div>
+                <div class="pet-portrait-stage">
+                    <img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">
+                    <span class="status-chip ${pet.online ? 'online' : 'offline'}">${pet.online ? 'Collar online' : 'Collar offline'}</span>
+                </div>
+                <div class="pet-profile-note">
+                    <p><strong>${escapeHtml(pet.name)}</strong> is a ${escapeHtml(pet.breed)} registered to this SmartCollars account.</p>
+                    <div class="pet-detail-actions">
+                        <button class="btn btn-brand" id="editPetPhotoBtn" type="button"><i class="bi bi-camera"></i> Edit photo</button>
+                        <button class="btn btn-danger-soft" type="button" data-delete-pet="${escapeHtml(pet.id)}" data-bs-toggle="modal" data-bs-target="#deletePetModal"><i class="bi bi-trash3"></i> Delete</button>
+                    </div>
+                </div>
+            </div>
+            <div class="pet-profile-facts pet-profile-facts-right">
+                <div><span>Gender</span><strong>${escapeHtml(pet.gender)}</strong></div>
+                <div><span>Collar status</span><strong>${pet.online ? 'Connected' : 'Offline'}</strong></div>
+                <div><span>Battery</span><strong>${pet.battery}%</strong></div>
             </div>
         </div>
-        <div class="detail-grid">
-            <div class="detail-field"><span>Pet name</span><strong>${escapeHtml(pet.name)}</strong></div>
-            <div class="detail-field"><span>Pet type</span><strong>${escapeHtml(pet.type)}</strong></div>
-            <div class="detail-field"><span>Breed</span><strong>${escapeHtml(pet.breed)}</strong></div>
-            <div class="detail-field"><span>Gender</span><strong>${escapeHtml(pet.gender)}</strong></div>
-            <div class="detail-field"><span>Device ID · Read only</span><strong class="device-value">${escapeHtml(pet.deviceId)} <i class="bi bi-lock-fill"></i></strong></div>
-            <div class="detail-field"><span>Collar status</span><strong>${pet.online ? 'Connected' : 'Offline'} · ${pet.battery}%</strong></div>
+        <div class="pet-device-strip">
+            <span><i class="bi bi-router"></i> Paired collar</span>
+            <strong>${escapeHtml(pet.deviceId)}</strong>
+            <small><i class="bi bi-lock-fill"></i> Read only</small>
         </div>
-        <div class="geofence-summary"><i class="bi bi-shield-check"></i><div><strong>${escapeHtml(pet.geofence)}</strong><span>${pet.radius} m radius · ${pet.safe ? 'Pet is currently inside' : 'Pet is currently outside'}</span></div><button class="btn btn-soft" type="button" data-bs-toggle="modal" data-bs-target="#geofenceModal"><i class="bi bi-pencil"></i> Edit geofence</button></div>
+        <div class="geofence-summary"><i class="bi bi-shield-check"></i><div><strong>${escapeHtml(pet.geofence)}</strong><span>${pet.radius} m radius &middot; ${pet.safe ? 'Pet is currently inside' : 'Pet is currently outside'}</span></div><button class="btn btn-soft" type="button" data-bs-toggle="modal" data-bs-target="#geofenceModal"><i class="bi bi-pencil"></i> Edit geofence</button></div>
     `;
 }
 
@@ -662,6 +679,8 @@ function attachStaticEvents() {
     $$('.sidebar-nav [data-section]').forEach(button => button.addEventListener('click', () => showSection(button.dataset.section)));
     $$('[data-section-trigger]').forEach(button => button.addEventListener('click', () => showSection(button.dataset.sectionTrigger)));
     $('#sidebarToggle')?.addEventListener('click', toggleSidebar);
+    $('#sidebarLogoToggle')?.addEventListener('click', toggleSidebar);
+    $('#mobileLogoToggle')?.addEventListener('click', openSidebar);
     $('#sidebarBackdrop')?.addEventListener('click', closeSidebar);
 
     document.addEventListener('click', event => {
@@ -867,6 +886,11 @@ showSection(pageMeta[initialSection] ? initialSection : 'live-tracking');
 
 onAuthStateChanged(auth, async user => {
     if (!user) {
+        window.location.href = '../pages/login.html';
+        return;
+    }
+    if (!user.emailVerified) {
+        await signOut();
         window.location.href = '../pages/login.html';
         return;
     }

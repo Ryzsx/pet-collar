@@ -16,7 +16,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .google-btn:disabled,
         .sign-in-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
@@ -73,18 +72,12 @@
 
             <!-- RIGHT: LOGIN FORM -->
             <section class="login-form-section">
-                <a href="../index.html" class="back-link"><span>←</span> Back to Home</a>
+                <a href="../index.html" class="back-link">Back to Home</a>
                 <div class="form-wrapper">
                     <div class="form-heading">
                         <span class="eyebrow">OWNER SIGN IN</span>
                         <h2>Good to see you again.</h2>
                         <p>Sign in to check on your pet's location, activity, and health in real time.</p>
-                    </div>
-
-                    <!-- STATUS -->
-                    <div class="login-status">
-                        <span class="status-dot" id="statusDot"></span>
-                        <span id="statusText">Not logged in</span>
                     </div>
 
                     <!-- Message placeholders -->
@@ -94,8 +87,8 @@
                     <!-- LOGIN FORM -->
                     <form id="loginForm">
                         <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email" autofocus>
+                            <label for="loginIdentifier">Email or Username</label>
+                            <input type="text" id="loginIdentifier" name="identifier" placeholder="Enter your email or username" required autocomplete="username" autofocus>
                         </div>
                         <div class="form-group">
                             <div class="label-row"><label for="password">Password</label></div>
@@ -104,16 +97,9 @@
                                 <button type="button" class="show-password" id="showPassword" aria-label="Toggle password visibility">Show</button>
                             </div>
                         </div>
-                        <div class="form-options">
-                            <label class="remember">
-                                <input type="checkbox" id="remember">
-                                <span>Remember this device</span>
-                            </label>
-                            <a href="forgot-password.html" class="forgot-password" id="forgotLink">Forgot password?</a>
-                        </div>
+                        <a href="forgot-password.html" class="forgot-password" id="forgotLink">Forgot password?</a>
                         <button type="submit" class="sign-in-btn" id="signInBtn">
                             <span>Sign in</span>
-                            <span class="arrow">→</span>
                         </button>
                     </form>
 
@@ -121,15 +107,6 @@
                         New to SmartCollars? <a href="register.html">Create an account</a>
                     </div>
 
-                    <div class="divider"><span></span><p>or</p><span></span></div>
-                    <button type="button" class="google-btn" id="googleBtn">
-                        <span class="google-icon">G</span>
-                        <span>Continue with Google</span>
-                    </button>
-                    <div class="security-note">
-                        <span class="security-icon">✓</span>
-                        <p>Your information is securely protected.</p>
-                    </div>
                 </div>
             </section>
         </div>
@@ -152,25 +129,20 @@
         // ============================================
         import { 
             auth,
-            signInWithEmail,
-            signInWithGoogle,
-            onAuthStateChanged,
-            getCurrentUser,
-            signOut
+            signInWithIdentifier,
+            onAuthStateChanged
         } from '../js/firebase-init.js';
 
         // ============================================
         // DOM REFS
         // ============================================
-        const emailInput = document.getElementById('email');
+        const identifierInput = document.getElementById('loginIdentifier');
         const passwordInput = document.getElementById('password');
         const showPasswordBtn = document.getElementById('showPassword');
         const loginForm = document.getElementById('loginForm');
         const statusText = document.getElementById('statusText');
         const statusDot = document.getElementById('statusDot');
         const signInBtn = document.getElementById('signInBtn');
-        const googleBtn = document.getElementById('googleBtn');
-        const rememberCheckbox = document.getElementById('remember');
         const forgotLink = document.getElementById('forgotLink');
         const errorMsg = document.getElementById('errorMessage');
         const successMsg = document.getElementById('successMessage');
@@ -209,20 +181,14 @@
             if (!signInBtn) return;
             signInBtn.disabled = isLoading;
             signInBtn.innerHTML = isLoading
-                ? '<span class="spinner">⟳</span> Signing in...'
-                : '<span>Sign in</span><span class="arrow">→</span>';
+                ? '<span class="spinner" aria-hidden="true"></span><span>Signing in...</span>'
+                : '<span>Sign in</span>';
         }
 
-        function setGoogleLoading(isLoading) {
-            if (!googleBtn) return;
-            googleBtn.disabled = isLoading;
-            googleBtn.innerHTML = isLoading
-                ? '<span class="spinner">⟳</span> Signing in...'
-                : '<span class="google-icon">G</span><span>Continue with Google</span>';
-        }
-
-        function isValidEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        function clearLoginFields() {
+            loginForm.reset();
+            passwordInput.type = 'password';
+            showPasswordBtn.textContent = 'Show';
         }
 
         // ============================================
@@ -241,15 +207,13 @@
         // ============================================
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                updateStatus(`Welcome back, ${user.email}`, true);
                 console.log('✅ User logged in:', user.email);
                 if (!user.emailVerified) {
-                    showError('⚠️ Please verify your email before signing in.');
+                    window.location.replace('register.html');
+                    return;
                 } else {
                     hideMessages();
-                    // Keep the login page visible when it was opened from the
-                    // landing page. A successful form or Google sign-in still
-                    // redirects to the dashboard in its own handler below.
+                    // Keep the login page visible when it was opened from the landing page.
                     updateStatus(`Signed in as ${user.email}. Sign in to continue or choose another account.`, true);
                 }
             } else {
@@ -259,21 +223,17 @@
         });
 
         // ============================================
-        // 3. EMAIL SIGN IN
+        // 3. USERNAME OR EMAIL SIGN IN
         // ============================================
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             hideMessages();
 
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
+            const identifier = identifierInput.value.trim();
+            const password = passwordInput.value;
 
-            if (!email || !password) {
-                showError('Please enter your email and password.');
-                return;
-            }
-            if (!isValidEmail(email)) {
-                showError('Please enter a valid email address.');
+            if (!identifier || !password) {
+                showError('Please enter your username or email and password.');
                 return;
             }
 
@@ -281,8 +241,8 @@
             updateStatus('Signing in...', false);
 
             try {
-                // ✅ Use the imported signInWithEmail function
-                const result = await signInWithEmail(email, password);
+                const result = await signInWithIdentifier(identifier, password);
+                clearLoginFields();
                 
                 console.log('✅ Login result:', result);
 
@@ -293,11 +253,7 @@
 
                     // Check if email is verified
                     if (!result.user.emailVerified) {
-                        showError('⚠️ Please verify your email first. Check your inbox.');
-                        // Resend verification
-                        await result.user.sendEmailVerification();
-                        setTimeout(() => window.location.href = 'verify-email.html', 1500);
-                        setLoading(false);
+                        window.location.href = 'register.html';
                         return;
                     }
 
@@ -306,104 +262,30 @@
                 } else {
                     // ❌ Show the actual Firebase error
                     console.error('❌ Login error:', result);
-                    const errorMessages = {
-                        'auth/user-not-found': 'No account found with this email.',
-                        'auth/wrong-password': 'Incorrect password.',
-                        'auth/invalid-email': 'Invalid email address.',
-                        'auth/too-many-requests': 'Too many attempts. Try again later.',
-                        'auth/invalid-credential': 'Invalid credentials. Please try again.',
-                        'auth/network-request-failed': 'Network error. Please check your connection.'
-                    };
-                    showError(errorMessages[result.error] || result.message || 'Login failed.');
+                    showError('Invalid username/email or password.');
                     updateStatus('Login failed', false);
                     setLoading(false);
                 }
             } catch (error) {
+                clearLoginFields();
                 console.error('❌ Unexpected login error:', error);
-                showError('An unexpected error occurred. Please try again.');
+                showError('Invalid username/email or password.');
                 updateStatus('Login failed', false);
                 setLoading(false);
             }
         });
 
         // ============================================
-        // 4. GOOGLE SIGN IN
-        // ============================================
-        googleBtn.addEventListener('click', async function() {
-            hideMessages();
-            setGoogleLoading(true);
-            updateStatus('Signing in with Google...', false);
-
-            try {
-                // ✅ Use the imported signInWithGoogle function
-                const result = await signInWithGoogle();
-                
-                console.log('✅ Google login result:', result);
-
-                if (result.success) {
-                    console.log('✅ Google login success:', result.user.email);
-                    showSuccess('Signed in with Google!');
-                    updateStatus('Signed in with Google! ✅', true);
-
-                    if (!result.user.emailVerified) {
-                        showError('⚠️ Please verify your email first. Check your inbox.');
-                        await result.user.sendEmailVerification();
-                        setTimeout(() => window.location.href = 'verify-email.html', 1500);
-                        setGoogleLoading(false);
-                        return;
-                    }
-
-                    setTimeout(() => window.location.href = 'dashboard.html', 500);
-                } else {
-                    console.error('❌ Google sign-in error:', result);
-                    const errorMessages = {
-                        'auth/popup-closed-by-user': 'Sign-in cancelled. Please try again.',
-                        'auth/account-exists-with-different-credential': 'An account already exists with the same email but different sign-in method.',
-                        'auth/popup-blocked': 'Please allow pop-ups for this site and try again.',
-                        'auth/network-request-failed': 'Network error. Please check your connection.'
-                    };
-                    showError(errorMessages[result.error] || result.message || 'Google sign-in failed.');
-                    updateStatus('Google sign-in failed', false);
-                }
-            } catch (error) {
-                console.error('❌ Unexpected Google sign-in error:', error);
-                showError('An unexpected error occurred. Please try again.');
-                updateStatus('Google sign-in failed', false);
-            } finally {
-                setGoogleLoading(false);
-            }
-        });
-
-        // ============================================
-        // 5. REMEMBER ME
-        // ============================================
-        if (rememberCheckbox && emailInput) {
-            const remembered = localStorage.getItem('rememberedEmail');
-            if (remembered) {
-                emailInput.value = remembered;
-                rememberCheckbox.checked = true;
-            }
-
-            rememberCheckbox.addEventListener('change', function() {
-                if (this.checked) {
-                    localStorage.setItem('rememberedEmail', emailInput.value);
-                } else {
-                    localStorage.removeItem('rememberedEmail');
-                }
-            });
-        }
-
-        // ============================================
-        // 6. FORGOT PASSWORD
+        // 4. FORGOT PASSWORD
         // ============================================
         if (forgotLink) {
             forgotLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                const email = emailInput.value.trim();
-                if (email && isValidEmail(email)) {
-                    localStorage.setItem('forgotPasswordEmail', email);
+                const identifier = identifierInput.value.trim();
+                if (identifier) {
+                    localStorage.setItem('forgotPasswordIdentifier', identifier.toLowerCase());
                 }
-                window.location.href = 'forgotpass.html';
+                window.location.href = 'forgot-password.html';
             });
         }
 

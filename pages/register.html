@@ -52,7 +52,7 @@
 
             <!-- RIGHT: REGISTRATION FORM -->
             <section class="login-form-section">
-                <a href="index.html" class="back-link"><span>←</span> Back to Home</a>
+                <a href="../index.html" class="back-link">Back to Home</a>
                 <div class="form-wrapper">
                     <div class="form-heading">
                         <span class="eyebrow">CREATE ACCOUNT</span>
@@ -60,50 +60,65 @@
                         <p>Set up your account and start tracking your pet's well‑being.</p>
                     </div>
 
-                    <!-- STATUS -->
-                    <div class="login-status">
-                        <span class="status-dot" id="statusDot"></span>
-                        <span id="statusText">Ready to sign up</span>
-                    </div>
-
                     <!-- Message placeholders -->
-                    <div id="errorMessage" class="error-message" style="display:none;"></div>
-                    <div id="successMessage" class="success-message" style="display:none;"></div>
+                    <div id="errorMessage" class="registration-message error-message" role="alert" aria-live="assertive"></div>
+                    <div id="successMessage" class="registration-message success-message" role="status" aria-live="polite"></div>
 
                     <!-- REGISTER FORM -->
                     <form id="registerForm">
                         <div class="form-group">
+                            <label for="regUsername">Username</label>
+                            <input type="text" id="regUsername" name="username" placeholder="Create username" required autocomplete="username" autofocus>
+                        </div>
+                        <div class="form-group">
                             <label for="regEmail">Email</label>
-                            <input type="email" id="regEmail" placeholder="Enter your email" required autocomplete="email" autofocus>
+                            <input type="email" id="regEmail" name="email" placeholder="Enter your email" required autocomplete="email">
                         </div>
                         <div class="form-group">
                             <label for="regPassword">Password</label>
                             <div class="password-wrapper">
-                                <input type="password" id="regPassword" placeholder="Create a password (min. 6 characters)" required autocomplete="new-password">
+                                <input type="password" id="regPassword" name="password" placeholder="Create a strong password" required autocomplete="new-password">
                                 <button type="button" class="show-password" id="showPasswordReg" aria-label="Toggle password visibility">Show</button>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label for="regConfirmPassword">Confirm Password</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="regConfirmPassword" name="confirmPassword" placeholder="Enter your password again" required autocomplete="new-password">
+                                <button type="button" class="show-password" id="showConfirmPasswordReg" aria-label="Toggle confirmed password visibility">Show</button>
+                            </div>
+                        </div>
+                        <div class="registration-password-requirements" id="passwordRequirements" aria-live="polite" hidden>
+                            <strong>Password requirements</strong>
+                            <ul>
+                                <li data-password-rule="length">At least 8 characters</li>
+                                <li data-password-rule="uppercase">One uppercase letter</li>
+                                <li data-password-rule="lowercase">One lowercase letter</li>
+                                <li data-password-rule="number">One number</li>
+                                <li data-password-rule="special">One special character</li>
+                            </ul>
+                        </div>
                         <button type="submit" class="sign-in-btn" id="signUpBtn">
                             <span>Create Account</span>
-                            <span class="arrow">→</span>
                         </button>
                     </form>
 
+                    <section class="registration-verification" id="registrationVerification" aria-live="polite" hidden>
+                        <span class="registration-verification-icon" id="verificationIcon" aria-hidden="true">@</span>
+                        <p class="eyebrow">EMAIL VERIFICATION REQUIRED</p>
+                        <h3 id="verificationHeading">Check your email</h3>
+                        <p id="verificationDescription">A verification link was sent to your email. Your registration will be completed after Firebase verifies your email.</p>
+                        <p class="registration-verification-status" id="verificationStatus"></p>
+                        <button class="sign-in-btn" id="checkVerificationBtn" type="button">I've Verified My Email</button>
+                        <button class="verification-resend-btn" id="registrationResendBtn" type="button">Resend Verification Email</button>
+                        <button class="sign-in-btn" id="continueToLoginBtn" type="button" hidden>Continue to Login</button>
+                    </section>
+
                     <!-- LOGIN LINK -->
-                    <div class="login-text">
+                    <div class="login-text" id="loginPrompt">
                         Already have an account? <a href="login.html">Sign in</a>
                     </div>
 
-                    <!-- DIVIDER & GOOGLE -->
-                    <div class="divider"><span></span><p>or</p><span></span></div>
-                    <button type="button" class="google-btn" id="googleRegBtn">
-                        <span class="google-icon">G</span>
-                        <span>Continue with Google</span>
-                    </button>
-                    <div class="security-note">
-                        <span class="security-icon">✓</span>
-                        <p>Your information is securely protected.</p>
-                    </div>
                 </div>
             </section>
         </div>
@@ -118,60 +133,77 @@
         // ============================================
         import { 
             auth,
-            registerWithEmail,
-            signInWithGoogle,
-            onAuthStateChanged,
-            getCurrentUser
+            checkUsernameExists,
+            checkRegisteredEmail,
+            registerWithUsername,
+            resendVerification,
+            reloadUser,
+            saveUserData,
+            signOut,
+            onAuthStateChanged
         } from '../js/firebase-init.js';
 
         // ============================================
         // DOM ELEMENTS
         // ============================================
+        const usernameInput = document.getElementById('regUsername');
         const emailInput = document.getElementById('regEmail');
         const passwordInput = document.getElementById('regPassword');
+        const confirmPasswordInput = document.getElementById('regConfirmPassword');
         const showPasswordBtn = document.getElementById('showPasswordReg');
+        const showConfirmPasswordBtn = document.getElementById('showConfirmPasswordReg');
         const registerForm = document.getElementById('registerForm');
-        const statusText = document.getElementById('statusText');
-        const statusDot = document.getElementById('statusDot');
         const signUpBtn = document.getElementById('signUpBtn');
-        const googleRegBtn = document.getElementById('googleRegBtn');
         const errorMsg = document.getElementById('errorMessage');
         const successMsg = document.getElementById('successMessage');
+        const passwordRequirements = document.getElementById('passwordRequirements');
+        const registrationVerification = document.getElementById('registrationVerification');
+        const verificationIcon = document.getElementById('verificationIcon');
+        const verificationHeading = document.getElementById('verificationHeading');
+        const verificationDescription = document.getElementById('verificationDescription');
+        const verificationStatus = document.getElementById('verificationStatus');
+        const checkVerificationBtn = document.getElementById('checkVerificationBtn');
+        const registrationResendBtn = document.getElementById('registrationResendBtn');
+        const continueToLoginBtn = document.getElementById('continueToLoginBtn');
+        const loginPrompt = document.getElementById('loginPrompt');
+
+        let verificationPoll = null;
+        let verificationCheckRunning = false;
+        let registrationSubmitting = false;
+        let registrationCompleted = false;
 
         // ============================================
         // PASSWORD TOGGLE
         // ============================================
-        showPasswordBtn.addEventListener('click', function() {
-            const isPassword = passwordInput.type === 'password';
-            passwordInput.type = isPassword ? 'text' : 'password';
-            this.textContent = isPassword ? 'Hide' : 'Show';
+        [[showPasswordBtn, passwordInput], [showConfirmPasswordBtn, confirmPasswordInput]].forEach(([button, input]) => {
+            button.addEventListener('click', function() {
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                this.textContent = isPassword ? 'Hide' : 'Show';
+            });
         });
 
         // ============================================
         // MESSAGE HELPERS
         // ============================================
-        function updateStatus(message, isSuccess = false) {
-            statusText.textContent = message;
-            statusDot.classList.toggle('success', isSuccess);
-            console.log('[Status]', message, isSuccess ? '✅' : '❌');
-        }
-
-        function showError(message) {
-            errorMsg.textContent = message;
-            errorMsg.style.display = 'block';
-            successMsg.style.display = 'none';
-        }
-
-        function showSuccess(message) {
-            successMsg.textContent = message;
-            successMsg.style.display = 'block';
-            errorMsg.style.display = 'none';
+        function showMessage(message, type) {
+            const activeMessage = type === 'success' ? successMsg : errorMsg;
+            const inactiveMessage = type === 'success' ? errorMsg : successMsg;
+            activeMessage.textContent = message;
+            activeMessage.style.display = 'flex';
+            inactiveMessage.style.display = 'none';
+            inactiveMessage.textContent = '';
         }
 
         function hideMessages() {
             errorMsg.style.display = 'none';
             successMsg.style.display = 'none';
+            errorMsg.textContent = '';
+            successMsg.textContent = '';
         }
+
+        const showError = message => showMessage(message, 'error');
+        const showSuccess = message => showMessage(message, 'success');
 
         // ============================================
         // LOADING STATE
@@ -179,15 +211,17 @@
         function setLoading(isLoading) {
             signUpBtn.disabled = isLoading;
             signUpBtn.innerHTML = isLoading
-                ? '<span class="spinner">⟳</span> Creating account...'
-                : '<span>Create Account</span><span class="arrow">→</span>';
+                ? '<span class="spinner" aria-hidden="true"></span><span>Creating account...</span>'
+                : '<span>Create Account</span>';
         }
 
-        function setGoogleLoading(isLoading) {
-            googleRegBtn.disabled = isLoading;
-            googleRegBtn.innerHTML = isLoading
-                ? '<span class="spinner">⟳</span> Signing up...'
-                : '<span class="google-icon">G</span><span>Continue with Google</span>';
+        function clearRegistrationFields() {
+            registerForm.reset();
+            passwordInput.type = 'password';
+            confirmPasswordInput.type = 'password';
+            showPasswordBtn.textContent = 'Show';
+            showConfirmPasswordBtn.textContent = 'Show';
+            passwordRequirements.hidden = true;
         }
 
         // ============================================
@@ -197,18 +231,168 @@
             return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         }
 
+        function isValidUsername(username) {
+            return /^[A-Za-z0-9_]{3,30}$/.test(username);
+        }
+
+        function isStrongPassword(password) {
+            return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password);
+        }
+
+        const passwordRules = {
+            length: value => value.length >= 8,
+            uppercase: value => /[A-Z]/.test(value),
+            lowercase: value => /[a-z]/.test(value),
+            number: value => /\d/.test(value),
+            special: value => /[^A-Za-z0-9\s]/.test(value)
+        };
+
+        function updatePasswordRequirements() {
+            Object.entries(passwordRules).forEach(([rule, validate]) => {
+                const requirement = passwordRequirements.querySelector(`[data-password-rule="${rule}"]`);
+                requirement.classList.toggle('valid', validate(passwordInput.value));
+            });
+        }
+
+        passwordInput.addEventListener('input', () => {
+            if (!passwordRequirements.hidden) updatePasswordRequirements();
+        });
+
+        function stopVerificationPoll() {
+            if (verificationPoll) window.clearInterval(verificationPoll);
+            verificationPoll = null;
+        }
+
+        function setVerificationStatus(message, type = '') {
+            verificationStatus.textContent = message;
+            verificationStatus.className = `registration-verification-status ${type}`.trim();
+        }
+
+        function startVerificationPoll() {
+            stopVerificationPoll();
+            verificationPoll = window.setInterval(() => checkVerificationStatus(false), 5000);
+        }
+
+        function showPendingVerification(user, verificationSent = true) {
+            hideMessages();
+            registerForm.hidden = true;
+            loginPrompt.hidden = true;
+            registrationVerification.hidden = false;
+            verificationIcon.textContent = '@';
+            verificationHeading.textContent = 'Check your email';
+            const emailLabel = document.createElement('strong');
+            emailLabel.textContent = user?.email || 'your email address';
+            verificationDescription.replaceChildren(
+                'A verification link was sent to ',
+                emailLabel,
+                '. Your registration will be completed after Firebase verifies your email.'
+            );
+            checkVerificationBtn.hidden = false;
+            registrationResendBtn.hidden = false;
+            continueToLoginBtn.hidden = true;
+            setVerificationStatus(verificationSent
+                ? 'Waiting for email verification…'
+                : 'The verification email could not be sent. Use the resend button below.',
+                verificationSent ? '' : 'error');
+            startVerificationPoll();
+        }
+
+        async function completeVerifiedRegistration(user) {
+            if (registrationCompleted) return;
+            registrationCompleted = true;
+            stopVerificationPoll();
+
+            try {
+                await saveUserData(user.uid, {
+                    emailVerified: true,
+                    registrationStatus: 'active'
+                });
+            } catch (error) {
+                console.warn('Could not update the registration status:', error);
+            }
+
+            registrationVerification.hidden = false;
+            verificationIcon.textContent = '✓';
+            verificationHeading.textContent = 'Registration successful';
+            verificationDescription.textContent = 'Your email has been verified. You can now sign in to SmartCollars.';
+            checkVerificationBtn.hidden = true;
+            registrationResendBtn.hidden = true;
+            continueToLoginBtn.hidden = false;
+            setVerificationStatus('Email verification complete.', 'success');
+            showSuccess('Account registration successful. Your email has been verified.');
+
+            await signOut();
+        }
+
+        async function checkVerificationStatus(manualCheck = false) {
+            if (verificationCheckRunning || registrationCompleted || !auth.currentUser) return;
+            verificationCheckRunning = true;
+
+            const result = await reloadUser();
+            verificationCheckRunning = false;
+
+            if (result.success && result.user?.emailVerified) {
+                await completeVerifiedRegistration(result.user);
+                return;
+            }
+
+            if (manualCheck) {
+                setVerificationStatus(
+                    result.success
+                        ? 'Your email is not verified yet. Open the verification link, then check again.'
+                        : 'Verification status could not be checked. Please try again.',
+                    'error'
+                );
+            }
+        }
+
+        checkVerificationBtn.addEventListener('click', async () => {
+            checkVerificationBtn.disabled = true;
+            checkVerificationBtn.textContent = 'Checking…';
+            await checkVerificationStatus(true);
+            checkVerificationBtn.disabled = false;
+            checkVerificationBtn.textContent = "I've Verified My Email";
+        });
+
+        registrationResendBtn.addEventListener('click', async () => {
+            registrationResendBtn.disabled = true;
+            registrationResendBtn.textContent = 'Sending…';
+            const result = await resendVerification(auth.currentUser);
+
+            if (result.success && result.alreadyVerified) {
+                await checkVerificationStatus(true);
+            } else if (result.success) {
+                setVerificationStatus('A new verification link was sent to your email.', 'success');
+            } else {
+                setVerificationStatus('The verification email could not be sent. Please try again.', 'error');
+            }
+
+            registrationResendBtn.disabled = false;
+            registrationResendBtn.textContent = 'Resend Verification Email';
+        });
+
+        continueToLoginBtn.addEventListener('click', () => {
+            window.location.href = 'login.html';
+        });
+
+        window.addEventListener('beforeunload', stopVerificationPoll);
+
         // ============================================
         // CHECK AUTH STATE (in case already logged in)
         // ============================================
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                console.log('✅ User already logged in:', user.email);
-                updateStatus(`Already signed in as ${user.email}`, true);
-                // Optionally redirect to dashboard
-                // window.location.href = 'dashboard.html';
-            } else {
-                console.log('ℹ️ No user signed in. Ready to register.');
+        onAuthStateChanged(auth, async user => {
+            if (registrationSubmitting || registrationCompleted) return;
+
+            if (!user) {
+                registerForm.hidden = false;
+                loginPrompt.hidden = false;
+                registrationVerification.hidden = true;
+                stopVerificationPoll();
+                return;
             }
+
+            showPendingVerification(user);
+            await checkVerificationStatus(false);
         });
 
         // ============================================
@@ -218,105 +402,111 @@
             event.preventDefault();
             hideMessages();
 
+            const username = usernameInput.value.trim();
             const email = emailInput.value.trim();
             const password = passwordInput.value.trim();
+            const confirmPassword = confirmPasswordInput.value.trim();
 
             // Validate
-            if (!email || !password) {
-                showError('Please fill in all fields.');
-                updateStatus('Please fill in all fields.', false);
+            const missingField = [
+                [username, usernameInput, 'Username'],
+                [email, emailInput, 'Email'],
+                [password, passwordInput, 'Password'],
+                [confirmPassword, confirmPasswordInput, 'Confirm password']
+            ].find(([value]) => !value);
+
+            if (missingField) {
+                showError(`${missingField[2]} is required.`);
+                missingField[1].focus();
                 return;
             }
-            if (!isValidEmail(email)) {
-                showError('Please enter a valid email address.');
-                updateStatus('Invalid email address.', false);
-                return;
-            }
-            if (password.length < 6) {
-                showError('Password must be at least 6 characters.');
-                updateStatus('Password too short.', false);
+            if (!isValidUsername(username)) {
+                showError('Username must be 3–30 characters and use only letters, numbers, or underscores.');
                 return;
             }
 
             setLoading(true);
-            updateStatus('Creating your account...', false);
+
+            const usernameCheck = await checkUsernameExists(username);
+            if (!usernameCheck.success) {
+                showError('Username availability could not be checked. Please try again.');
+                setLoading(false);
+                return;
+            }
+            if (usernameCheck.exists) {
+                showError('Username already exists.');
+                setLoading(false);
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showError('Please enter a valid email address.');
+                setLoading(false);
+                return;
+            }
+
+            const emailCheck = await checkRegisteredEmail(email);
+            if (!emailCheck.success) {
+                showError('Email availability could not be checked. Please try again.');
+                setLoading(false);
+                return;
+            }
+            if (emailCheck.exists) {
+                showError('Email is already registered.');
+                setLoading(false);
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showError('Passwords do not match.');
+                setLoading(false);
+                return;
+            }
+            if (!isStrongPassword(password)) {
+                passwordRequirements.hidden = false;
+                updatePasswordRequirements();
+                showError('Please meet all password requirements.');
+                setLoading(false);
+                return;
+            }
+
+            passwordRequirements.hidden = true;
+            registrationSubmitting = true;
 
             try {
-                // 🔥 CALL THE FIREBASE FUNCTION
-                const result = await registerWithEmail(email, password, '');
+                const result = await registerWithUsername(username, email, password);
+                clearRegistrationFields();
+                registrationSubmitting = false;
 
-                console.log('✅ registerWithEmail result:', result);
+                console.log('✅ Registration result:', result);
 
                 if (result.success) {
-                    showSuccess('✅ Account created successfully! Please check your email to verify.');
-                    updateStatus('Account created! Redirecting...', true);
-                    
-                    // Redirect to login page after a short delay
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 3000);
+                    setLoading(false);
+                    showPendingVerification(result.user, result.verificationSent);
                 } else {
                     // ❌ Show the actual Firebase error
                     const errorMessages = {
-                        'auth/email-already-in-use': 'This email is already registered. Please sign in.',
+                        'auth/email-already-in-use': 'Email is already registered.',
+                        'auth/username-already-in-use': 'Username already exists.',
+                        'auth/username-check-unavailable': 'Username registration is not available until the Firestore username rules are configured.',
+                        'auth/email-check-unavailable': 'Email availability could not be checked. Please try again.',
                         'auth/invalid-email': 'Invalid email address.',
-                        'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
+                        'auth/weak-password': 'Password does not meet the security requirements.',
                         'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Contact support.',
                         'auth/network-request-failed': 'Network error. Please check your internet connection.'
                     };
                     const userMessage = errorMessages[result.error] || result.message || 'Sign-up failed.';
                     showError(userMessage);
-                    updateStatus('Registration failed', false);
                     console.error('❌ Registration error:', result);
                     setLoading(false);
                 }
             } catch (err) {
+                registrationSubmitting = false;
+                clearRegistrationFields();
                 // Catch any unexpected errors
                 console.error('💥 Unexpected error:', err);
                 showError('An unexpected error occurred. Please try again.');
-                updateStatus('Registration failed', false);
                 setLoading(false);
-            }
-        });
-
-        // ============================================
-        // GOOGLE BUTTON
-        // ============================================
-        googleRegBtn.addEventListener('click', async function() {
-            hideMessages();
-            setGoogleLoading(true);
-            updateStatus('Signing up with Google...', false);
-
-            try {
-                const result = await signInWithGoogle();
-
-                console.log('✅ Google sign-in result:', result);
-
-                if (result.success) {
-                    console.log('✅ Google sign-up success:', result.user.email);
-                    showSuccess('✅ Account created with Google!');
-                    updateStatus('Account created with Google! ✅', true);
-                    
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 2000);
-                } else {
-                    const errorMessages = {
-                        'auth/popup-closed-by-user': 'Sign-up cancelled. Please try again.',
-                        'auth/account-exists-with-different-credential': 'An account already exists with the same email but different sign-in method.',
-                        'auth/popup-blocked': 'Please allow pop-ups for this site and try again.',
-                        'auth/network-request-failed': 'Network error. Please check your connection.'
-                    };
-                    const userMessage = errorMessages[result.error] || result.message || 'Google sign-up failed.';
-                    showError(userMessage);
-                    updateStatus('Google sign-up failed', false);
-                }
-            } catch (err) {
-                console.error('💥 Unexpected Google error:', err);
-                showError('An unexpected error occurred. Please try again.');
-                updateStatus('Google sign-up failed', false);
-            } finally {
-                setGoogleLoading(false);
             }
         });
 
