@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartCollars - Sign Up</title>
+    <title>PawSense - Sign Up</title>
     <link rel="stylesheet" href="../css/login.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,7 @@
             <section class="login-visual">
                 <a href="login.html" class="brand">
                     <div class="brand-icon">♥</div>
-                    <div class="brand-name">Smart<span>Collars</span></div>
+                    <div class="brand-name">Paw<span>Sense</span></div>
                 </a>
                 <div class="pet-image-container">
                     <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=900&h=700&fit=crop&crop=center"
@@ -52,11 +52,10 @@
 
             <!-- RIGHT: REGISTRATION FORM -->
             <section class="login-form-section">
-                <a href="../index.html" class="back-link">Back to Home</a>
                 <div class="form-wrapper">
                     <div class="form-heading">
                         <span class="eyebrow">CREATE ACCOUNT</span>
-                        <h2>Join the SmartCollars family.</h2>
+                        <h2>Join the PawSense family.</h2>
                         <p>Set up your account and start tracking your pet's well‑being.</p>
                     </div>
 
@@ -104,13 +103,13 @@
                     </form>
 
                     <section class="registration-verification" id="registrationVerification" aria-live="polite" hidden>
+                        <button class="verification-cancel-btn" id="verificationCancelBtn" type="button" aria-label="Cancel email verification">×</button>
                         <span class="registration-verification-icon" id="verificationIcon" aria-hidden="true">@</span>
                         <p class="eyebrow">EMAIL VERIFICATION REQUIRED</p>
                         <h3 id="verificationHeading">Check your email</h3>
                         <p id="verificationDescription">A verification link was sent to your email. Your registration will be completed after Firebase verifies your email.</p>
                         <p class="registration-verification-status" id="verificationStatus"></p>
-                        <button class="sign-in-btn" id="checkVerificationBtn" type="button">I've Verified My Email</button>
-                        <button class="verification-resend-btn" id="registrationResendBtn" type="button">Resend Verification Email</button>
+                        <button class="sign-in-btn verification-resend-btn" id="registrationResendBtn" type="button" disabled>Resend verification in 60s</button>
                         <button class="sign-in-btn" id="continueToLoginBtn" type="button" hidden>Continue to Login</button>
                     </section>
 
@@ -134,11 +133,11 @@
         import { 
             auth,
             checkUsernameExists,
-            checkRegisteredEmail,
+            checkRegistrationEmail,
             registerWithUsername,
+            completeVerifiedRegistration as finalizeVerifiedRegistration,
             resendVerification,
             reloadUser,
-            saveUserData,
             signOut,
             onAuthStateChanged
         } from '../js/firebase-init.js';
@@ -162,15 +161,18 @@
         const verificationHeading = document.getElementById('verificationHeading');
         const verificationDescription = document.getElementById('verificationDescription');
         const verificationStatus = document.getElementById('verificationStatus');
-        const checkVerificationBtn = document.getElementById('checkVerificationBtn');
+        const verificationCancelBtn = document.getElementById('verificationCancelBtn');
         const registrationResendBtn = document.getElementById('registrationResendBtn');
         const continueToLoginBtn = document.getElementById('continueToLoginBtn');
         const loginPrompt = document.getElementById('loginPrompt');
 
         let verificationPoll = null;
+        let verificationResendTimer = null;
+        let verificationResendSeconds = 0;
         let verificationCheckRunning = false;
         let registrationSubmitting = false;
         let registrationCompleted = false;
+        const pendingRegistrationKey = user => `pendingRegistration:${user.uid}`;
 
         // ============================================
         // PASSWORD TOGGLE
@@ -263,9 +265,58 @@
             verificationPoll = null;
         }
 
+        function stopVerificationResendTimer() {
+            if (verificationResendTimer) window.clearInterval(verificationResendTimer);
+            verificationResendTimer = null;
+        }
+
+        function startVerificationResendTimer() {
+            stopVerificationResendTimer();
+            verificationResendSeconds = 60;
+            registrationResendBtn.disabled = true;
+
+            const updateCountdown = () => {
+                registrationResendBtn.textContent = `Resend verification in ${verificationResendSeconds}s`;
+            };
+
+            updateCountdown();
+            verificationResendTimer = window.setInterval(() => {
+                verificationResendSeconds -= 1;
+                if (verificationResendSeconds <= 0) {
+                    stopVerificationResendTimer();
+                    registrationResendBtn.disabled = false;
+                    registrationResendBtn.textContent = 'Resend Verification Email';
+                    return;
+                }
+                updateCountdown();
+            }, 1000);
+        }
+
         function setVerificationStatus(message, type = '') {
             verificationStatus.textContent = message;
             verificationStatus.className = `registration-verification-status ${type}`.trim();
+        }
+
+        function storePendingRegistration(user, username, email) {
+            localStorage.setItem(pendingRegistrationKey(user), JSON.stringify({
+                uid: user.uid,
+                username,
+                email
+            }));
+        }
+
+        function getPendingRegistration(user) {
+            try {
+                const stored = localStorage.getItem(pendingRegistrationKey(user));
+                const registration = stored ? JSON.parse(stored) : null;
+                return registration?.uid === user.uid ? registration : null;
+            } catch {
+                return null;
+            }
+        }
+
+        function clearPendingRegistration(user) {
+            localStorage.removeItem(pendingRegistrationKey(user));
         }
 
         function startVerificationPoll() {
@@ -273,7 +324,7 @@
             verificationPoll = window.setInterval(() => checkVerificationStatus(false), 5000);
         }
 
-        function showPendingVerification(user, verificationSent = true) {
+        function showPendingVerification(user, verificationSent = true, statusMessage = '') {
             hideMessages();
             registerForm.hidden = true;
             loginPrompt.hidden = true;
@@ -287,35 +338,45 @@
                 emailLabel,
                 '. Your registration will be completed after Firebase verifies your email.'
             );
-            checkVerificationBtn.hidden = false;
             registrationResendBtn.hidden = false;
             continueToLoginBtn.hidden = true;
-            setVerificationStatus(verificationSent
+            setVerificationStatus(statusMessage || (verificationSent
                 ? 'Waiting for email verification…'
-                : 'The verification email could not be sent. Use the resend button below.',
+                : 'The verification email could not be sent. Use the resend button below.'),
                 verificationSent ? '' : 'error');
+            startVerificationResendTimer();
             startVerificationPoll();
         }
 
         async function completeVerifiedRegistration(user) {
             if (registrationCompleted) return;
-            registrationCompleted = true;
             stopVerificationPoll();
 
-            try {
-                await saveUserData(user.uid, {
-                    emailVerified: true,
-                    registrationStatus: 'active'
-                });
-            } catch (error) {
-                console.warn('Could not update the registration status:', error);
+            const pendingRegistration = getPendingRegistration(user);
+            if (!pendingRegistration) {
+                setVerificationStatus('Registration details could not be found. Please restart registration.', 'error');
+                return;
             }
+
+            const result = await finalizeVerifiedRegistration(user.uid, pendingRegistration);
+            if (!result.success) {
+                setVerificationStatus(
+                    result.error === 'auth/username-already-in-use'
+                        ? 'That username is no longer available. Please contact support.'
+                        : 'Your email is verified, but registration could not be completed. Please try again.',
+                    'error'
+                );
+                return;
+            }
+
+            registrationCompleted = true;
+            clearPendingRegistration(user);
 
             registrationVerification.hidden = false;
             verificationIcon.textContent = '✓';
             verificationHeading.textContent = 'Registration successful';
-            verificationDescription.textContent = 'Your email has been verified. You can now sign in to SmartCollars.';
-            checkVerificationBtn.hidden = true;
+            verificationDescription.textContent = 'Your email has been verified. You can now sign in to PawSense.';
+            stopVerificationResendTimer();
             registrationResendBtn.hidden = true;
             continueToLoginBtn.hidden = false;
             setVerificationStatus('Email verification complete.', 'success');
@@ -346,14 +407,6 @@
             }
         }
 
-        checkVerificationBtn.addEventListener('click', async () => {
-            checkVerificationBtn.disabled = true;
-            checkVerificationBtn.textContent = 'Checking…';
-            await checkVerificationStatus(true);
-            checkVerificationBtn.disabled = false;
-            checkVerificationBtn.textContent = "I've Verified My Email";
-        });
-
         registrationResendBtn.addEventListener('click', async () => {
             registrationResendBtn.disabled = true;
             registrationResendBtn.textContent = 'Sending…';
@@ -367,15 +420,31 @@
                 setVerificationStatus('The verification email could not be sent. Please try again.', 'error');
             }
 
-            registrationResendBtn.disabled = false;
-            registrationResendBtn.textContent = 'Resend Verification Email';
+            if (result.success && !result.alreadyVerified) {
+                startVerificationResendTimer();
+            } else if (!result.success) {
+                registrationResendBtn.disabled = false;
+                registrationResendBtn.textContent = 'Resend Verification Email';
+            }
+        });
+
+        verificationCancelBtn.addEventListener('click', async () => {
+            stopVerificationPoll();
+            stopVerificationResendTimer();
+            await signOut();
+            registrationVerification.hidden = true;
+            registerForm.hidden = false;
+            loginPrompt.hidden = false;
         });
 
         continueToLoginBtn.addEventListener('click', () => {
             window.location.href = 'login.html';
         });
 
-        window.addEventListener('beforeunload', stopVerificationPoll);
+        window.addEventListener('beforeunload', () => {
+            stopVerificationPoll();
+            stopVerificationResendTimer();
+        });
 
         // ============================================
         // CHECK AUTH STATE (in case already logged in)
@@ -445,18 +514,6 @@
                 return;
             }
 
-            const emailCheck = await checkRegisteredEmail(email);
-            if (!emailCheck.success) {
-                showError('Email availability could not be checked. Please try again.');
-                setLoading(false);
-                return;
-            }
-            if (emailCheck.exists) {
-                showError('Email is already registered.');
-                setLoading(false);
-                return;
-            }
-
             if (password !== confirmPassword) {
                 showError('Passwords do not match.');
                 setLoading(false);
@@ -473,20 +530,46 @@
             passwordRequirements.hidden = true;
             registrationSubmitting = true;
 
+            const registrationEmailCheck = await checkRegistrationEmail(email, password);
+            if (!registrationEmailCheck.success) {
+                registrationSubmitting = false;
+                showError(registrationEmailCheck.error === 'auth/wrong-password' || registrationEmailCheck.error === 'auth/invalid-credential'
+                    ? 'EMAIL ALREADY REGISTERED.'
+                    : 'Email availability could not be checked. Please try again.');
+                setLoading(false);
+                return;
+            }
+
+            if (registrationEmailCheck.status === 'completed') {
+                registrationSubmitting = false;
+                showError('EMAIL ALREADY REGISTERED.');
+                setLoading(false);
+                return;
+            }
+
+            if (registrationEmailCheck.status === 'pending') {
+                registrationSubmitting = false;
+                await signOut();
+                showError('EMAIL ALREADY REGISTERED.');
+                setLoading(false);
+                return;
+            }
+
             try {
                 const result = await registerWithUsername(username, email, password);
-                clearRegistrationFields();
                 registrationSubmitting = false;
 
                 console.log('✅ Registration result:', result);
 
                 if (result.success) {
+                    clearRegistrationFields();
+                    storePendingRegistration(result.user, username, email);
                     setLoading(false);
                     showPendingVerification(result.user, result.verificationSent);
                 } else {
                     // ❌ Show the actual Firebase error
                     const errorMessages = {
-                        'auth/email-already-in-use': 'Email is already registered.',
+                        'auth/email-already-in-use': 'EMAIL ALREADY REGISTERED.',
                         'auth/username-already-in-use': 'Username already exists.',
                         'auth/username-check-unavailable': 'Username registration is not available until the Firestore username rules are configured.',
                         'auth/email-check-unavailable': 'Email availability could not be checked. Please try again.',
@@ -502,7 +585,6 @@
                 }
             } catch (err) {
                 registrationSubmitting = false;
-                clearRegistrationFields();
                 // Catch any unexpected errors
                 console.error('💥 Unexpected error:', err);
                 showError('An unexpected error occurred. Please try again.');

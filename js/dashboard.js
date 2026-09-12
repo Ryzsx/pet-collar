@@ -12,6 +12,9 @@ const placeholderPhotos = [
     'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=320&h=320&fit=crop'
 ];
 
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDMI3xEi1DxPNlaM76B-sFigPOB3khJsGk';
+let googleMapsLoader = null;
+
 // =====================================================
 // LIVE MONITORING PROTOTYPE DATA
 // Replace this array with C# API / Supabase device data later.
@@ -102,11 +105,12 @@ const notifications = [
 ];
 
 const pageMeta = {
-    'live-tracking': ['Live Monitoring', "Monitor your pet's location, health, and activity in real time."],
-    'pet-management': ['Pet Management', 'Manage pet profiles, paired collars, and safe zones.'],
-    notifications: ['Notifications', 'Review important collar, location, and health alerts.'],
-    history: ['History', 'Explore recorded location, health, and activity data.'],
-    settings: ['Settings', 'Manage account information, security, and alert preferences.']
+    'dashboard-home': ['Dashboard', 'Here’s a quick overview of your pet’s current status.'],
+    'live-tracking': ['Live Monitoring', 'Track your pet’s current location, safe-zone status, and live collar information.'],
+    'pet-management': ['Pet Management', 'Manage your pet profiles, collar details, and safe-zone settings.'],
+    notifications: ['Notifications', 'Check important alerts and updates from your pet’s collar.'],
+    history: ['History', 'Review previous location, activity, and anomaly records.'],
+    settings: ['Settings', 'Manage your account, security, and notification preferences.']
 };
 
 let pets = demoPets.map(pet => ({ ...pet }));
@@ -119,6 +123,7 @@ const livePetMarkers = new Map();
 let currentUser = null;
 let deletePetId = null;
 let currentNotificationFilter = 'all';
+let dashboardDateTimer;
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -212,10 +217,27 @@ function handleSidebarViewportChange() {
     syncSidebarForViewport();
 }
 
+function initializePageHeaders() {
+    const headerContent = $('#pageHeaderContent');
+    if (!headerContent) return;
+    $$('.dashboard-section').forEach(section => {
+        const toolbar = section.querySelector('.section-toolbar');
+        if (!toolbar) return;
+        toolbar.dataset.headerSection = section.id;
+        toolbar.hidden = true;
+        headerContent.append(toolbar);
+    });
+}
+
 function showSection(sectionId) {
     if (!pageMeta[sectionId]) return;
     $$('.dashboard-section').forEach(section => section.classList.toggle('active', section.id === sectionId));
     $$('.sidebar-nav [data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === sectionId));
+
+    $$('#pageHeaderContent [data-header-section]').forEach(header => {
+        header.hidden = header.dataset.headerSection !== sectionId;
+    });
+
     history.replaceState(null, '', `#${sectionId}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     closeSidebar();
@@ -298,31 +320,10 @@ function getSafeZoneLabel(pet) {
 function createLivePetMarkerIcon(pet) {
     const state = getLivePetState(pet);
     const selectedClass = pet.id === selectedLivePetId ? 'selected' : '';
-    return window.L.divIcon({
-        className: 'pet-leaflet-icon',
-        html: `<div class="pet-map-marker ${state.key} ${selectedClass}"><img class="pet-map-photo" src="${escapeHtml(pet.photo)}" alt=""><span class="pet-map-name">${escapeHtml(pet.name)}</span></div>`,
-        iconSize: [76, 62],
-        iconAnchor: [38, 48],
-        popupAnchor: [0, -45]
-    });
-}
-
-function createLivePetPopup(pet) {
-    const state = getLivePetState(pet);
-    const safeStatus = getSafeZoneLabel(pet);
-    const safeClass = getDisplayedSafeZoneStatus(pet) === 'inside' ? 'good' : 'warning';
-    return `
-        <div class="marker-popup">
-            <div class="marker-popup-header"><img src="${escapeHtml(pet.photo)}" alt=""><div><strong>${escapeHtml(pet.name)}</strong><span>${escapeHtml(pet.locationName)}</span></div></div>
-            <div class="marker-popup-grid">
-                <div><span>Location Status</span><strong class="${state.key === 'online' ? 'good' : state.key}">${escapeHtml(state.title)}</strong></div>
-                <div><span>Safe Zone</span><strong class="${safeClass}">${escapeHtml(safeStatus)}</strong></div>
-                <div><span>Collar</span><strong class="${pet.collarOnline ? 'good' : 'offline'}">${pet.collarOnline ? 'Online' : 'Offline'}</strong></div>
-                <div><span>Battery</span><strong class="${pet.battery <= 25 ? 'warning' : ''}">${pet.battery}%</strong></div>
-                <div><span>Last Updated</span><strong>${escapeHtml(pet.updated)}</strong></div>
-            </div>
-        </div>
-    `;
+    const element = document.createElement('div');
+    element.className = `pet-map-marker ${state.key} ${selectedClass}`;
+    element.innerHTML = `<img class="pet-map-photo" src="${escapeHtml(pet.photo)}" alt=""><span class="pet-map-name">${escapeHtml(pet.name)}</span>`;
+    return element;
 }
 
 function renderLivePetSelector() {
@@ -354,11 +355,11 @@ function renderSelectedLivePet() {
         <div class="selected-pet-heading"><img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}"><div><strong>${escapeHtml(pet.name)}</strong><span>Selected pet</span></div><span class="badge tracking-badge ${state.key}">${escapeHtml(state.label)}</span></div>
         <div class="selected-state ${state.key}"><i class="bi ${state.icon}"></i><div><strong>${escapeHtml(state.title)}</strong><span>${escapeHtml(state.description)}</span></div></div>
         <div class="selected-location-list">
-            <div class="selected-info-row"><i class="bi bi-geo-alt"></i><span><small>${locationLabel}</small><strong>${escapeHtml(pet.locationName)}</strong></span></div>
-            <div class="selected-info-row"><i class="bi bi-shield-check"></i><span><small>${safeLabel}</small><strong class="${safeClass}">${escapeHtml(safeStatus)}</strong></span></div>
-            <div class="selected-info-row"><i class="bi bi-router"></i><span><small>Collar status</small><strong>${pet.collarOnline ? 'Online' : 'Offline'}</strong></span></div>
-            <div class="selected-info-row"><i class="bi bi-battery-half"></i><span><small>Battery level</small><strong class="${pet.battery <= 25 ? 'battery-low' : ''}">${pet.battery}%</strong></span></div>
-            <div class="selected-info-row"><i class="bi bi-clock"></i><span><small>Last updated</small><strong>${escapeHtml(pet.updated)}</strong></span></div>
+            <div class="selected-info-row location-detail"><i class="bi bi-geo-alt" aria-hidden="true"></i><span><small>${locationLabel}</small><strong>${escapeHtml(pet.locationName)}</strong></span></div>
+            <div class="selected-info-row safety-detail ${safeClass}"><i class="bi bi-shield-check" aria-hidden="true"></i><span><small>${safeLabel}</small><strong class="${safeClass}">${escapeHtml(safeStatus)}</strong></span></div>
+            <div class="selected-info-row device-detail"><i class="bi bi-router" aria-hidden="true"></i><span><small>Collar status</small><strong>${pet.collarOnline ? 'Online' : 'Offline'}</strong></span></div>
+            <div class="selected-info-row battery-detail"><i class="bi bi-battery-half" aria-hidden="true"></i><span><small>Battery level</small><strong class="${pet.battery <= 25 ? 'battery-low' : ''}">${pet.battery}%</strong></span></div>
+            <div class="selected-info-row updated-detail"><i class="bi bi-clock" aria-hidden="true"></i><span><small>Last updated</small><strong>${escapeHtml(pet.updated)}</strong></span></div>
         </div>
         ${pet.gpsAvailable ? '' : '<p class="safe-zone-note"><i class="bi bi-info-circle"></i> The last known position is for reference and is not treated as a new geofence check.</p>'}
     `;
@@ -377,164 +378,123 @@ function renderSelectedLivePet() {
     }
 }
 
-function getReadingState(reading, unavailableLabel = 'Data Unavailable') {
-    if (!reading.available) return { label: unavailableLabel, className: 'warning' };
-    return { label: 'Data Available', className: 'success' };
-}
-
-function renderLiveMonitoringCards() {
-    const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
-    const container = $('#liveMonitoringCards');
-    if (!pet || !container) return;
-
-    const heartDataState = getReadingState(pet.heartRate);
-    const temperatureDataState = getReadingState(pet.temperature);
-    const activityDataState = getReadingState(pet.activity, 'Activity Data Unavailable');
-    const heartStatus = pet.heartRate.status === 'normal' ? 'Normal' : 'Abnormal';
-    const temperatureStatus = pet.temperature.status === 'normal' ? 'Normal' : 'Abnormal';
-    const heartStatusClass = pet.heartRate.status === 'normal' ? 'success' : 'danger';
-    const temperatureStatusClass = pet.temperature.status === 'normal' ? 'success' : 'danger';
-
-    container.innerHTML = `
-        <div class="col-md-6 col-xl-3">
-            <article class="card monitoring-reading-card h-100">
-                <div class="monitoring-reading-head"><span class="monitoring-reading-icon heart"><i class="bi bi-heart-pulse"></i></span><span class="badge soft-badge ${heartDataState.className}">${heartDataState.label}</span></div>
-                <span class="monitoring-reading-label">Heart Rate</span>
-                <strong class="monitoring-reading-value">${pet.heartRate.value}<small>BPM</small></strong>
-                <span class="reading-condition ${heartStatusClass}"><i class="bi ${pet.heartRate.status === 'normal' ? 'bi-check-circle' : 'bi-exclamation-triangle'}"></i>${heartStatus}${pet.heartRate.available ? '' : ' &middot; Last stored value'}</span>
-                <small class="reading-updated"><i class="bi bi-clock"></i> Updated: ${escapeHtml(pet.heartRate.updated)}</small>
-            </article>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <article class="card monitoring-reading-card h-100">
-                <div class="monitoring-reading-head"><span class="monitoring-reading-icon temperature"><i class="bi bi-thermometer-half"></i></span><span class="badge soft-badge ${temperatureDataState.className}">${temperatureDataState.label}</span></div>
-                <span class="monitoring-reading-label">Body Temperature</span>
-                <strong class="monitoring-reading-value">${pet.temperature.value.toFixed(1)}<small>&deg;C</small></strong>
-                <span class="reading-condition ${temperatureStatusClass}"><i class="bi ${pet.temperature.status === 'normal' ? 'bi-check-circle' : 'bi-exclamation-triangle'}"></i>${temperatureStatus}${pet.temperature.available ? '' : ' &middot; Last stored value'}</span>
-                <small class="reading-updated"><i class="bi bi-clock"></i> Updated: ${escapeHtml(pet.temperature.updated)}</small>
-            </article>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <article class="card monitoring-reading-card h-100">
-                <div class="monitoring-reading-head"><span class="monitoring-reading-icon activity"><i class="bi bi-activity"></i></span><span class="badge soft-badge ${activityDataState.className}">${activityDataState.label}</span></div>
-                <span class="monitoring-reading-label">Current Activity</span>
-                <strong class="monitoring-reading-value word">${escapeHtml(pet.activity.value)}</strong>
-                <span class="reading-condition info"><i class="bi bi-person-walking"></i>${pet.activity.available ? 'Current activity' : 'Last recorded activity'}</span>
-                <small class="reading-updated"><i class="bi bi-clock"></i> Updated: ${escapeHtml(pet.activity.updated)}</small>
-            </article>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <article class="card monitoring-reading-card h-100">
-                <div class="monitoring-reading-head"><span class="monitoring-reading-icon collar"><i class="bi bi-router"></i></span><span class="badge soft-badge ${pet.collarOnline ? 'success' : 'danger'}">${pet.collarOnline ? 'Online' : 'Offline'}</span></div>
-                <span class="monitoring-reading-label">Collar Status</span>
-                <strong class="monitoring-reading-value word">${pet.collarOnline ? 'Online' : 'Offline'}</strong>
-                <div class="collar-reading-details"><span><i class="bi bi-battery-half"></i> Battery<strong class="${pet.battery <= 25 ? 'battery-low' : ''}">${pet.battery}%</strong></span><span><i class="bi bi-geo-alt"></i> GPS<strong>${pet.gpsAvailable ? 'Available' : 'Unavailable'}</strong></span></div>
-                <small class="reading-updated"><i class="bi bi-clock"></i> ${pet.collarOnline ? 'Updated' : 'Last connection'}: ${escapeHtml(pet.updated)}</small>
-            </article>
-        </div>
-    `;
-}
-
 function refreshLiveMapLayout() {
     if (!liveTrackingMap) return;
-    liveTrackingMap.invalidateSize();
+    window.google.maps.event.trigger(liveTrackingMap, 'resize');
     const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
-    if (pet) liveTrackingMap.setView(getDisplayedCoordinates(pet), liveTrackingMap.getZoom(), { animate: false });
+    if (pet) liveTrackingMap.setCenter(toGoogleCoordinates(getDisplayedCoordinates(pet)));
 }
 
-function updateLiveMapSelection(openPopup = false) {
+function updateLiveMapSelection() {
     const pet = liveTrackingPets.find(item => item.id === selectedLivePetId);
     if (!pet || !liveTrackingMap) return;
     const coordinates = getDisplayedCoordinates(pet);
 
     livePetMarkers.forEach((marker, petId) => {
-        const markerPet = liveTrackingPets.find(item => item.id === petId);
-        marker.setIcon(createLivePetMarkerIcon(markerPet));
-        marker.setZIndexOffset(petId === selectedLivePetId ? 1000 : 0);
+        marker.content.classList.toggle('selected', petId === selectedLivePetId);
+        marker.zIndex = petId === selectedLivePetId ? 1000 : 0;
     });
 
-    if (liveSafeZoneCircle) liveTrackingMap.removeLayer(liveSafeZoneCircle);
-    if (liveSafeZoneCenter) liveTrackingMap.removeLayer(liveSafeZoneCenter);
-    liveSafeZoneCircle = window.L.circle(pet.safeZone.center, {
+    liveSafeZoneCircle?.setMap(null);
+    liveSafeZoneCenter?.setMap(null);
+    liveSafeZoneCircle = new window.google.maps.Circle({
+        map: liveTrackingMap,
+        center: toGoogleCoordinates(pet.safeZone.center),
         radius: pet.safeZone.radius,
-        color: '#359574',
+        strokeColor: '#359574',
+        strokeOpacity: .75,
+        strokeWeight: 2,
         fillColor: '#359574',
-        fillOpacity: .1,
-        opacity: .75,
-        weight: 2,
-        dashArray: '7 6'
-    }).addTo(liveTrackingMap).bindTooltip(`${escapeHtml(pet.safeZone.name)} safe zone - ${pet.safeZone.radius} m`, {
-        permanent: true,
-        direction: 'top',
-        className: 'safe-zone-map-label',
-        offset: [0, -5]
+        fillOpacity: .1
     });
-    liveSafeZoneCenter = window.L.circleMarker(pet.safeZone.center, {
-        radius: 5,
-        color: '#ffffff',
-        fillColor: '#359574',
-        fillOpacity: 1,
-        weight: 2
-    }).addTo(liveTrackingMap).bindTooltip(`${escapeHtml(pet.safeZone.name)} safe-zone center`, { direction: 'top' });
+    liveSafeZoneCenter = new window.google.maps.Marker({
+        map: liveTrackingMap,
+        position: toGoogleCoordinates(pet.safeZone.center),
+        title: `${pet.safeZone.name} safe-zone center`,
+        icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 5, fillColor: '#359574', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 }
+    });
 
-    liveTrackingMap.setView(coordinates, 16, { animate: true });
-    if (openPopup) livePetMarkers.get(pet.id)?.openPopup();
+    liveTrackingMap.panTo(toGoogleCoordinates(coordinates));
+    liveTrackingMap.setZoom(16);
+}
+
+function toGoogleCoordinates([latitude, longitude]) {
+    return { lat: latitude, lng: longitude };
+}
+
+function loadGoogleMaps() {
+    if (googleMapsLoader) return googleMapsLoader;
+    googleMapsLoader = new Promise((resolve, reject) => {
+        if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
+            reject(new Error('Google Maps API key is not configured.'));
+            return;
+        }
+        const callbackName = '__smartCollarsGoogleMapsReady';
+        window.gm_authFailure = () => reject(new Error('Google rejected this key. Enable Maps JavaScript API and billing in Google Cloud, then check the key website restrictions.'));
+        window[callbackName] = () => resolve();
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=marker&loading=async&callback=${callbackName}`;
+        script.async = true;
+        script.defer = true;
+        script.onerror = () => reject(new Error('Google Maps JavaScript API could not be loaded. Check the key and network connection.'));
+        document.head.appendChild(script);
+    });
+    return googleMapsLoader;
 }
 
 function showMapUnavailableState(title, message) {
     const container = $('#trackingMap');
     if (!container) return;
     container.innerHTML = `<div class="map-unavailable-state"><span><i class="bi bi-map"></i></span><div><strong>${escapeHtml(title)}</strong><p>${message}</p></div></div>`;
-    const centerButton = $('#centerMapBtn');
-    if (centerButton) centerButton.disabled = true;
 }
 
 function initializeLiveTrackingMap() {
     if (liveTrackingMap || !$('#trackingMap')) return;
-    if (!window.L) {
-        showMapUnavailableState('Map unavailable', 'Leaflet could not be loaded. Check the internet connection and refresh the page.');
-        return;
-    }
-
-    const container = $('#trackingMap');
-    container.innerHTML = '';
-    liveTrackingMap = window.L.map('trackingMap', { zoomControl: true, attributionControl: true });
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(liveTrackingMap);
-
-    liveTrackingPets.forEach(pet => {
-        const marker = window.L.marker(getDisplayedCoordinates(pet), {
-            icon: createLivePetMarkerIcon(pet),
-            riseOnHover: true
-        }).addTo(liveTrackingMap).bindPopup(createLivePetPopup(pet), {
-            className: 'pet-location-popup',
-            maxWidth: 270
+    loadGoogleMaps().then(() => {
+        const container = $('#trackingMap');
+        container.innerHTML = '';
+        const initialCoordinates = getDisplayedCoordinates(liveTrackingPets[0]);
+        liveTrackingMap = new window.google.maps.Map(container, {
+            center: toGoogleCoordinates(initialCoordinates),
+            zoom: 15,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: true,
+            mapId: 'DEMO_MAP_ID'
         });
-        marker.on('click', () => selectLiveTrackingPet(pet.id, true));
-        livePetMarkers.set(pet.id, marker);
-    });
 
-    const centerButton = $('#centerMapBtn');
-    if (centerButton) centerButton.disabled = false;
-    updateLiveMapSelection(false);
-    setTimeout(refreshLiveMapLayout, 50);
+        liveTrackingPets.forEach(pet => {
+            const marker = new window.google.maps.marker.AdvancedMarkerElement({
+                map: liveTrackingMap,
+                position: toGoogleCoordinates(getDisplayedCoordinates(pet)),
+                content: createLivePetMarkerIcon(pet),
+                title: pet.name,
+                zIndex: pet.id === selectedLivePetId ? 1000 : 0
+            });
+            marker.addListener('click', () => {
+                selectLiveTrackingPet(pet.id);
+            });
+            livePetMarkers.set(pet.id, marker);
+        });
+
+        updateLiveMapSelection();
+        setTimeout(refreshLiveMapLayout, 50);
+    }).catch(error => {
+        showMapUnavailableState('Google Maps unavailable', error.message);
+    });
 }
 
-function selectLiveTrackingPet(petId, openPopup = true) {
+function selectLiveTrackingPet(petId) {
     if (!liveTrackingPets.some(pet => pet.id === petId)) return;
     selectedLivePetId = petId;
     renderLivePetSelector();
     renderSelectedLivePet();
-    renderLiveMonitoringCards();
-    updateLiveMapSelection(openPopup);
+    updateLiveMapSelection();
 }
 
 function initializeLiveTracking() {
     renderLivePetSelector();
     renderSelectedLivePet();
-    renderLiveMonitoringCards();
     initializeLiveTrackingMap();
 }
 
@@ -593,7 +553,7 @@ function renderPetDetail() {
                     <span class="status-chip ${pet.online ? 'online' : 'offline'}">${pet.online ? 'Collar online' : 'Collar offline'}</span>
                 </div>
                 <div class="pet-profile-note">
-                    <p><strong>${escapeHtml(pet.name)}</strong> is a ${escapeHtml(pet.breed)} registered to this SmartCollars account.</p>
+                    <p><strong>${escapeHtml(pet.name)}</strong> is a ${escapeHtml(pet.breed)} registered to this PawSense account.</p>
                     <div class="pet-detail-actions">
                         <button class="btn btn-brand" id="editPetPhotoBtn" type="button"><i class="bi bi-camera"></i> Edit photo</button>
                         <button class="btn btn-danger-soft" type="button" data-delete-pet="${escapeHtml(pet.id)}" data-bs-toggle="modal" data-bs-target="#deletePetModal"><i class="bi bi-trash3"></i> Delete</button>
@@ -620,6 +580,7 @@ function renderAllPets() {
     renderPetSelectors();
     renderPetList();
     renderPetDetail();
+    renderDashboardHome();
     if (selectedPetId) updateHealthData(selectedPetId);
 }
 
@@ -630,6 +591,144 @@ function updateHealthData(petId) {
     $('#healthTemperature').textContent = pet.temperature.toFixed(1);
     $('#healthActivity').textContent = pet.activity;
     $('#healthUpdated').textContent = pet.updated === 'Just now' ? 'Today, just now' : `Today, ${pet.updated}`;
+    renderDashboardHome();
+}
+
+function renderDashboardHome() {
+    const pet = pets.find(item => item.id === selectedPetId) || pets[0];
+    const petsCard = $('#dashboardPetsCard');
+    const activityCard = $('#dashboardActivityCard');
+    const locationCard = $('#dashboardLocationCard');
+    const safetyCard = $('#dashboardSafetyCard');
+    const alertCard = $('#dashboardAlertCard');
+    if (!pet || !petsCard || !activityCard || !locationCard || !safetyCard || !alertCard) return;
+
+    const petCountText = `${pets.length}/3`;
+    const petList = pets.map(currentPet => `
+        <button class="pet-mini-item ${currentPet.id === pet.id ? 'active' : ''}" type="button" data-pet-id="${escapeHtml(currentPet.id)}" aria-label="Select ${escapeHtml(currentPet.name)}" aria-pressed="${currentPet.id === pet.id}">
+            <img src="${escapeHtml(currentPet.photo)}" alt="${escapeHtml(currentPet.name)}">
+            <span>${escapeHtml(currentPet.name)}</span>
+        </button>
+    `).join('');
+
+    petsCard.innerHTML = `
+        <div class="summary-card-header">
+            <h3 class="home-pets-heading"><span class="home-pets-icon" aria-hidden="true"><i class="bi bi-person-hearts"></i></span>Your Pets</h3>
+            <span class="summary-count">${petCountText}</span>
+        </div>
+        <div class="summary-card-body">
+            <div class="pet-mini-list">
+                ${petList}
+                ${pets.length < 3 ? `
+                    <button class="pet-mini-item add-button" type="button" data-dashboard-add-pet="true" aria-label="Add pet">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Add Pet</span>
+                    </button>
+                ` : ''}
+            </div>
+            <div class="pet-summary-selected">
+                <div class="pet-summary-selected-main">
+                    <strong>${escapeHtml(pet.name)}</strong>
+                    <span class="home-collar-status ${pet.online ? 'is-online' : 'is-offline'}"><span class="status-dot ${pet.online ? 'online' : 'offline'}" aria-hidden="true"></span><span aria-label="Collar ${pet.online ? 'online' : 'offline'}">${pet.online ? 'Online' : 'Offline'}</span></span>
+                </div>
+                <div class="pet-summary-selected-meta">
+                    <div class="battery-health-inline">
+                        <span>Battery</span>
+                        <strong>${pet.battery}%</strong>
+                        <div class="battery-meter"><i style="width: ${pet.battery}%"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const activityValue = pet.activity || 'Resting';
+    const activityIcon = { Resting: 'bi-moon-stars-fill', Walking: 'bi-person-walking', Running: 'bi-lightning-charge-fill' }[activityValue] || 'bi-activity';
+    activityCard.innerHTML = `
+        <div class="summary-card-header">
+            <h3>Current Activity</h3>
+        </div>
+        <div class="summary-card-body home-activity-body">
+            <div class="home-highlight-row">
+                <span class="home-card-icon" aria-hidden="true"><i class="bi ${activityIcon}"></i></span>
+                <div class="home-value-copy">
+                    <strong class="home-card-value">${escapeHtml(activityValue)}</strong>
+                    <span class="home-card-secondary">${escapeHtml(pet.name)} is currently ${escapeHtml(activityValue.toLowerCase())}</span>
+                </div>
+            </div>
+            <span class="home-activity-updated"><i class="bi bi-clock" aria-hidden="true"></i> Last updated ${escapeHtml(pet.updated || 'unavailable')}</span>
+        </div>
+    `;
+
+    const locationLabel = pet.location || 'Quezon City, Philippines';
+    const gpsTrackingStatus = { Resting: 'Low-Power Tracking', Walking: 'Normal Tracking', Running: 'High Tracking' }[activityValue] || 'Unavailable';
+    locationCard.innerHTML = `
+        <div class="summary-card-header">
+            <h3>Current Location</h3>
+        </div>
+        <div class="summary-card-body home-status-body">
+            <div class="home-highlight-row">
+                <span class="home-card-icon" aria-hidden="true"><i class="bi bi-geo-alt-fill"></i></span>
+                <div class="home-value-copy">
+                    <strong class="home-card-value">${escapeHtml(locationLabel)}</strong>
+                    ${!pet.online ? '<span class="home-card-secondary">Last known location</span>' : ''}
+                    <span class="home-gps-status"><i class="bi bi-broadcast" aria-hidden="true"></i><span>GPS: ${escapeHtml(gpsTrackingStatus)}</span></span>
+                </div>
+            </div>
+            <span class="home-status-updated"><i class="bi bi-clock" aria-hidden="true"></i> Last updated ${escapeHtml(pet.updated || 'unavailable')}</span>
+        </div>
+    `;
+
+    const safeStatus = pet.safe ? { label: 'Inside Safe Zone', type: 'safe' } : { label: 'Outside Safe Zone', type: 'warning' };
+    safetyCard.innerHTML = `
+        <div class="summary-card-header">
+            <h3>Safety Status</h3>
+        </div>
+        <div class="summary-card-body home-status-body">
+            <div class="home-highlight-row home-safety-panel ${safeStatus.type}">
+                <span class="home-card-icon" aria-hidden="true"><i class="bi ${pet.safe ? 'bi-shield-check' : 'bi-shield-exclamation'}"></i></span>
+                <div class="home-value-copy">
+                    <strong class="home-card-value">${escapeHtml(safeStatus.label)}</strong>
+                    <span class="home-card-secondary">${escapeHtml(pet.geofence || 'Home safe zone')}</span>
+                </div>
+            </div>
+            <span class="home-status-updated"><i class="bi bi-clock" aria-hidden="true"></i> Last updated ${escapeHtml(pet.updated || 'unavailable')}</span>
+        </div>
+    `;
+
+    const latestAlert = notifications.find(item => item.unread || item.category === 'location' || item.category === 'device') || {
+        title: 'No new alerts',
+        pet: pet.name,
+        time: 'All clear',
+        message: "You're all caught up.",
+        category: 'all-clear'
+    };
+    alertCard.innerHTML = `
+        <div class="summary-card-header">
+            <h3>Latest Alert</h3>
+        </div>
+        <div class="summary-card-body">
+            <div class="home-alert-panel ${latestAlert.title === 'No new alerts' ? 'safe' : 'warning'}">
+                <div class="home-alert-heading">
+                    <span class="home-card-icon" aria-hidden="true"><i class="bi ${latestAlert.title === 'No new alerts' ? 'bi-bell' : 'bi-bell-fill'}"></i></span>
+                    <strong class="home-card-value">${escapeHtml(latestAlert.title)}</strong>
+                </div>
+                <p class="home-alert-description">${escapeHtml(latestAlert.message || 'No new alerts')}</p>
+                <span class="home-alert-time"><i class="bi bi-clock" aria-hidden="true"></i> ${escapeHtml(latestAlert.time || 'Just now')}</span>
+            </div>
+        </div>
+    `;
+}
+
+function updateDashboardDate() {
+    const dateLabel = $('#dashboardDate');
+    if (!dateLabel) return;
+    const now = new Date();
+    dateLabel.dateTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    dateLabel.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    clearTimeout(dashboardDateTimer);
+    dashboardDateTimer = setTimeout(updateDashboardDate, nextDay.getTime() - now.getTime() + 100);
 }
 
 function renderNotifications() {
@@ -682,6 +781,9 @@ function attachStaticEvents() {
     $('#sidebarLogoToggle')?.addEventListener('click', toggleSidebar);
     $('#mobileLogoToggle')?.addEventListener('click', openSidebar);
     $('#sidebarBackdrop')?.addEventListener('click', closeSidebar);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) updateDashboardDate();
+    });
 
     document.addEventListener('click', event => {
         const livePetTarget = event.target.closest('[data-live-pet-id]');
@@ -690,6 +792,16 @@ function attachStaticEvents() {
         if (petTarget) selectPet(petTarget.dataset.petId);
         const deleteTarget = event.target.closest('[data-delete-pet]');
         if (deleteTarget) deletePetId = deleteTarget.dataset.deletePet;
+
+        const addPetShortcut = event.target.closest('[data-dashboard-add-pet]');
+        if (addPetShortcut) {
+            showSection('pet-management');
+            const addPetModal = document.getElementById('addPetModal');
+            if (window.bootstrap?.Modal && addPetModal) {
+                const modal = window.bootstrap.Modal.getOrCreateInstance(addPetModal);
+                modal.show();
+            }
+        }
     });
 
     document.addEventListener('keydown', event => {
@@ -710,22 +822,12 @@ function attachStaticEvents() {
             if (selectedPet?.heartRate.available) selectedPet.heartRate.updated = 'Just now';
             if (selectedPet?.temperature.available) selectedPet.temperature.updated = 'Just now';
             if (selectedPet?.activity.available) selectedPet.activity.updated = 'Just now';
-            if (selectedPet) {
-                livePetMarkers.get(selectedPet.id)?.setPopupContent(createLivePetPopup(selectedPet));
-            }
             renderSelectedLivePet();
-            renderLiveMonitoringCards();
             button.disabled = false;
             button.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
             showToast('Tracking data refreshed.');
         }, 700);
     });
-    $('#centerMapBtn')?.addEventListener('click', () => {
-        updateLiveMapSelection(false);
-        const selectedPet = liveTrackingPets.find(pet => pet.id === selectedLivePetId);
-        showToast(`Map centered on ${selectedPet?.name || 'the selected pet'}.`, 'bi-crosshair');
-    });
-
     $$('.filter-tabs [data-notification-filter]').forEach(button => button.addEventListener('click', () => {
         currentNotificationFilter = button.dataset.notificationFilter;
         $$('.filter-tabs button').forEach(item => item.classList.toggle('active', item === button));
@@ -874,15 +976,17 @@ async function handleLogout() {
     }
 }
 
+initializePageHeaders();
 attachStaticEvents();
 syncSidebarForViewport();
 renderAllPets();
 renderNotifications();
+updateDashboardDate();
 updateConnectionStatus();
 initializeLiveTracking();
 
 const initialSection = location.hash.slice(1);
-showSection(pageMeta[initialSection] ? initialSection : 'live-tracking');
+showSection(pageMeta[initialSection] ? initialSection : 'dashboard-home');
 
 onAuthStateChanged(auth, async user => {
     if (!user) {

@@ -4,7 +4,7 @@
 * {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    box-sizing: border-box;s
 }
 
 /* =====================================================
@@ -407,6 +407,7 @@ body {
     border: 1px solid #cfe4d4;
     border-radius: 16px;
     padding: 24px 20px;
+    position: relative;
     text-align: center;
 }
 .registration-verification[hidden] {
@@ -414,6 +415,21 @@ body {
 }
 .registration-verification button[hidden] {
     display: none;
+}
+.verification-cancel-btn {
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    padding: 4px 8px;
+    position: absolute;
+    right: 10px;
+    top: 8px;
+}
+.verification-cancel-btn:hover {
+    color: var(--dark);
 }
 .registration-verification-icon {
     align-items: center;
@@ -462,22 +478,13 @@ body {
     color: var(--green-dark);
 }
 .verification-resend-btn {
-    background: transparent;
-    border: 0;
-    color: var(--green-dark);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 10px;
-    font-weight: 700;
     margin-top: 11px;
-    padding: 6px;
 }
 .verification-resend-btn:hover:not(:disabled) {
-    text-decoration: underline;
+    text-decoration: none;
 }
 .verification-resend-btn:disabled {
     cursor: wait;
-    opacity: 0.65;
 }
 
 /* =====================================================

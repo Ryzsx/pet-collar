@@ -146,18 +146,27 @@ async function checkRegisteredEmail(email) {
 
 async function signInWithIdentifier(identifier, password) {
     const normalizedIdentifier = String(identifier || '').trim();
-    if (normalizedIdentifier.includes('@')) return signInWithEmail(normalizedIdentifier.toLowerCase(), password);
-
-    try {
-        const username = normalizeUsername(normalizedIdentifier);
-        const usernameSnapshot = await getDoc(doc(db, 'usernames', username));
-        if (!usernameSnapshot.exists() || !usernameSnapshot.data().email) {
-            return { success: false, error: 'auth/user-not-found' };
+    let result;
+    if (normalizedIdentifier.includes('@')) {
+        result = await signInWithEmail(normalizedIdentifier.toLowerCase(), password);
+    } else {
+        try {
+            const username = normalizeUsername(normalizedIdentifier);
+            const usernameSnapshot = await getDoc(doc(db, 'usernames', username));
+            if (!usernameSnapshot.exists() || !usernameSnapshot.data().email) {
+                return { success: false, error: 'auth/user-not-found' };
+            }
+            result = await signInWithEmail(usernameSnapshot.data().email, password);
+        } catch (error) {
+            return { success: false, error: error.code === 'permission-denied' ? 'auth/username-lookup-unavailable' : error.code, message: error.message };
         }
-        return signInWithEmail(usernameSnapshot.data().email, password);
-    } catch (error) {
-        return { success: false, error: error.code === 'permission-denied' ? 'auth/username-lookup-unavailable' : error.code, message: error.message };
     }
+
+    if (result.success && !result.user.emailVerified) {
+        return { success: false, error: 'auth/account-pending', user: result.user };
+    }
+
+    return result;
 }
 
 async function registerWithUsername(username, email, password) {
@@ -188,28 +197,6 @@ async function registerWithUsername(username, email, password) {
         credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
         await updateProfile(credential.user, { displayName: cleanUsername });
 
-        const userRef = doc(db, 'users', credential.user.uid);
-        await runTransaction(db, async transaction => {
-            const reservedUsername = await transaction.get(usernameRef);
-            if (reservedUsername.exists()) {
-                const usernameError = new Error('Username already exists.');
-                usernameError.code = 'auth/username-already-in-use';
-                throw usernameError;
-            }
-            transaction.set(userRef, {
-                username: cleanUsername,
-                usernameLower,
-                email: cleanEmail,
-                emailVerified: false,
-                registrationStatus: 'pending_verification',
-                createdAt: serverTimestamp()
-            });
-            transaction.set(usernameRef, {
-                uid: credential.user.uid,
-                email: cleanEmail
-            });
-        });
-
         const registrationUrl = new URL('../pages/register.html', import.meta.url);
         let verificationSent = true;
         try {
@@ -222,6 +209,87 @@ async function registerWithUsername(username, email, password) {
         if (credential?.user) {
             try { await deleteUser(credential.user); } catch { /* Best-effort rollback. */ }
         }
+        return { success: false, error: error.code, message: error.message };
+    }
+}
+
+async function checkRegistrationEmail(email, password) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    try {
+        const methods = await fetchSignInMethodsForEmail(auth, normalizedEmail);
+        if (!methods.length) return { success: true, status: 'available' };
+
+        const result = await signInWithEmail(normalizedEmail, password);
+        if (!result.success) {
+            const completedAccount = await checkRegisteredEmail(normalizedEmail);
+            return completedAccount.success && completedAccount.exists
+                ? { success: true, status: 'completed' }
+                : { success: false, error: result.error, message: result.message };
+        }
+
+        await reload(result.user);
+        if (result.user.emailVerified) {
+            await signOutUser();
+            return { success: true, status: 'completed' };
+        }
+
+        return { success: true, status: 'pending', user: result.user };
+    } catch (error) {
+        return { success: false, error: error.code, message: error.message };
+    }
+}
+
+async function completeVerifiedRegistration(uid, registrationData) {
+    const username = String(registrationData?.username || '').trim();
+    const usernameLower = normalizeUsername(username);
+    const email = String(registrationData?.email || '').trim().toLowerCase();
+
+    if (!uid || !username || !email) return { success: false, error: 'auth/invalid-registration-data' };
+
+    try {
+        const user = auth.currentUser;
+        if (!user || user.uid !== uid) return { success: false, error: 'auth/user-not-found' };
+        await reload(user);
+        if (!user.emailVerified) return { success: false, error: 'auth/email-not-verified' };
+
+        const userRef = doc(db, 'users', uid);
+        const usernameRef = doc(db, 'usernames', usernameLower);
+        await runTransaction(db, async transaction => {
+            const [userSnapshot, usernameSnapshot] = await Promise.all([
+                transaction.get(userRef),
+                transaction.get(usernameRef)
+            ]);
+
+            if (userSnapshot.exists() && usernameSnapshot.exists()) {
+                const existingUser = userSnapshot.data();
+                const existingUsername = usernameSnapshot.data();
+                if (existingUsername.uid === uid && existingUser.email === email) return;
+                const conflict = new Error('Registration already exists.');
+                conflict.code = 'auth/registration-already-completed';
+                throw conflict;
+            }
+
+            if (usernameSnapshot.exists() && usernameSnapshot.data().uid !== uid) {
+                const usernameError = new Error('Username already exists.');
+                usernameError.code = 'auth/username-already-in-use';
+                throw usernameError;
+            }
+
+            transaction.set(userRef, {
+                username,
+                usernameLower,
+                email,
+                emailVerified: true,
+                registrationStatus: 'active',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+            transaction.set(usernameRef, { uid, email });
+        });
+
+        return { success: true };
+    } catch (error) {
         return { success: false, error: error.code, message: error.message };
     }
 }
@@ -730,6 +798,8 @@ export {
     checkUsernameExists,
     checkRegisteredEmail,
     registerWithUsername,
+    checkRegistrationEmail,
+    completeVerifiedRegistration,
     signOutUser as signOut,
     resetPassword,
     resetPasswordByIdentifier,

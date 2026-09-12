@@ -16,7 +16,6 @@ const identifierError = document.getElementById('identifierError');
 const requestStatus = document.getElementById('requestStatus');
 const resendStatus = document.getElementById('resendStatus');
 const resendCountdown = document.getElementById('resendCountdown');
-const submittedIdentifier = document.getElementById('submittedIdentifier');
 const sentEmailAccount = document.getElementById('sentEmailAccount');
 const changeStatus = document.getElementById('changeStatus');
 const verificationState = document.getElementById('verificationState');
@@ -28,10 +27,7 @@ const newPasswordInput = document.getElementById('newPassword');
 const confirmPasswordInput = document.getElementById('confirmPassword');
 const sendResetButton = document.getElementById('sendResetButton');
 const sendResetLabel = sendResetButton.querySelector('.button-label');
-const didntReceiveButton = document.getElementById('didntReceiveButton');
-const resendOptions = document.getElementById('resendOptions');
 const resendResetButton = document.getElementById('resendResetButton');
-const backToForgotButton = document.getElementById('backToForgotButton');
 const changePasswordButton = document.getElementById('changePasswordButton');
 const resetLinkError = document.getElementById('resetLinkError');
 const requestNewResetButton = document.getElementById('requestNewResetButton');
@@ -53,7 +49,9 @@ const passwordRules = {
 let verifiedOobCode = '';
 let lastResetIdentifier = '';
 let resendTimer = null;
+let resendAttempts = 0;
 const resendDelaySeconds = 60;
+const maxResendAttempts = 3;
 
 function showStatus(element, message, type) {
     element.textContent = message;
@@ -133,7 +131,7 @@ function startResendTimer() {
     resendResetButton.disabled = true;
 
     const updateCountdown = () => {
-        resendCountdown.textContent = `You can resend the email in ${secondsRemaining} second${secondsRemaining === 1 ? '' : 's'}.`;
+        resendResetButton.querySelector('.button-label').textContent = `Resend new link in ${secondsRemaining}s`;
     };
 
     updateCountdown();
@@ -141,7 +139,12 @@ function startResendTimer() {
         secondsRemaining -= 1;
         if (secondsRemaining <= 0) {
             stopResendTimer();
-            resendCountdown.textContent = 'You can resend the reset email now.';
+            resendCountdown.textContent = '';
+            if (resendAttempts >= maxResendAttempts) {
+                resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
+                return;
+            }
+            resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
             resendResetButton.disabled = false;
             return;
         }
@@ -160,14 +163,12 @@ function maskEmail(email) {
 
 function showEmailSentState(identifier, deliveryEmail) {
     lastResetIdentifier = identifier;
-    submittedIdentifier.textContent = identifier;
+    resendAttempts = 0;
     sentEmailAccount.textContent = identifier.includes('@')
         ? identifier.toLowerCase()
         : maskEmail(deliveryEmail);
     requestEntryState.hidden = true;
     emailSentState.hidden = false;
-    resendOptions.hidden = true;
-    didntReceiveButton.setAttribute('aria-expanded', 'false');
     clearStatus(resendStatus);
     startResendTimer();
 }
@@ -178,10 +179,12 @@ function showRequestState(clearUrl = false) {
     emailSentState.hidden = true;
     changeSection.hidden = true;
     verifiedOobCode = '';
+    resendAttempts = 0;
     stopResendTimer();
     clearStatus(requestStatus);
     clearStatus(resendStatus);
     sendResetLabel.textContent = 'Send Reset Link';
+    resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
     if (clearUrl) window.history.replaceState({}, document.title, window.location.pathname);
     window.setTimeout(() => identifierInput.focus(), 0);
 }
@@ -315,12 +318,6 @@ identifierInput.addEventListener('input', () => {
     sendResetLabel.textContent = 'Send Reset Link';
 });
 
-didntReceiveButton.addEventListener('click', () => {
-    const willShow = resendOptions.hidden;
-    resendOptions.hidden = !willShow;
-    didntReceiveButton.setAttribute('aria-expanded', String(willShow));
-});
-
 resendResetButton.addEventListener('click', async () => {
     if (!lastResetIdentifier || resendResetButton.disabled) return;
 
@@ -330,18 +327,21 @@ resendResetButton.addEventListener('click', async () => {
     setButtonLoading(resendResetButton, false);
 
     if (result.success) {
+        resendAttempts += 1;
         showStatus(resendStatus, 'A new reset link was sent. Check your email.', 'success');
+        if (resendAttempts >= maxResendAttempts) {
+            resendResetButton.disabled = true;
+            resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
+            showStatus(resendStatus, 'The 3 attempts have been used', 'error');
+            stopResendTimer();
+            return;
+        }
         startResendTimer();
         return;
     }
 
-    resendCountdown.textContent = 'The reset email was not sent.';
+    resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
     showStatus(resendStatus, `Unable to send reset link. ${getRequestErrorMessage(result.error)}`, 'error');
-});
-
-backToForgotButton.addEventListener('click', () => {
-    clearRequestFields();
-    showRequestState();
 });
 
 newPasswordInput.addEventListener('input', () => {

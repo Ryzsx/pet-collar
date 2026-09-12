@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartCollars - Sign In</title>
+    <title>PawSense - Sign In</title>
     <link rel="stylesheet" href="../css/login.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +44,7 @@
             <section class="login-visual">
                 <a href="login.html" class="brand">
                     <div class="brand-icon">♥</div>
-                    <div class="brand-name">Smart<span>Collars</span></div>
+                    <div class="brand-name">Paw<span>Sense</span></div>
                 </a>
                 <div class="pet-image-container">
                     <img src="https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=900&h=700&fit=crop&crop=center"
@@ -104,7 +104,7 @@
                     </form>
 
                     <div class="register-text">
-                        New to SmartCollars? <a href="register.html">Create an account</a>
+                        New to PawSense? <a href="register.html">Create an account</a>
                     </div>
 
                 </div>
@@ -130,6 +130,7 @@
         import { 
             auth,
             signInWithIdentifier,
+            signOut,
             onAuthStateChanged
         } from '../js/firebase-init.js';
 
@@ -146,6 +147,8 @@
         const forgotLink = document.getElementById('forgotLink');
         const errorMsg = document.getElementById('errorMessage');
         const successMsg = document.getElementById('successMessage');
+        let loginInProgress = false;
+        const accountDoesNotExistMessage = 'Invalid username/email and password!';
 
         // ============================================
         // HELPER FUNCTIONS
@@ -205,11 +208,15 @@
         // ============================================
         // 2. AUTH STATE
         // ============================================
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 console.log('✅ User logged in:', user.email);
                 if (!user.emailVerified) {
-                    window.location.replace('register.html');
+                    if (loginInProgress) return;
+                    await signOut();
+                    showError(accountDoesNotExistMessage);
+                    updateStatus('Login failed', false);
+                    setLoading(false);
                     return;
                 } else {
                     hideMessages();
@@ -233,43 +240,49 @@
             const password = passwordInput.value;
 
             if (!identifier || !password) {
-                showError('Please enter your username or email and password.');
+                showError(accountDoesNotExistMessage);
                 return;
             }
 
             setLoading(true);
+            loginInProgress = true;
             updateStatus('Signing in...', false);
 
             try {
                 const result = await signInWithIdentifier(identifier, password);
+                loginInProgress = false;
                 clearLoginFields();
                 
                 console.log('✅ Login result:', result);
 
                 if (result.success) {
                     console.log('✅ Login success:', result.user.email);
-                    showSuccess('Signed in successfully!');
-                    updateStatus('Signed in! ✅', true);
-
-                    // Check if email is verified
-                    if (!result.user.emailVerified) {
-                        window.location.href = 'register.html';
-                        return;
-                    }
+                    loginInProgress = false;
+                    setLoading(false);
+                    hideMessages();
+                    updateStatus('Not logged in', false);
 
                     // Redirect to dashboard
-                    setTimeout(() => window.location.href = 'dashboard.html', 500);
+                    window.location.replace('dashboard.html');
                 } else {
                     // ❌ Show the actual Firebase error
                     console.error('❌ Login error:', result);
-                    showError('Invalid username/email or password.');
+                    if (result.error === 'auth/account-pending') {
+                        await signOut();
+                        showError(accountDoesNotExistMessage);
+                        updateStatus('Login failed', false);
+                        setLoading(false);
+                        return;
+                    }
+                    showError(accountDoesNotExistMessage);
                     updateStatus('Login failed', false);
                     setLoading(false);
                 }
             } catch (error) {
+                loginInProgress = false;
                 clearLoginFields();
                 console.error('❌ Unexpected login error:', error);
-                showError('Invalid username/email or password.');
+                showError(accountDoesNotExistMessage);
                 updateStatus('Login failed', false);
                 setLoading(false);
             }
