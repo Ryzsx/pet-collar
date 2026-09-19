@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#2f8f50">
-    <title>Dashboard | SmartCollars</title>
+    <title>Live Tracking | SmartCollars</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -14,18 +14,18 @@
 </head>
 <body>
     <div class="dashboard-shell">
-        <aside class="app-sidebar" id="sidebar" aria-label="Dashboard navigation">
+        <aside class="app-sidebar" id="sidebar" aria-label="PawSense navigation">
             <div class="sidebar-brand">
                 <button class="brand-link brand-toggle" id="sidebarLogoToggle" type="button" aria-label="Expand navigation" aria-controls="sidebar" aria-expanded="false" title="Expand navigation">
                     <span class="brand-mark"><i class="bi bi-heart-pulse-fill brand-logo-icon"></i><i class="bi bi-layout-sidebar-inset brand-hover-icon"></i></span>
-                    <span class="brand-name">Smart<span>Collars</span></span>
+                    <span class="brand-name">Paw<span>Sense</span></span>
                 </button>
                 <button class="sidebar-toggle sidebar-collapse-control" id="sidebarToggle" type="button" aria-label="Collapse navigation" aria-controls="sidebar" aria-expanded="true" title="Collapse navigation"><i class="bi bi-layout-sidebar-inset"></i></button>
             </div>
-            <nav class="sidebar-nav nav flex-column" id="dashboardNav">
-                <span class="nav-heading">Workspace</span>
-                <button class="nav-link active" type="button" data-section="dashboard-home" title="Dashboard"><i class="bi bi-house-door"></i><span>Dashboard</span></button>
-                <button class="nav-link" type="button" data-section="live-tracking" title="Live Monitoring"><i class="bi bi-activity"></i><span>Live Monitoring</span></button>
+            <nav class="sidebar-nav nav flex-column" id="appNav">
+                <span class="nav-heading">Dashboard</span>
+                <button class="nav-link active" type="button" data-section="live-tracking" title="Live Tracking"><i class="bi bi-activity"></i><span>Live Tracking</span></button>
+                <button class="nav-link" type="button" data-section="health-activity" title="Activity Monitoring"><i class="bi bi-graph-up-arrow"></i><span>Activity Monitoring</span></button>
                 <button class="nav-link" type="button" data-section="pet-management" title="Pet Management"><svg class="nav-paw-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><ellipse cx="6.4" cy="7.2" rx="2.15" ry="2.75"/><ellipse cx="17.6" cy="7.2" rx="2.15" ry="2.75"/><ellipse cx="10" cy="4.4" rx="2" ry="2.65"/><ellipse cx="14" cy="4.4" rx="2" ry="2.65"/><path d="M12 9.1c-2.25 0-6.15 3.65-6.15 6.85 0 2.18 1.58 3.65 3.6 3.65 1.12 0 1.75-.52 2.55-.52s1.43.52 2.55.52c2.02 0 3.6-1.47 3.6-3.65 0-3.2-3.9-6.85-6.15-6.85Z"/></svg><span>Pet Management</span></button>
                 <button class="nav-link" type="button" data-section="notifications" title="Notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
                 <button class="nav-link" type="button" data-section="history" title="History"><i class="bi bi-clock-history"></i><span>History</span></button>
@@ -48,111 +48,79 @@
             </header>
 
             <div class="dashboard-content">
-                <section class="dashboard-section active" id="dashboard-home">
-                    <div class="section-toolbar compact">
-                        <div>
-                            <h1>Welcome back, <span id="welcomeName">User</span>!</h1>
-                            <p>Here’s a quick overview of your pet’s current status.</p>
+                <section class="dashboard-section active" id="live-tracking">
+                    <div class="section-toolbar live-page-toolbar">
+                        <div class="live-title-copy">
+                            <h1>Welcome to PawSense, <span id="liveWelcomeName">User</span>! <span class="welcome-paw" aria-hidden="true">🐾</span></h1>
+                            <p class="live-welcome-message">We are thrilled to have you and your furry companion on board. Your dashboard is your central hub for keeping your pet safe and happy.</p>
                         </div>
                     </div>
 
-                    <div class="section-content-actions"><time class="dashboard-current-date" id="dashboardDate"></time></div>
-
-                    <div class="dashboard-home-grid" id="dashboardHomeGrid">
-                        <article class="summary-card pets-summary-card home-summary-card" id="dashboardPetsCard"></article>
-                        <article class="summary-card home-summary-card" id="dashboardActivityCard"></article>
-                        <article class="summary-card home-summary-card" id="dashboardLocationCard"></article>
-                        <article class="summary-card wide-card home-summary-card" id="dashboardSafetyCard"></article>
-                        <article class="summary-card wide-card home-summary-card" id="dashboardAlertCard"></article>
-                    </div>
-
-                    <div class="dashboard-welcome-banner" id="dashboardWelcomeBanner">
-                        <div class="banner-copy">
-                            <span class="banner-label">Welcome to SmartCollars</span>
-                            <h3>Keep track of your pets' activity, location, safety, and important alerts in one place.</h3>
-                        </div>
-                        <button class="btn btn-brand" type="button" data-section-trigger="live-tracking"><i class="bi bi-activity"></i> View Live Monitoring</button>
-                    </div>
-                </section>
-
-                <section class="dashboard-section" id="live-tracking">
-                    <div class="section-toolbar">
-                        <div><span class="section-kicker">Real-time pet overview</span><h1>Live Monitoring</h1><p>Track your pet’s current location, safe-zone status, and live collar information.</p></div>
-                    </div>
-
-                    <div class="monitoring-toolbar-actions monitoring-content-actions">
-                        <div class="toolbar-actions"><span class="last-sync"><i class="bi bi-arrow-repeat"></i> Synced <span id="lastSync">just now</span></span><button class="btn btn-brand" id="refreshTrackingBtn" type="button"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>
-                    </div>
-
-                    <div class="live-pet-selector" aria-label="Select a pet to track">
-                        <div class="selector-label"><span class="title-icon green"><i class="bi bi-person-hearts"></i></span><div><strong>Select a pet</strong><small>Up to 3 registered pets</small></div></div>
-                        <div class="selector-options" id="livePetSelector"></div>
-                    </div>
-
-                    <div class="row g-4 align-items-stretch">
-                        <div class="col-xl-9">
-                            <article class="app-card map-card h-100">
-                                <div class="card-topline"><div><div class="card-title-row"><span class="title-icon green"><i class="bi bi-geo-alt-fill"></i></span><h3>Pet location map</h3></div><p>Google Maps view with pet locations and the selected safe zone</p></div><span class="badge soft-badge success" id="mapDataBadge"><span class="status-pulse"></span> GPS available</span></div>
-                                <div class="tracking-map-wrap">
-                                    <div class="tracking-map" id="trackingMap" aria-label="Interactive pet tracking map"></div>
-                                </div>
-                            </article>
-                        </div>
-                        <div class="col-xl-3">
-                            <div class="tracking-side-stack">
-                                <aside class="selected-location-panel" id="selectedPetPanel" aria-live="polite"></aside>
-                                <aside class="safe-zone-side-panel" id="selectedSafeZonePanel"></aside>
-                                <aside class="tracking-legend-panel">
-                                    <h3>Legend</h3>
-                                    <div><span><i class="legend-dot online"></i> Current location</span></div>
-                                    <div><span><i class="legend-dot gps-unavailable"></i> Last known location - GPS unavailable</span></div>
-                                    <div><span><i class="legend-dot offline"></i> Last known location - Collar offline</span></div>
-                                    <div><span><i class="legend-ring"></i> Configured safe zone</span></div>
-                                </aside>
+                    <article class="app-card live-map-card">
+                        <div class="live-map-heading">
+                            <div><span class="map-heading-icon"><i class="bi bi-geo-alt-fill"></i></span><div><h2>Live Location Map</h2><p>Current or last successfully received position</p></div></div>
+                            <div class="map-heading-actions">
+                                <time class="live-date-card" id="liveTodayCard">
+                                    <span class="live-date-icon" aria-hidden="true"><i class="bi bi-calendar3"></i></span>
+                                    <span class="live-date-copy"><small>Today · <span id="liveTodayTime">Loading time…</span></small><strong id="liveTodayDate">Loading date…</strong></span>
+                                </time>
+                                <button class="btn btn-soft" id="refreshTrackingBtn" type="button" aria-label="Refresh tracking data" title="Refresh tracking data"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
                             </div>
                         </div>
+                        <div class="tracking-map-wrap">
+                            <div class="tracking-map" id="trackingMap" aria-label="Interactive map showing pet location and safe zone"></div>
+                        </div>
+                        <div class="tracking-message" id="trackingMessage" role="status" hidden></div>
+                    </article>
+
+                    <div class="monitoring-pet-control">
+                        <div class="live-pet-icon-list" id="livePetSelector" role="group" aria-label="Choose a pet to track"></div>
                     </div>
 
-                    <div class="monitoring-status-section">
-                        <div class="monitoring-section-heading">
-                            <div><h3>Current monitoring status</h3><p>Latest health, activity, and collar readings for the selected pet</p></div>
-                            <span class="prototype-label"><i class="bi bi-info-circle"></i> Prototype device data</span>
-                        </div>
-                        <div class="row g-3" id="liveMonitoringCards" aria-live="polite"></div>
-                    </div>
+                    <div class="row g-3 live-primary-status-row" id="livePrimaryStatusRow" aria-live="polite"></div>
+                    <div class="row g-3 live-secondary-status-row" id="liveSecondaryStatusRow" aria-live="polite"></div>
                 </section>
 
                 <section class="dashboard-section" id="health-activity">
-                    <div class="section-toolbar compact"><div><span class="section-kicker">Current readings</span><h1>Activity</h1><p>View your pet’s current activity and recent behavior patterns.</p></div><label class="pet-select-control"><span>Viewing pet</span><select class="form-select pet-selector" id="healthPetSelect" aria-label="Select pet"></select></label></div>
+                    <div class="section-toolbar compact"><div><span class="section-kicker">Current readings</span><h1>Activity</h1><p>View your pet’s current activity and recent behavior patterns.</p></div></div>
+                    <div class="monitoring-pet-control">
+                        <div class="live-pet-icon-list" id="activityPetSelector" role="group" aria-label="Choose a pet to view activity"></div>
+                    </div>
                     <div class="data-notice"><i class="bi bi-info-circle-fill"></i><div><strong>Prototype sensor data</strong><span>Readings shown below are representative placeholders. Last update: <span id="healthUpdated">Today, 10:42 AM</span></span></div><div class="state-key"><span class="soft-badge success">Normal</span><span class="soft-badge danger">Abnormal</span><span class="soft-badge neutral">Data unavailable</span></div></div>
                     <div class="row g-4">
-                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon rose"><i class="bi bi-heart-pulse"></i></span><span class="soft-badge success">Normal</span></div><span>Heart rate</span><strong><span id="healthHeartRate">82</span><small>BPM</small></strong><div class="range-line"><span style="width:58%"></span></div><small>Normal range: 60–140 BPM</small></article></div>
-                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon orange"><i class="bi bi-thermometer-half"></i></span><span class="soft-badge success">Normal</span></div><span>Body temperature</span><strong><span id="healthTemperature">38.5</span><small>°C</small></strong><div class="range-line orange"><span style="width:52%"></span></div><small>Normal range: 37.5–39.2 °C</small></article></div>
-                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon blue"><i class="bi bi-person-walking"></i></span><span class="soft-badge info">Active</span></div><span>Activity status</span><strong class="word-value" id="healthActivity">Walking</strong><div class="activity-pills"><i></i><i class="active"></i><i></i></div><small>Changed 4 minutes ago</small></article></div>
-                        <div class="col-sm-6 col-xl-3"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon green"><i class="bi bi-router"></i></span><span class="soft-badge success">Online</span></div><span>Collar status</span><strong class="word-value">Connected</strong><div class="signal-bars"><i></i><i></i><i></i><i></i></div><small>Strong signal · Battery 86%</small></article></div>
+                        <div class="col-sm-6"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon blue"><i class="bi bi-person-walking"></i></span><span class="soft-badge info" id="activityStateBadge">Live</span></div><span id="activityStatusLabel">Current activity</span><strong class="word-value" id="healthActivity">Walking</strong><div class="activity-pills"><i></i><i class="active"></i><i></i></div><small id="activityRecordedTime">Updated 3:42 PM</small></article></div>
+                        <div class="col-sm-6"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon green"><i class="bi bi-router"></i></span><span class="soft-badge success" id="activityCollarBadge">Online</span></div><span>Collar status</span><strong class="word-value" id="activityCollarStatus">Connected</strong><div class="signal-bars" id="activitySignalBars"><i></i><i></i><i></i><i></i></div><small id="activityCollarReadings">Signal: Strong · Battery 74%</small></article></div>
                     </div>
                     <div class="row g-4 mt-0">
-                        <div class="col-xl-8"><article class="app-card chart-panel h-100"><div class="card-topline"><div><h3>Health trend</h3><p>Heart rate and temperature over the last 12 hours</p></div><div class="chart-legend"><span><i class="green-line"></i> Heart rate</span><span><i class="orange-line"></i> Temperature</span></div></div><div class="line-chart"><div class="chart-y-labels"><span>120</span><span>100</span><span>80</span><span>60</span><span>40</span></div><svg viewBox="0 0 720 220" preserveAspectRatio="none" aria-label="Placeholder health graph"><defs><linearGradient id="healthFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#359574" stop-opacity=".18"/><stop offset="1" stop-color="#359574" stop-opacity="0"/></linearGradient></defs><path class="chart-area" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58 L720 220 L0 220 Z"/><path class="chart-line-primary" d="M0 168 C55 150,80 164,125 132 S208 150,250 116 S338 135,380 104 S462 122,510 86 S610 106,720 58"/><path class="chart-line-secondary" d="M0 126 C60 120,85 126,130 118 S215 124,260 112 S345 116,390 110 S480 116,530 105 S620 112,720 100"/></svg><div class="chart-x-labels"><span>12 AM</span><span>3 AM</span><span>6 AM</span><span>9 AM</span><span>12 PM</span></div></div></article></div>
+                        <div class="col-xl-8">
+                            <article class="app-card chart-panel pet-anomaly-card h-100">
+                                <div class="anomaly-chart-heading">
+                                    <div class="anomaly-chart-title"><span class="anomaly-heading-icon" aria-hidden="true"><i class="bi bi-activity"></i></span><div><h3>Pet's Anomaly</h3><p id="petAnomalyDescription">Activity changes over time</p></div></div>
+                                    <div class="anomaly-chart-legend" aria-label="Activity colors"><span class="resting">Resting</span><span class="walking">Walking</span><span class="running">Running</span></div>
+                                </div>
+                                <div class="activity-anomaly-chart" id="petAnomalyChart"></div>
+                            </article>
+                        </div>
                         <div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Today's activity</h3><p>Daily movement breakdown</p></div><span class="soft-badge success">On track</span></div><div class="activity-donut"><div class="donut"><div><strong>68%</strong><span>daily goal</span></div></div></div><div class="activity-breakdown"><div><span><i class="activity-dot resting"></i> Resting</span><strong>14h 20m</strong></div><div><span><i class="activity-dot walking"></i> Walking</span><strong>1h 45m</strong></div><div><span><i class="activity-dot running"></i> Running</span><strong>28m</strong></div></div></article></div>
                     </div>
                 </section>
 
                 <section class="dashboard-section" id="pet-management">
                     <div class="section-toolbar compact"><div><span class="section-kicker">Pet profiles</span><h1>Pet Management</h1><p>Manage your pet profiles, collar details, and safe-zone settings.</p></div></div>
-                    <div class="section-content-actions"><button class="btn btn-brand" id="addPetBtn" type="button" data-bs-toggle="modal" data-bs-target="#addPetModal"><i class="bi bi-plus-lg"></i> Add new pet</button></div>
-                    <div class="limit-note"><i class="bi bi-info-circle"></i> You can monitor up to 3 pets. <strong id="petCapacity">2 of 3 profiles used.</strong></div>
-                    <div class="row g-4"><div class="col-xl-3"><article class="app-card pet-list-card"><div class="card-topline"><div><h3>Your pets</h3><p>Select a profile to view details</p></div></div><div class="management-pet-list" id="petList"></div></article></div><div class="col-xl-9"><article class="app-card pet-detail-card" id="petDetail"></article></div></div>
+                    <div class="section-content-actions"><button class="btn btn-brand" id="addPetBtn" type="button"><i class="bi bi-plus-lg"></i> Add new pet</button></div>
+                    <div class="limit-note" id="petLimitWarning" role="alert" hidden><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> You can monitor up to 3 pets.</div>
+                    <div class="row g-4"><div class="col-xl-3"><article class="app-card pet-list-card"><div class="card-topline"><div><h3>Your pets</h3><p>Select a profile to view details</p><span class="soft-badge neutral" id="petCapacity" aria-live="polite">3 of 3 profiles used.</span></div></div><div class="management-pet-list" id="petList"></div></article></div><div class="col-xl-9"><article class="app-card pet-detail-card" id="petDetail"></article></div></div>
                 </section>
 
                 <section class="dashboard-section" id="notifications">
                     <div class="section-toolbar compact"><div><span class="section-kicker">Alert center</span><h1>Notifications</h1><p>Check important alerts and updates from your pet’s collar.</p></div></div>
                     <div class="section-content-actions"><button class="btn btn-soft" id="markAllReadBtn" type="button"><i class="bi bi-check2-all"></i> Mark all as read</button></div>
-                    <article class="app-card notifications-card"><div class="notification-toolbar"><div class="filter-tabs" role="group" aria-label="Notification filters"><button class="active" type="button" data-notification-filter="all">All <span>9</span></button><button type="button" data-notification-filter="unread">Unread <span id="unreadFilterCount">4</span></button><button type="button" data-notification-filter="location">Location</button><button type="button" data-notification-filter="health">Health</button><button type="button" data-notification-filter="device">Device</button></div></div><div class="notification-list" id="notificationList"></div></article>
+                    <article class="app-card notifications-card"><div class="notification-toolbar"><div class="filter-tabs" role="group" aria-label="Notification filters"><button class="active" type="button" data-notification-filter="all">All <span>5</span></button><button type="button" data-notification-filter="unread">Unread <span id="unreadFilterCount">3</span></button><button type="button" data-notification-filter="location">Location</button><button type="button" data-notification-filter="device">Device</button></div></div><div class="notification-list" id="notificationList"></div></article>
                 </section>
 
                 <section class="dashboard-section" id="history">
                     <div class="section-toolbar compact"><div><span class="section-kicker">Recorded insights</span><h1>History</h1><p>Review previous location, activity, and anomaly records.</p></div></div>
-                    <div class="section-content-actions"><div class="history-filters"><select class="form-select pet-selector" id="historyPetSelect" aria-label="Select pet"></select><select class="form-select" id="historyRange" aria-label="Select history range"><option value="today">Today</option><option value="week">Weekly history</option></select></div></div>
+                    <div class="section-content-actions"><div class="history-filters"><div class="live-pet-icon-list history-pet-selector" id="historyPetSelect" role="group" aria-label="Select a pet for history"></div><select class="form-select" id="historyRange" aria-label="Select history range"><option value="today">Today</option><option value="week">Weekly history</option></select></div></div>
                     <div class="history-type-tabs" role="tablist"><button class="active" type="button" data-history-type="location"><i class="bi bi-geo-alt"></i> Location</button><button type="button" data-history-type="health"><i class="bi bi-heart-pulse"></i> Health</button><button type="button" data-history-type="activity"><i class="bi bi-activity"></i> Activity</button></div>
                     <div class="history-panel active" id="history-location"><div class="row g-4"><div class="col-xl-8"><article class="app-card"><div class="card-topline"><div><h3>Route history</h3><p>Recorded path for today</p></div><span class="soft-badge neutral"><i class="bi bi-clock"></i> Last updated 10:42 AM</span></div><div class="route-map"><div class="map-road road-one"></div><div class="map-road road-two"></div><div class="route-path"></div><span class="route-point start"><i class="bi bi-house-door-fill"></i></span><span class="route-point end"><i class="bi bi-geo-alt-fill"></i></span><span class="route-label start-label">Start · 7:15 AM</span><span class="route-label end-label">Last point · 10:42 AM</span></div></article></div><div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Trip summary</h3><p>Today’s movement</p></div></div><div class="trip-stats"><div><span>Distance traveled</span><strong>3.8 km</strong></div><div><span>Time outside</span><strong>1h 42m</strong></div><div><span>Locations visited</span><strong>4 places</strong></div></div><div class="timeline"><div><i></i><span><strong>Riverside Park</strong><small>10:42 AM · Last recorded point</small></span></div><div><i></i><span><strong>Oak Street</strong><small>9:36 AM · Walking</small></span></div><div><i></i><span><strong>Home</strong><small>7:15 AM · Start point</small></span></div></div></article></div></div></div>
                     <div class="history-panel" id="history-health"><div class="row g-4"><div class="col-xl-6"><article class="app-card chart-panel"><div class="card-topline"><div><h3>Heart rate history</h3><p>Average 84 BPM · Last updated 10:42 AM</p></div><span class="soft-badge success">Normal</span></div><div class="mini-history-chart green-chart"><svg viewBox="0 0 600 170" preserveAspectRatio="none"><path d="M0 120 C50 100,82 118,122 84 S205 110,250 70 S340 94,390 62 S480 88,600 42"/></svg></div></article></div><div class="col-xl-6"><article class="app-card chart-panel"><div class="card-topline"><div><h3>Temperature history</h3><p>Average 38.4 °C · Last updated 10:42 AM</p></div><span class="soft-badge success">Normal</span></div><div class="mini-history-chart orange-chart"><svg viewBox="0 0 600 170" preserveAspectRatio="none"><path d="M0 96 C55 92,90 100,135 88 S220 94,265 82 S355 90,405 76 S500 86,600 70"/></svg></div></article></div></div></div>

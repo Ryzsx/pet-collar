@@ -400,7 +400,7 @@
             </div>
 
             <!-- Submit Button (hidden until step 3) -->
-            <button type="submit" id="submitBtn" class="btn-primary hidden">🐾 Add Pet & Go to Dashboard</button>
+            <button type="submit" id="submitBtn" class="btn-primary hidden">🐾 Add Pet & Go to Live Tracking</button>
 
             <div id="message"></div>
         </form>
@@ -589,14 +589,14 @@
                 showMessage(messageDiv, '✅ Pet added successfully! Redirecting...', 'success');
 
                 setTimeout(function() {
-                    window.location.href = 'dashboard.html';
+                    window.location.href = 'dashboard.html#live-tracking';
                 }, 1200);
 
             } catch (error) {
                 console.error('❌ Save error:', error);
                 showMessage(messageDiv, '❌ Error saving pet data: ' + error.message, 'error');
                 submitBtn.disabled = false;
-                submitBtn.textContent = '🐾 Add Pet & Go to Dashboard';
+                submitBtn.textContent = '🐾 Add Pet & Go to Live Tracking';
             }
         });
 

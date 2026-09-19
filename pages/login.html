@@ -262,8 +262,8 @@
                     hideMessages();
                     updateStatus('Not logged in', false);
 
-                    // Redirect to dashboard
-                    window.location.replace('dashboard.html');
+                    // Open live monitoring after login
+                    window.location.replace('dashboard.html#live-tracking');
                 } else {
                     // ❌ Show the actual Firebase error
                     console.error('❌ Login error:', result);
