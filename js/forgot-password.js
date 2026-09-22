@@ -1,9 +1,8 @@
 import {
-    resetPasswordByIdentifier,
-    verifyPasswordResetAction,
-    completePasswordReset,
     handleEmailVerification
 } from './firebase-init.js';
+import { authService } from './services/AuthService.js';
+import { isValidEmail, isValidUsername, isStrongPassword, passwordRules } from './utils/validators.js';
 
 const requestSection = document.getElementById('requestResetSection');
 const requestEntryState = document.getElementById('requestEntryState');
@@ -35,16 +34,6 @@ const resetSuccess = document.getElementById('resetSuccess');
 const actionResultIcon = document.getElementById('actionResultIcon');
 const actionResultTitle = document.getElementById('actionResultTitle');
 const actionResultMessage = document.getElementById('actionResultMessage');
-
-const usernamePattern = /^[A-Za-z0-9_]{3,30}$/;
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const passwordRules = {
-    length: value => value.length >= 8,
-    uppercase: value => /[A-Z]/.test(value),
-    lowercase: value => /[a-z]/.test(value),
-    number: value => /\d/.test(value),
-    special: value => /[^A-Za-z0-9\s]/.test(value)
-};
 
 let verifiedOobCode = '';
 let lastResetIdentifier = '';
@@ -102,10 +91,6 @@ function updatePasswordRequirements() {
         item.classList.toggle('valid', valid);
         item.querySelector('i').className = `bi ${valid ? 'bi-check-circle-fill' : 'bi-circle'}`;
     });
-}
-
-function isStrongPassword(password) {
-    return Object.values(passwordRules).every(validate => validate(password));
 }
 
 function getRequestErrorMessage(errorCode) {
@@ -216,7 +201,7 @@ function showPasswordResetSuccess() {
 }
 
 async function verifyResetLink(oobCode) {
-    const result = await verifyPasswordResetAction(oobCode);
+    const result = await authService.verifyResetCode(oobCode);
     verificationState.hidden = true;
 
     if (!result.success) {
@@ -287,7 +272,7 @@ requestForm.addEventListener('submit', async event => {
     }
 
     const isEmail = identifier.includes('@');
-    if ((isEmail && !emailPattern.test(identifier)) || (!isEmail && !usernamePattern.test(identifier))) {
+    if ((isEmail && !isValidEmail(identifier)) || (!isEmail && !isValidUsername(identifier))) {
         setInputInvalid(identifierInput, true);
         identifierError.textContent = isEmail
             ? 'Please enter a valid email address.'
@@ -299,7 +284,7 @@ requestForm.addEventListener('submit', async event => {
     setInputInvalid(identifierInput, false);
     sendResetLabel.textContent = 'Send Reset Link';
     setButtonLoading(sendResetButton, true);
-    const result = await resetPasswordByIdentifier(identifier);
+    const result = await authService.sendPasswordReset(identifier);
     setButtonLoading(sendResetButton, false);
     clearRequestFields();
 
@@ -323,7 +308,7 @@ resendResetButton.addEventListener('click', async () => {
 
     clearStatus(resendStatus);
     setButtonLoading(resendResetButton, true);
-    const result = await resetPasswordByIdentifier(lastResetIdentifier);
+    const result = await authService.sendPasswordReset(lastResetIdentifier);
     setButtonLoading(resendResetButton, false);
 
     if (result.success) {
@@ -379,7 +364,7 @@ changeForm.addEventListener('submit', async event => {
     setInputInvalid(newPasswordInput, false);
     setInputInvalid(confirmPasswordInput, false);
     setButtonLoading(changePasswordButton, true);
-    const result = await completePasswordReset(verifiedOobCode, newPassword);
+    const result = await authService.completePasswordReset(verifiedOobCode, newPassword);
     setButtonLoading(changePasswordButton, false);
     clearPasswordFields();
 
