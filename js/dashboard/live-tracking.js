@@ -700,8 +700,16 @@ function getSelectedLivePetId() {
 }
 
 export {
-    hasLiveMap, getSelectedLivePetId, refreshLiveMapLayout,
-    renderPetAvatarSelector, renderLivePetSelector, renderActivityPetSelector,
-    renderSelectedLivePet, updateLiveMapSelection, initializeLiveTracking,
-    selectLiveTrackingPet, attachLiveTrackingEvents
+    hasLiveMap,
+    getSelectedLivePetId,
+    refreshLiveMapLayout,
+    renderPetAvatarSelector,
+    renderLivePetSelector,
+    renderActivityPetSelector,
+    renderSelectedLivePet,
+    updateLiveMapSelection,
+    initializeLiveTracking,
+    selectLiveTrackingPet,
+    attachLiveTrackingEvents,
+    loadGoogleMaps
 };
