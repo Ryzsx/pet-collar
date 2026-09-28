@@ -14,6 +14,39 @@ const LIVE_PET_FOCUS_ZOOM = 18;
 // ======================================================
 // LIVE TRACKING DATA
 // ======================================================
+function setLiveTrackingPets(petList) {
+
+    liveTrackingPets =
+        Array.isArray(petList)
+            ? petList.map(pet => ({
+                ...pet,
+                safeZone:
+                    pet.safeZone ||
+                    null
+            }))
+            : [];
+
+
+    if (
+        !liveTrackingPets.some(
+            pet =>
+                pet.id ===
+                selectedLivePetId
+        )
+    ) {
+
+        selectedLivePetId =
+            liveTrackingPets[0]?.id ||
+            null;
+    }
+
+
+    renderLivePetSelector();
+    renderActivityPetSelector();
+    renderSelectedLivePet();
+
+    updateLiveMapSelection();
+}
 
 let liveTrackingPets =
     DATA_MODE === 'demo'
@@ -30,7 +63,6 @@ let selectedLivePetId =
 
 let liveTrackingMap = null;
 let liveSafeZoneCircle = null;
-let liveSafeZoneCenter = null;
 
 const livePetMarkers = new Map();
 
@@ -132,6 +164,7 @@ function renderPetAvatarSelector(containerSelector, petList, selectedId, onSelec
         });
     });
 }
+
 function renderSelectedLivePet() {
     const pet = liveTrackingPets.find(
         item => item.id === selectedLivePetId
@@ -183,100 +216,482 @@ function renderSelectedLivePet() {
         return;
     }
 
-    // EXISTING PET CODE CONTINUES BELOW
+    // ==========================================
+    // CONNECTION STATE
+    // ==========================================
 
-    const internetAvailable = hasCollarInternet(pet);
-    const trackingState = getLivePetState(pet);
-    const safeStatus = getSafeZoneLabel(pet);
-    const safeInside = getDisplayedSafeZoneStatus(pet) === 'inside';
-    const hasBatteryRecord = Number.isFinite(pet.battery) && pet.battery >= 0 && pet.battery <= 100;
-    const batteryLow = hasBatteryRecord && (pet.battery <= 25 || pet.batteryCondition === 'Low');
-    const batteryHeading = !internetAvailable && hasBatteryRecord ? 'Last Battery Level' : 'Battery';
-    const batteryValue = hasBatteryRecord ? `${pet.battery}%` : 'No battery recorded';
-    const batteryTimestamp = hasBatteryRecord && pet.batteryUpdated
-        ? `${internetAvailable ? 'Updated' : 'Last recorded'} ${pet.batteryUpdated}`
-        : hasBatteryRecord ? 'Timestamp not recorded' : 'No battery reading received yet';
-    const recordedActivity = typeof pet.activity?.value === 'string' ? pet.activity.value.trim() : '';
-    const hasActivityRecord = Boolean(recordedActivity && !['unavailable', 'unknown'].includes(recordedActivity.toLowerCase()));
-    const activityAvailable = Boolean(hasActivityRecord && pet.activity?.available && internetAvailable);
-    const activityValue = hasActivityRecord ? recordedActivity : 'No activity recorded';
-    const activityHeading = activityAvailable ? 'Current Activity' : hasActivityRecord ? 'Last Activity' : 'Activity';
-    const activityTimestamp = hasActivityRecord && pet.activity?.updated
-        ? `${activityAvailable ? 'Updated' : 'Last recorded'} ${pet.activity.updated}`
-        : hasActivityRecord ? 'Timestamp not recorded' : 'No activity received yet';
+    const internetAvailable =
+        hasCollarInternet(pet);
+
+    const trackingState =
+        getLivePetState(pet);
+
+
+    const displayedCoordinates =
+        getDisplayedCoordinates(pet);
+
+    const hasRecordedLocation =
+        Array.isArray(displayedCoordinates);
+
+    const displayedLocationName =
+        hasRecordedLocation
+            ? pet.locationName || 'Location recorded'
+            : 'No location recorded';
+
+    const displayedLocationUpdated =
+        hasRecordedLocation
+            ? pet.updated || 'Timestamp not recorded'
+            : 'Timestamp not recorded';
+
+
+    // ==========================================
+    // SAFE ZONE STATE
+    // ==========================================
+
+    const safeZoneState =
+        getDisplayedSafeZoneStatus(pet);
+
+    const safeStatus =
+        getSafeZoneLabel(pet);
+
+    const safeInside =
+        safeZoneState === 'inside';
+
+    const safeOutside =
+        safeZoneState === 'outside';
+
+
+    const safeStatusClass =
+        safeInside
+            ? 'good'
+            : safeOutside
+                ? 'danger'
+                : 'muted';
+
+
+    const safeZoneName =
+        pet.safeZone?.name ||
+        pet.geofenceName ||
+        'Not set';
+
+
+    // ==========================================
+    // BATTERY
+    // ==========================================
+
+    const hasBatteryRecord =
+        Number.isFinite(pet.battery) &&
+        pet.battery >= 0 &&
+        pet.battery <= 100;
+
+    const batteryLow =
+        hasBatteryRecord &&
+        (
+            pet.battery <= 25 ||
+            pet.batteryCondition === 'Low'
+        );
+
+    const batteryHeading =
+        !internetAvailable &&
+        hasBatteryRecord
+            ? 'Last Battery Level'
+            : 'Battery';
+
+    const batteryValue =
+        hasBatteryRecord
+            ? `${pet.battery}%`
+            : 'No battery recorded';
+
+    const batteryTimestamp =
+        hasBatteryRecord &&
+        pet.batteryUpdated
+            ? `${
+                internetAvailable
+                    ? 'Updated'
+                    : 'Last recorded'
+              } ${pet.batteryUpdated}`
+            : hasBatteryRecord
+                ? 'Timestamp not recorded'
+                : 'No battery reading received yet';
+
+
+    // ==========================================
+    // ACTIVITY
+    // ==========================================
+
+    const recordedActivity =
+        typeof pet.activity?.value === 'string'
+            ? pet.activity.value.trim()
+            : '';
+
+    const hasActivityRecord =
+        Boolean(
+            recordedActivity &&
+            ![
+                'unavailable',
+                'unknown'
+            ].includes(
+                recordedActivity.toLowerCase()
+            )
+        );
+
+    const activityAvailable =
+        Boolean(
+            hasActivityRecord &&
+            pet.activity?.available &&
+            internetAvailable
+        );
+
+    const activityValue =
+        hasActivityRecord
+            ? recordedActivity
+            : 'No activity recorded';
+
+    const activityHeading =
+        activityAvailable
+            ? 'Current Activity'
+            : hasActivityRecord
+                ? 'Last Activity'
+                : 'Activity';
+
+    const activityTimestamp =
+        hasActivityRecord &&
+        pet.activity?.updated
+            ? `${
+                activityAvailable
+                    ? 'Updated'
+                    : 'Last recorded'
+              } ${pet.activity.updated}`
+            : hasActivityRecord
+                ? 'Timestamp not recorded'
+                : 'No activity received yet';
+
     const activityIcon = {
         Resting: 'bi-moon-stars',
         Walking: 'bi-person-walking',
         Running: 'bi-lightning-charge'
     }[activityValue] || 'bi-dash-circle';
-    const statusMessage = getTrackingMessage(pet);
 
-    trackingMessage.hidden = !statusMessage;
-    trackingMessage.className = `tracking-message ${internetAvailable ? 'warning' : 'danger'}`;
-    trackingMessage.innerHTML = statusMessage
-        ? `<i class="bi ${internetAvailable ? 'bi-geo-alt' : 'bi-cloud-slash'}"></i><span>${escapeHtml(statusMessage)}</span>`
-        : '';
+
+    // ==========================================
+    // TRACKING MESSAGE
+    // ==========================================
+
+    const statusMessage =
+        getTrackingMessage(pet);
+
+    trackingMessage.hidden =
+        !statusMessage;
+
+    trackingMessage.className =
+        `tracking-message ${internetAvailable ? 'warning' : 'danger'}`;
+
+    trackingMessage.innerHTML =
+        statusMessage
+            ? `
+                <i class="bi ${internetAvailable ? 'bi-geo-alt' : 'bi-cloud-slash'}"></i>
+                <span>
+                    ${escapeHtml(statusMessage)}
+                </span>
+              `
+            : '';
+
+
+    // ==========================================
+    // PRIMARY STATUS CARDS
+    // ==========================================
 
     primaryRow.innerHTML = `
         <div class="col-12 col-md-6 col-xl-4">
             <article class="tracking-status-card">
-                <header><span>Collar Connection</span><i class="bi bi-router"></i></header>
-                <div class="status-card-value"><i class="status-dot ${internetAvailable ? 'good' : 'danger'}"></i><strong class="${internetAvailable ? 'good' : 'danger'}">${internetAvailable ? 'Online' : 'Offline'}</strong></div>
+                <header>
+                    <span>Collar Connection</span>
+                    <i class="bi bi-router"></i>
+                </header>
+
+                <div class="status-card-value">
+                    <i class="status-dot ${
+                        internetAvailable
+                            ? 'good'
+                            : 'danger'
+                    }"></i>
+
+                    <strong class="${
+                        internetAvailable
+                            ? 'good'
+                            : 'danger'
+                    }">
+                        ${
+                            internetAvailable
+                                ? 'Online'
+                                : 'Offline'
+                        }
+                    </strong>
+                </div>
+
                 <div class="status-card-details">
-                    <span><i class="bi bi-globe2"></i>${internetAvailable ? `${escapeHtml(pet.cellular.carrier)} · ${escapeHtml(pet.cellular.network)}` : 'No Internet Connection'}</span>
-                    <span><i class="bi bi-arrow-repeat"></i>Last Sync: ${escapeHtml(pet.lastSync)}</span>
+                    <span>
+                        <i class="bi bi-globe2"></i>
+                        ${
+                            internetAvailable
+                                ? `${escapeHtml(
+                                    pet.cellular?.carrier ||
+                                    'Unknown carrier'
+                                  )} · ${escapeHtml(
+                                    pet.cellular?.network ||
+                                    'Network available'
+                                  )}`
+                                : 'No Internet Connection'
+                        }
+                    </span>
+
+                    <span>
+                        <i class="bi bi-arrow-repeat"></i>
+                        Last Sync:
+                        ${escapeHtml(
+                            pet.lastSync ||
+                            'No sync recorded'
+                        )}
+                    </span>
                 </div>
             </article>
         </div>
+
+
         <div class="col-12 col-md-6 col-xl-4">
             <article class="tracking-status-card">
-                <header><span>Data Subscription</span><i class="bi bi-sim"></i></header>
-                <div class="status-card-value"><i class="status-dot good"></i><strong class="good">Active</strong></div>
+                <header>
+                    <span>Data Subscription</span>
+                    <i class="bi bi-sim"></i>
+                </header>
+
+                <div class="status-card-value">
+                    <i class="status-dot good"></i>
+                    <strong class="good">
+                        Active
+                    </strong>
+                </div>
+
                 <div class="status-card-details">
-                    <span><i class="bi bi-calendar3"></i>Activated: Sep 19, 2026</span>
-                    <span><i class="bi bi-calendar-x"></i>Expires: Oct 19, 2026</span>
-                    <span><i class="bi bi-check2-circle"></i>30 Days Validity</span>
+                    <span>
+                        <i class="bi bi-calendar3"></i>
+                        Activated: Sep 19, 2026
+                    </span>
+
+                    <span>
+                        <i class="bi bi-calendar-x"></i>
+                        Expires: Oct 19, 2026
+                    </span>
+
+                    <span>
+                        <i class="bi bi-check2-circle"></i>
+                        30 Days Validity
+                    </span>
                 </div>
             </article>
         </div>
+
+
         <div class="col-12 col-md-6 col-xl-4">
             <article class="tracking-status-card">
-                <header><span>${activityHeading}</span><i class="bi bi-activity"></i></header>
-                <div class="status-card-value"><i class="bi ${activityIcon} value-icon activity"></i><strong class="${hasActivityRecord ? '' : 'muted'}">${escapeHtml(activityValue)}</strong></div>
-                <div class="status-card-details"><span><i class="bi bi-clock"></i>${escapeHtml(activityTimestamp)}</span></div>
+                <header>
+                    <span>${activityHeading}</span>
+                    <i class="bi bi-activity"></i>
+                </header>
+
+                <div class="status-card-value">
+                    <i class="bi ${activityIcon} value-icon activity"></i>
+
+                    <strong class="${
+                        hasActivityRecord
+                            ? ''
+                            : 'muted'
+                    }">
+                        ${escapeHtml(activityValue)}
+                    </strong>
+                </div>
+
+                <div class="status-card-details">
+                    <span>
+                        <i class="bi bi-clock"></i>
+                        ${escapeHtml(activityTimestamp)}
+                    </span>
+                </div>
             </article>
         </div>
     `;
+
+
+    // ==========================================
+    // SECONDARY STATUS CARDS
+    // ==========================================
 
     secondaryRow.innerHTML = `
+
         <div class="col-12 col-md-6 col-xl-4">
             <article class="tracking-status-card pet-location-card">
-                <header><span>Pet's Location</span><i class="bi bi-geo-alt"></i></header>
+
+                <header>
+                    <span>Pet's Location</span>
+                    <i class="bi bi-geo-alt"></i>
+                </header>
+
                 <div class="pet-location-details">
-                    <div><span>${trackingState.title}</span><strong>${escapeHtml(pet.locationName || 'No location recorded')}</strong></div>
-                    <div><span>Last update</span><strong class="pet-location-updated">${escapeHtml(pet.updated || 'Timestamp not recorded')}</strong></div>
+
+                    <div>
+                        <span>
+                            ${escapeHtml(
+                                trackingState.title
+                            )}
+                        </span>
+
+                        <strong>
+                            ${escapeHtml(
+                                displayedLocationName
+                            )}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>
+                            Last update
+                        </span>
+
+                        <strong class="pet-location-updated">
+                            ${escapeHtml(
+                                displayedLocationUpdated
+                            )}
+                        </strong>
+                    </div>
+
                 </div>
             </article>
         </div>
+
+
         <div class="col-12 col-md-6 col-xl-4">
             <article class="tracking-status-card">
-                <header><span>${batteryHeading}</span><i class="bi bi-battery-charging"></i></header>
-                <div class="status-card-value"><i class="bi ${!hasBatteryRecord ? 'bi-battery' : batteryLow ? 'bi-battery-half' : 'bi-battery-full'} value-icon ${!hasBatteryRecord ? '' : batteryLow ? 'warning' : 'good'}"></i><strong class="${!hasBatteryRecord ? 'muted' : batteryLow ? 'warning' : 'good'}">${escapeHtml(batteryValue)}</strong></div>
+
+                <header>
+                    <span>${batteryHeading}</span>
+                    <i class="bi bi-battery-charging"></i>
+                </header>
+
+                <div class="status-card-value">
+
+                    <i class="bi ${
+                        !hasBatteryRecord
+                            ? 'bi-battery'
+                            : batteryLow
+                                ? 'bi-battery-half'
+                                : 'bi-battery-full'
+                    } value-icon ${
+                        !hasBatteryRecord
+                            ? ''
+                            : batteryLow
+                                ? 'warning'
+                                : 'good'
+                    }"></i>
+
+                    <strong class="${
+                        !hasBatteryRecord
+                            ? 'muted'
+                            : batteryLow
+                                ? 'warning'
+                                : 'good'
+                    }">
+                        ${escapeHtml(
+                            batteryValue
+                        )}
+                    </strong>
+
+                </div>
+
                 <div class="status-card-details">
-                    <span><i class="bi bi-clock"></i>${escapeHtml(batteryTimestamp)}</span>
+                    <span>
+                        <i class="bi bi-clock"></i>
+                        ${escapeHtml(
+                            batteryTimestamp
+                        )}
+                    </span>
                 </div>
+
             </article>
         </div>
+
+
         <div class="col-12 col-md-6 col-xl-4">
             <article class="tracking-status-card">
-                <header><span>Safe Zone</span><i class="bi bi-shield-check"></i></header>
-                <div class="status-card-value"><i class="status-dot ${safeInside ? 'good' : 'danger'}"></i><strong class="${safeInside ? 'good' : 'danger'}">${escapeHtml(safeStatus)}</strong></div>
-                <div class="status-card-details"><span><i class="bi bi-house"></i>Geofence: ${escapeHtml(pet.safeZone.name)}</span></div>
+
+                <header>
+                    <span>Safe Zone</span>
+                    <i class="bi bi-shield-check"></i>
+                </header>
+
+                <div class="status-card-value">
+
+                    <i class="status-dot ${safeStatusClass}"></i>
+
+                    <strong class="${safeStatusClass}">
+                        ${escapeHtml(
+                            safeStatus
+                        )}
+                    </strong>
+
+                </div>
+
+                <div class="status-card-details">
+
+                    <span>
+                        <i class="bi bi-house"></i>
+                        Geofence:
+                        ${escapeHtml(
+                            safeZoneName
+                        )}
+                    </span>
+
+                </div>
+
             </article>
         </div>
     `;
-
 }
+
+function getLiveLocationCoordinates(pet) {
+
+    if (!pet) {
+        return null;
+    }
+
+
+    // Real collar GPS, including a previously recorded real fix.
+    const coordinates =
+        getDisplayedCoordinates(
+            pet
+        );
+
+
+    if (
+        Array.isArray(coordinates) &&
+        coordinates.length >= 2 &&
+        Number.isFinite(
+            Number(coordinates[0])
+        ) &&
+        Number.isFinite(
+            Number(coordinates[1])
+        )
+    ) {
+
+        return [
+            Number(coordinates[0]),
+            Number(coordinates[1])
+        ];
+    }
+
+
+    return null;
+}
+
 function refreshLiveMapLayout() {
 
     if (!liveTrackingMap) {
@@ -298,165 +713,404 @@ function refreshLiveMapLayout() {
         );
 
 
-    if (pet) {
-
-        liveTrackingMap.setCenter(
-            toGoogleCoordinates(
-                getDisplayedCoordinates(
-                    pet
-                )
-            )
-        );
-
-    } else {
+    if (!pet) {
 
         liveTrackingMap.setCenter(
             DEFAULT_MAP_CENTER
         );
+
+        liveTrackingMap.setZoom(
+            DEFAULT_MAP_ZOOM
+        );
+
+        return;
     }
+
+
+    const coordinates =
+        getLiveLocationCoordinates(
+            pet
+        );
+
+
+    if (coordinates) {
+
+        liveTrackingMap.setCenter(
+            toGoogleCoordinates(
+                coordinates
+            )
+        );
+
+        return;
+    }
+
+
+    // No GPS yet:
+    // center map on Safe Zone instead.
+    if (
+        Array.isArray(
+            pet.safeZone?.center
+        )
+    ) {
+
+        const safeZoneCenter =
+            toGoogleCoordinates(
+                pet.safeZone.center
+            );
+
+
+        if (safeZoneCenter) {
+
+            liveTrackingMap.setCenter(
+                safeZoneCenter
+            );
+
+            return;
+        }
+    }
+
+
+    liveTrackingMap.setCenter(
+        DEFAULT_MAP_CENTER
+    );
+
+    liveTrackingMap.setZoom(
+        DEFAULT_MAP_ZOOM
+    );
 }
 
 function updateLiveMapSelection() {
+
     if (!liveTrackingMap) {
         return;
     }
 
-    const pet = liveTrackingPets.find(
-        item => item.id === selectedLivePetId
-    );
 
-    // ==========================================
-    // NO PET
-    // ==========================================
+    const pet =
+        liveTrackingPets.find(
+            item =>
+                item.id ===
+                selectedLivePetId
+        );
+
+
+    // ================================================
+    // NO SELECTED PET
+    // ================================================
+
     if (!pet) {
-        livePetMarkers.forEach(marker => {
-            marker.map = null;
-        });
 
-        if (liveSafeZoneCircle) {
-            liveSafeZoneCircle.setMap(null);
-        }
+        livePetMarkers.forEach(
+            marker => {
+                marker.map = null;
+            }
+        );
 
-        if (liveSafeZoneCenter) {
-            liveSafeZoneCenter.setMap(null);
-        }
 
-        liveTrackingMap.setCenter(DEFAULT_MAP_CENTER);
-        liveTrackingMap.setZoom(DEFAULT_MAP_ZOOM);
+        liveSafeZoneCircle
+            ?.setMap(null);
+
+        liveTrackingMap.setCenter(
+            DEFAULT_MAP_CENTER
+        );
+
+        liveTrackingMap.setZoom(
+            DEFAULT_MAP_ZOOM
+        );
 
         return;
     }
 
-    const coordinates = getDisplayedCoordinates(pet);
-    const petPosition = toGoogleCoordinates(coordinates);
 
-    // ==========================================
-    // PET MARKERS
-    // ==========================================
-    livePetMarkers.forEach((marker, petId) => {
-        marker.content?.classList.toggle(
-            'selected',
-            petId === selectedLivePetId
+    // ================================================
+    // SAFE ZONE
+    // ================================================
+
+    const safeZone =
+        pet.safeZone;
+
+
+    let safeZoneCenter =
+        null;
+
+
+    if (
+        Array.isArray(
+            safeZone?.center
+        ) &&
+        Number.isFinite(
+            Number(
+                safeZone?.radius
+            )
+        ) &&
+        Number(safeZone.radius) > 0
+    ) {
+
+        safeZoneCenter =
+            toGoogleCoordinates(
+                safeZone.center
+            );
+
+
+        if (safeZoneCenter) {
+
+            if (!liveSafeZoneCircle) {
+
+                liveSafeZoneCircle =
+                    new window.google.maps.Circle({
+                        map:
+                            liveTrackingMap,
+
+                        center:
+                            safeZoneCenter,
+
+                        radius:
+                            Number(
+                                safeZone.radius
+                            ),
+
+                        strokeColor:
+                            '#359574',
+
+                        strokeOpacity:
+                            .75,
+
+                        strokeWeight:
+                            2,
+
+                        fillColor:
+                            '#359574',
+
+                        fillOpacity:
+                            .1
+                    });
+
+            } else {
+
+                liveSafeZoneCircle.setMap(
+                    liveTrackingMap
+                );
+
+                liveSafeZoneCircle.setCenter(
+                    safeZoneCenter
+                );
+
+                liveSafeZoneCircle.setRadius(
+                    Number(
+                        safeZone.radius
+                    )
+                );
+            }
+
+        }
+
+    } else {
+
+        liveSafeZoneCircle
+            ?.setMap(null);
+
+    }
+
+
+    // ================================================
+    // PET LOCATION
+    // Real M10 GPS data can use this path when integrated.
+    // ================================================
+
+    const coordinates =
+        getLiveLocationCoordinates(
+            pet
         );
 
-        marker.zIndex =
-            petId === selectedLivePetId ? 1000 : 0;
 
-        marker.map = liveTrackingMap;
-    });
+    // --------------------------------
+    // NO PET LOCATION YET
+    // --------------------------------
 
-    const selectedMarker =
-        livePetMarkers.get(selectedLivePetId);
+    if (!coordinates) {
 
-    if (selectedMarker) {
-        selectedMarker.position = petPosition;
-    }
+        const existingMarker =
+            livePetMarkers.get(
+                pet.id
+            );
 
-    // ==========================================
-    // SAFE ZONE
-    // ==========================================
-    if (
-        pet.safeZone?.center &&
-        Number.isFinite(Number(pet.safeZone.radius))
-    ) {
-        const safeZoneCenter =
-            toGoogleCoordinates(pet.safeZone.center);
 
-        // Create circle only once
-        if (!liveSafeZoneCircle) {
-            liveSafeZoneCircle =
-                new window.google.maps.Circle({
-                    map: liveTrackingMap,
-                    center: safeZoneCenter,
-                    radius: Number(pet.safeZone.radius),
+        if (existingMarker) {
 
-                    strokeColor: '#359574',
-                    strokeOpacity: 0.75,
-                    strokeWeight: 2,
+            existingMarker.map =
+                null;
+        }
 
-                    fillColor: '#359574',
-                    fillOpacity: 0.1
-                });
+
+        // We can still show the Safe Zone.
+        if (safeZoneCenter) {
+
+            liveTrackingMap.setCenter(
+                safeZoneCenter
+            );
+
+            liveTrackingMap.setZoom(
+                17
+            );
+
         } else {
-            liveSafeZoneCircle.setMap(liveTrackingMap);
-            liveSafeZoneCircle.setCenter(safeZoneCenter);
-            liveSafeZoneCircle.setRadius(
-                Number(pet.safeZone.radius)
+
+            liveTrackingMap.setCenter(
+                DEFAULT_MAP_CENTER
+            );
+
+            liveTrackingMap.setZoom(
+                DEFAULT_MAP_ZOOM
             );
         }
 
-        // Create safe-zone center only once
-        if (!liveSafeZoneCenter) {
-            liveSafeZoneCenter =
-                new window.google.maps.Marker({
-                    map: liveTrackingMap,
-                    position: safeZoneCenter,
+
+        return;
+    }
+
+
+    // --------------------------------
+    // PET LOCATION EXISTS
+    // --------------------------------
+
+    const petPosition =
+        toGoogleCoordinates(
+            coordinates
+        );
+
+
+    if (!petPosition) {
+        return;
+    }
+
+
+    let selectedMarker =
+        livePetMarkers.get(
+            pet.id
+        );
+
+
+    // The map may have been created before
+    // Firestore pets finished loading.
+    if (!selectedMarker) {
+
+        selectedMarker =
+            new window.google.maps
+                .marker
+                .AdvancedMarkerElement({
+                    map:
+                        liveTrackingMap,
+
+                    position:
+                        petPosition,
+
+                    content:
+                        createLivePetMarkerIcon(
+                            pet
+                        ),
 
                     title:
-                        `${pet.safeZone.name || 'Safe zone'} center`,
+                        pet.name,
 
-                    icon: {
-                        path:
-                            window.google.maps.SymbolPath.CIRCLE,
-
-                        scale: 5,
-                        fillColor: '#359574',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 2
-                    }
+                    zIndex:
+                        1000
                 });
-        } else {
-            liveSafeZoneCenter.setMap(liveTrackingMap);
-            liveSafeZoneCenter.setPosition(safeZoneCenter);
 
-            liveSafeZoneCenter.setTitle(
-                `${pet.safeZone.name || 'Safe zone'} center`
-            );
-        }
+
+        selectedMarker.addListener(
+            'click',
+            () => {
+                selectLiveTrackingPet(
+                    pet.id
+                );
+            }
+        );
+
+
+        livePetMarkers.set(
+            pet.id,
+            selectedMarker
+        );
+
     } else {
-        liveSafeZoneCircle?.setMap(null);
-        liveSafeZoneCenter?.setMap(null);
+
+        selectedMarker.map =
+            liveTrackingMap;
+
+        selectedMarker.position =
+            petPosition;
     }
 
-    // ==========================================
-    // MOVE EXISTING MAP
-    // ==========================================
-    liveTrackingMap.setZoom(LIVE_PET_FOCUS_ZOOM);
+
+    livePetMarkers.forEach(
+        (marker, petId) => {
+
+            marker.content
+                ?.classList
+                .toggle(
+                    'selected',
+                    petId ===
+                        selectedLivePetId
+                );
+
+            marker.zIndex =
+                petId ===
+                selectedLivePetId
+                    ? 1000
+                    : 0;
+        }
+    );
+
+
+    liveTrackingMap.setZoom(
+        LIVE_PET_FOCUS_ZOOM
+    );
+
 
     if (
         window.matchMedia?.(
             '(prefers-reduced-motion: reduce)'
         )?.matches
     ) {
-        liveTrackingMap.setCenter(petPosition);
+
+        liveTrackingMap.setCenter(
+            petPosition
+        );
+
     } else {
-        liveTrackingMap.panTo(petPosition);
+
+        liveTrackingMap.panTo(
+            petPosition
+        );
     }
 }
 
-function toGoogleCoordinates([latitude, longitude]) {
-    return { lat: latitude, lng: longitude };
+function toGoogleCoordinates(coordinates) {
+
+    if (
+        !Array.isArray(coordinates) ||
+        coordinates.length < 2
+    ) {
+        return null;
+    }
+
+    const latitude =
+        Number(coordinates[0]);
+
+    const longitude =
+        Number(coordinates[1]);
+
+    if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude)
+    ) {
+        return null;
+    }
+
+    return {
+        lat: latitude,
+        lng: longitude
+    };
 }
 
 function loadGoogleMaps() {
@@ -515,17 +1169,17 @@ function initializeLiveTrackingMap() {
             container.innerHTML = '';
 
             const firstPet = liveTrackingPets[0];
-
+            const firstPetPosition = firstPet
+                ? toGoogleCoordinates(getDisplayedCoordinates(firstPet))
+                : null;
+            const firstSafeZoneCenter = firstPet
+                ? toGoogleCoordinates(firstPet.safeZone?.center)
+                : null;
             const initialCenter =
-                firstPet
-                    ? toGoogleCoordinates(
-                        getDisplayedCoordinates(firstPet)
-                    )
-                    : DEFAULT_MAP_CENTER;
-
+                firstPetPosition || firstSafeZoneCenter || DEFAULT_MAP_CENTER;
             const initialZoom =
-                firstPet
-                    ? 15
+                firstPetPosition || firstSafeZoneCenter
+                    ? 17
                     : DEFAULT_MAP_ZOOM;
 
             // ==========================================
@@ -547,44 +1201,6 @@ function initializeLiveTrackingMap() {
                 );
 
             console.log('GOOGLE MAP CREATED ONCE');
-
-            // ==========================================
-            // CREATE PET MARKERS
-            // ==========================================
-            liveTrackingPets.forEach(pet => {
-                const marker =
-                    new window.google.maps.marker
-                        .AdvancedMarkerElement({
-                            map: liveTrackingMap,
-
-                            position:
-                                toGoogleCoordinates(
-                                    getDisplayedCoordinates(pet)
-                                ),
-
-                            content:
-                                createLivePetMarkerIcon(pet),
-
-                            title: pet.name,
-
-                            zIndex:
-                                pet.id === selectedLivePetId
-                                    ? 1000
-                                    : 0
-                        });
-
-                marker.addListener(
-                    'click',
-                    () => {
-                        selectLiveTrackingPet(pet.id);
-                    }
-                );
-
-                livePetMarkers.set(
-                    pet.id,
-                    marker
-                );
-            });
 
             updateLiveMapSelection();
 
@@ -617,76 +1233,120 @@ function initializeLiveTracking() {
     renderSelectedLivePet();
 
     if (selectedLivePetId) {
-        updateActivityData(selectedLivePetId);
+        updateHealthData(selectedLivePetId);
     }
 
     initializeLiveTrackingMap();
 }
 
+
 function attachLiveTrackingEvents() {
+
     $('#refreshTrackingBtn')?.addEventListener('click', event => {
+
         const button = event.currentTarget;
 
         button.disabled = true;
+
         button.innerHTML =
             '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>';
 
-        setTimeout(() => {
-            const selectedPet = liveTrackingPets.find(
-                pet => pet.id === getSelectedLivePetId()
-            );
 
-            if (!selectedPet || !hasCollarInternet(selectedPet)) {
+        setTimeout(() => {
+
+            const selectedPet =
+                liveTrackingPets.find(
+                    pet =>
+                        pet.id ===
+                        getSelectedLivePetId()
+                );
+
+
+            if (
+                !selectedPet ||
+                !hasCollarInternet(selectedPet)
+            ) {
+
                 button.disabled = false;
+
                 button.innerHTML =
                     '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>';
+
 
                 showToast(
                     'Live updates are unavailable while the collar is offline.',
                     'bi-cloud-slash'
                 );
 
+
                 return;
             }
 
+
             // Update connection sync time
-            selectedPet.lastSync = 'Just now';
+            selectedPet.lastSync =
+                'Just now';
+
 
             // Update battery timestamp if battery data exists
             if (
-                Number.isFinite(selectedPet.battery) &&
+                Number.isFinite(
+                    selectedPet.battery
+                ) &&
                 selectedPet.battery >= 0 &&
                 selectedPet.battery <= 100
             ) {
-                selectedPet.batteryUpdated = 'Just now';
+
+                selectedPet.batteryUpdated =
+                    'Just now';
             }
+
 
             // Update GPS/location timestamp if GPS data exists
             if (
                 selectedPet.gpsAvailable &&
                 selectedPet.coordinates
             ) {
-                selectedPet.updated = 'Just now';
+
+                selectedPet.updated =
+                    'Just now';
             }
 
+
             // Update activity timestamp if activity data exists
-            if (selectedPet.activity?.available) {
-                selectedPet.activity.updated = 'Just now';
+            if (
+                selectedPet.activity?.available
+            ) {
+
+                selectedPet.activity.updated =
+                    'Just now';
             }
+
 
             renderSelectedLivePet();
 
+
             if (selectedPet.id) {
-                updateActivityData(selectedPet.id);
+
+                updateActivityData(
+                    selectedPet.id
+                );
             }
 
+
             button.disabled = false;
+
             button.innerHTML =
                 '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>';
 
-            showToast('Tracking data refreshed.');
+
+            showToast(
+                'Tracking data refreshed.'
+            );
+
         }, 700);
     });
+
 }
 
 
@@ -711,5 +1371,6 @@ export {
     initializeLiveTracking,
     selectLiveTrackingPet,
     attachLiveTrackingEvents,
-    loadGoogleMaps
+    loadGoogleMaps,
+    setLiveTrackingPets
 };

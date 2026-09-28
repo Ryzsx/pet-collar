@@ -7,7 +7,8 @@ import {
     renderPetAvatarSelector,
     renderActivityPetSelector,
     getSelectedLivePetId,
-    loadGoogleMaps
+    loadGoogleMaps,
+    setLiveTrackingPets
 } from './live-tracking.js';
 import { updateActivityData } from './activity.js';
 
@@ -29,28 +30,75 @@ let addPetMap = null;
 let addPetSafeZoneMarker = null;
 let addPetSafeZoneCircle = null;
 
-let newSafeZoneCoordinates = null;   
+let geofenceMap = null;
+let geofenceSafeZoneMarker = null;
+let geofenceSafeZoneCircle = null;
+let editedSafeZoneCoordinates = null;
+let editGeofencePetId = null;
+let editedGeofenceHasRadius = false;
+let editedSafeZoneAddress = '';
+let editedSafeZoneAddressNeedsLocation = false;
+
+let newSafeZoneCoordinates = null;
+let newSafeZoneAddress = '';
+let newSafeZoneAddressNeedsLocation = false;
 
 export function setPetManagementUser(user) {
     currentUser = user;
 }
 
+function normalizeSafeZoneCenter(center) {
+    const latitude = Array.isArray(center)
+        ? center[0]
+        : center?.latitude ?? center?.lat;
+    const longitude = Array.isArray(center)
+        ? center[1]
+        : center?.longitude ?? center?.lng;
+    const normalizedCenter = [Number(latitude), Number(longitude)];
+
+    return normalizedCenter.every(Number.isFinite)
+        ? normalizedCenter
+        : null;
+}
+
+function numberOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+}
+
 function normalizedPet(rawPet, index) {
-    const demo = demoPets[index % demoPets.length] || demoPets[0];
+    const safeZoneName = String(rawPet.safeZone?.name ?? '').trim()
+        || String(rawPet.geofenceName ?? '').trim();
+    const safeZoneRadius = numberOrNull(rawPet.safeZone?.radius)
+        ?? numberOrNull(rawPet.geofenceRadius);
+    const safeZoneCenter = normalizeSafeZoneCenter(
+        rawPet.safeZone?.center
+    );
+
     return {
-        ...demo,
+        ...rawPet,
         id: rawPet.id || `pet-${index + 1}`,
-        name: rawPet.name || rawPet.petName || demo.name,
-        type: rawPet.type || rawPet.petType || demo.type,
-        breed: rawPet.breed || demo.breed,
-        gender: rawPet.gender || demo.gender,
-        photo: rawPet.photoURL || rawPet.photo || rawPet.imageUrl || placeholderPhotos[index % placeholderPhotos.length],
-        deviceId: rawPet.deviceId || rawPet.deviceID || `SC-2026-${String(3100 + index).padStart(4, '0')}`,
-        online: rawPet.status ? rawPet.status === 'active' || rawPet.status === 'online' : true,
-        battery: Number(rawPet.battery ?? demo.battery),
-        safe: rawPet.safeZoneStatus ? rawPet.safeZoneStatus !== 'outside' : true,
-        geofence: rawPet.geofenceName || demo.geofence,
-        radius: Number(rawPet.geofenceRadius || demo.radius),
+        name: rawPet.name || rawPet.petName || '',
+        type: rawPet.type || rawPet.petType || '',
+        breed: rawPet.breed || '',
+        gender: rawPet.gender || '',
+        photo: rawPet.photoURL || rawPet.photo || rawPet.imageUrl || null,
+        deviceId: rawPet.deviceId || rawPet.deviceID || '',
+        online: rawPet.status === 'active' || rawPet.status === 'online',
+        battery: numberOrNull(rawPet.battery),
+        activity: rawPet.activity ?? null,
+        safe: rawPet.safeZoneStatus
+            ? rawPet.safeZoneStatus !== 'outside'
+            : null,
+        safeZone: {
+            ...(rawPet.safeZone || {}),
+            name: safeZoneName,
+            center: safeZoneCenter,
+            radius: safeZoneRadius
+        },
+        geofence: safeZoneName,
+        radius: safeZoneRadius,
         activityHistoryDemo: false,
         activityHistory: Array.isArray(rawPet.activityHistory) ? rawPet.activityHistory : []
     };
@@ -76,7 +124,7 @@ function renderPetList() {
     if (!container) return;
     container.innerHTML = pets.map(pet => `
         <button class="management-pet-item ${pet.id === selectedPetId ? 'active' : ''}" type="button" data-pet-id="${escapeHtml(pet.id)}">
-            <img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">
+            ${pet.photo ? `<img src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">` : `<span class="management-pet-initial">${escapeHtml((pet.name || 'P').charAt(0).toUpperCase())}</span>`}
             <div><strong>${escapeHtml(pet.name)}</strong><span>${escapeHtml(pet.type)} · ${escapeHtml(pet.breed)}</span></div>
             <i class="bi bi-chevron-right"></i>
         </button>
@@ -124,10 +172,14 @@ function renderPetDetail() {
         container.innerHTML = '<div class="text-center py-5 text-secondary"><i class="bi bi-person-hearts fs-2 d-block mb-2"></i>Select or add a pet to view details.</div>';
         return;
     }
+    const safeZoneName = pet.geofence || 'No safe zone set';
+    const radiusText = Number.isFinite(pet.radius)
+        ? `${pet.radius} m radius`
+        : 'No radius set';
     container.innerHTML = `
         <div class="pet-profile-overview">
             <div class="pet-profile-photo-panel">
-                <img class="pet-profile-portrait" src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">
+                ${pet.photo ? `<img class="pet-profile-portrait" src="${escapeHtml(pet.photo)}" alt="${escapeHtml(pet.name)}">` : `<div class="pet-profile-portrait pet-profile-initial">${escapeHtml((pet.name || 'P').charAt(0).toUpperCase())}</div>`}
                 <span class="pet-profile-photo-caption"><i class="bi bi-heart" aria-hidden="true"></i> Your companion</span>
             </div>
             <div class="pet-profile-info">
@@ -139,8 +191,8 @@ function renderPetDetail() {
                 <dl class="pet-profile-details">
                     <div><dt><i class="bi bi-gender-ambiguous" aria-hidden="true"></i> Gender</dt><dd>${escapeHtml(pet.gender)}</dd></div>
                     <div><dt><i class="bi bi-person-hearts" aria-hidden="true"></i> Breed</dt><dd>${escapeHtml(pet.breed)}</dd></div>
-                    <div><dt><i class="bi bi-router" aria-hidden="true"></i> Paired collar</dt><dd>${escapeHtml(pet.deviceId)}<small class="pet-profile-setting-note"><i class="bi bi-lock-fill" aria-hidden="true"></i> Read only</small></dd></div>
-                    <div><dt><i class="bi bi-shield-check" aria-hidden="true"></i> Safe zone</dt><dd>${escapeHtml(pet.geofence)}<small class="pet-profile-setting-note">${pet.radius} m radius</small><button class="btn btn-soft pet-profile-setting-action" type="button" data-bs-toggle="modal" data-bs-target="#geofenceModal"><i class="bi bi-pencil" aria-hidden="true"></i> Edit geofence</button></dd></div>
+                    <div><dt><i class="bi bi-router" aria-hidden="true"></i> Paired collar</dt><dd>${escapeHtml(pet.deviceId || 'No collar paired')}<small class="pet-profile-setting-note"><i class="bi bi-lock-fill" aria-hidden="true"></i> Read only</small></dd></div>
+                    <div><dt><i class="bi bi-shield-check" aria-hidden="true"></i> Safe zone</dt><dd>${escapeHtml(safeZoneName)}<small class="pet-profile-setting-note">${escapeHtml(radiusText)}</small><button class="btn btn-soft pet-profile-setting-action" type="button" data-edit-geofence="${escapeHtml(pet.id)}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit geofence</button></dd></div>
                 </dl>
                 <div class="pet-profile-actions">
                     <button class="btn btn-brand" id="editPetPhotoBtn" type="button"><i class="bi bi-camera" aria-hidden="true"></i> Edit photo</button>
@@ -230,7 +282,11 @@ async function loadUserPets(userId) {
             return;
         }
 
-        pets = result.pets || [];
+        pets = (result.pets || []).map(normalizedPet);
+
+        setLiveTrackingPets(
+            pets
+        );
 
         console.log(
             'REAL FIRESTORE PETS:',
@@ -456,51 +512,7 @@ function updateAddPetRadiusDisplay() {
     }
 }
 
-function getLaptopLocation() {
-
-    return new Promise((resolve, reject) => {
-
-        if (!navigator.geolocation) {
-
-            reject(
-                new Error(
-                    'Geolocation is not supported by this browser.'
-                )
-            );
-
-            return;
-        }
-
-
-        navigator.geolocation.getCurrentPosition(
-
-            position => {
-
-                resolve({
-                    lat:
-                        position.coords.latitude,
-
-                    lng:
-                        position.coords.longitude
-                });
-            },
-
-            error => {
-
-                reject(error);
-            },
-
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000
-            }
-        );
-    });
-}
-
-
-function setNewSafeZoneLocation(position) {
+function setNewSafeZoneLocation(position, acceptCurrentAddress = false) {
 
     if (!addPetMap) {
         return;
@@ -511,6 +523,16 @@ function setNewSafeZoneLocation(position) {
         lat: Number(position.lat),
         lng: Number(position.lng)
     };
+
+    if (acceptCurrentAddress) {
+        newSafeZoneAddress = $('#newSafeZoneAddress')?.value.trim() || '';
+        newSafeZoneAddressNeedsLocation = false;
+        setAddressFeedback(
+            '#newSafeZoneAddressFeedback',
+            'Pin updated. These marker coordinates will be saved.',
+            'success'
+        );
+    }
 
 
     if (!addPetSafeZoneMarker) {
@@ -537,7 +559,7 @@ function setNewSafeZoneLocation(position) {
 
                         lng:
                             event.latLng.lng()
-                    });
+                    }, true);
                 }
             );
 
@@ -641,29 +663,10 @@ async function initializeAddPetSafeZoneMap() {
         await loadGoogleMaps();
 
 
-        let startingLocation = {
+        const startingLocation = {
             lat: 12.8797,
             lng: 121.7740
         };
-
-
-        try {
-
-            startingLocation =
-                await getLaptopLocation();
-
-        } catch (locationError) {
-
-            console.warn(
-                'Laptop location unavailable:',
-                locationError
-            );
-
-            showToast(
-                'Current location unavailable. Select the location manually on the map.',
-                'bi-geo-alt'
-            );
-        }
 
 
         if (!addPetMap) {
@@ -678,7 +681,7 @@ async function initializeAddPetSafeZoneMap() {
                         center:
                             startingLocation,
 
-                        zoom: 17,
+                        zoom: 6,
 
                         mapTypeId:
                             'roadmap',
@@ -708,7 +711,7 @@ async function initializeAddPetSafeZoneMap() {
 
                         lng:
                             event.latLng.lng()
-                    });
+                    }, true);
                 }
             );
 
@@ -721,19 +724,18 @@ async function initializeAddPetSafeZoneMap() {
 
 
             addPetMap.setCenter(
-                startingLocation
+                newSafeZoneCoordinates || startingLocation
             );
 
 
             addPetMap.setZoom(
-                17
+                newSafeZoneCoordinates ? 17 : 6
             );
         }
 
-
-        setNewSafeZoneLocation(
-            startingLocation
-        );
+        if (newSafeZoneCoordinates) {
+            setNewSafeZoneLocation(newSafeZoneCoordinates);
+        }
 
 
     } catch (error) {
@@ -751,11 +753,106 @@ async function initializeAddPetSafeZoneMap() {
     }
 }
 
+function isValidMapPosition(position) {
+    const latitude = Number(position?.lat);
+    const longitude = Number(position?.lng);
+
+    return Number.isFinite(latitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        Number.isFinite(longitude) &&
+        longitude >= -180 &&
+        longitude <= 180;
+}
+
+function setAddressFeedback(selector, message, state = '') {
+    const feedback = $(selector);
+    if (!feedback) return;
+
+    feedback.textContent = message;
+    feedback.className = `safe-zone-address-feedback${state ? ` ${state}` : ''}`;
+}
+
+async function geocodeSafeZoneAddress(address) {
+    await loadGoogleMaps();
+
+    return new Promise((resolve, reject) => {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address }, (results, status) => {
+            const result = results?.[0];
+            if (status === 'OK' && result?.geometry?.location) {
+                resolve(result);
+                return;
+            }
+
+            reject(new Error(status || 'ZERO_RESULTS'));
+        });
+    });
+}
+
+async function findNewSafeZoneAddress() {
+    const addressInput = $('#newSafeZoneAddress');
+    const findButton = $('#findSafeZoneAddressBtn');
+    const address = addressInput?.value.trim() || '';
+
+    if (!address) {
+        setAddressFeedback(
+            '#newSafeZoneAddressFeedback',
+            'Enter an address or place to search.',
+            'error'
+        );
+        addressInput?.focus();
+        return;
+    }
+
+    if (findButton) findButton.disabled = true;
+    setAddressFeedback(
+        '#newSafeZoneAddressFeedback',
+        'Finding this location on Google Maps...'
+    );
+
+    try {
+        await initializeAddPetSafeZoneMap();
+        if (!addPetMap) throw new Error('MAP_UNAVAILABLE');
+        const result = await geocodeSafeZoneAddress(address);
+        const location = result.geometry.location;
+        const formattedAddress = result.formatted_address || address;
+
+        newSafeZoneAddress = formattedAddress;
+        if (addressInput) addressInput.value = formattedAddress;
+        setNewSafeZoneLocation({
+            lat: location.lat(),
+            lng: location.lng()
+        }, true);
+        setAddressFeedback(
+            '#newSafeZoneAddressFeedback',
+            'Location found. Click the map or drag the pin to adjust the exact center.',
+            'success'
+        );
+    } catch (error) {
+        console.warn('Safe-zone address could not be geocoded:', error);
+        const message = error.message === 'ZERO_RESULTS' ||
+            error.message === 'INVALID_REQUEST'
+            ? 'Location not found. Try entering a more complete address.'
+            : 'Address search is unavailable. Check Google Maps and try again.';
+        setAddressFeedback(
+            '#newSafeZoneAddressFeedback',
+            message,
+            'error'
+        );
+    } finally {
+        if (findButton) findButton.disabled = false;
+    }
+}
+
 
 function resetAddPetSafeZone() {
 
     newSafeZoneCoordinates =
         null;
+
+    newSafeZoneAddress = '';
+    newSafeZoneAddressNeedsLocation = false;
 
 
     if (addPetSafeZoneMarker) {
@@ -806,6 +903,272 @@ function resetAddPetSafeZone() {
         radiusValue.textContent =
             '100';
     }
+
+    const addressInput = $('#newSafeZoneAddress');
+    if (addressInput) addressInput.value = '';
+
+    setAddressFeedback(
+        '#newSafeZoneAddressFeedback',
+        'Enter an address above. PawSense will locate it on the map.'
+    );
+}
+
+function getGeofenceRadius() {
+    return numberOrNull(
+        $('#geofenceRadius')?.value
+    );
+}
+
+function updateGeofenceRadiusDisplay(hasSavedRadius = true) {
+    const radius = getGeofenceRadius();
+    const radiusValue = $('#radiusValue');
+    editedGeofenceHasRadius = hasSavedRadius && radius !== null;
+
+    if (radiusValue) {
+        radiusValue.textContent = editedGeofenceHasRadius
+            ? `${radius} m`
+            : 'No radius set';
+    }
+
+    if (!editedGeofenceHasRadius && geofenceSafeZoneCircle) {
+        geofenceSafeZoneCircle.setMap(null);
+    } else if (geofenceSafeZoneCircle && radius !== null) {
+        geofenceSafeZoneCircle.setMap(geofenceMap);
+        geofenceSafeZoneCircle.setRadius(radius);
+    } else if (editedGeofenceHasRadius && geofenceMap && editedSafeZoneCoordinates) {
+        setEditedSafeZoneLocation(editedSafeZoneCoordinates);
+    }
+}
+
+function setEditedSafeZoneLocation(
+    position,
+    focusMap = false,
+    acceptCurrentAddress = false
+) {
+    if (!geofenceMap) return;
+
+    const coordinates = {
+        lat: Number(position.lat),
+        lng: Number(position.lng)
+    };
+
+    if (!Number.isFinite(coordinates.lat) || !Number.isFinite(coordinates.lng)) {
+        return;
+    }
+
+    editedSafeZoneCoordinates = coordinates;
+
+    if (acceptCurrentAddress) {
+        editedSafeZoneAddress = $('#geofenceAddress')?.value.trim() || '';
+        editedSafeZoneAddressNeedsLocation = false;
+        setAddressFeedback(
+            '#geofenceAddressFeedback',
+            'Pin updated. These marker coordinates will be saved.',
+            'success'
+        );
+    }
+
+    if (!geofenceSafeZoneMarker) {
+        geofenceSafeZoneMarker = new window.google.maps.Marker({
+            map: geofenceMap,
+            position: coordinates,
+            draggable: true,
+            title: 'Safe zone center'
+        });
+        geofenceSafeZoneMarker.addListener('dragend', event => {
+            setEditedSafeZoneLocation({
+                lat: event.latLng.lat(),
+                lng: event.latLng.lng()
+            }, false, true);
+        });
+    } else {
+        geofenceSafeZoneMarker.setMap(geofenceMap);
+        geofenceSafeZoneMarker.setPosition(coordinates);
+    }
+
+    const radius = getGeofenceRadius();
+
+    if (editedGeofenceHasRadius && radius !== null && !geofenceSafeZoneCircle) {
+        geofenceSafeZoneCircle = new window.google.maps.Circle({
+            map: geofenceMap,
+            center: coordinates,
+            radius,
+            strokeColor: '#1d968f',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#1d968f',
+            fillOpacity: 0.12
+        });
+    } else if (editedGeofenceHasRadius && geofenceSafeZoneCircle) {
+        geofenceSafeZoneCircle.setMap(geofenceMap);
+        geofenceSafeZoneCircle.setCenter(coordinates);
+        if (radius !== null) geofenceSafeZoneCircle.setRadius(radius);
+    }
+
+    if (focusMap) {
+        geofenceMap.panTo(coordinates);
+        geofenceMap.setZoom(17);
+    }
+}
+
+async function initializeGeofenceMap(pet) {
+    const container = $('#geofenceMap');
+    const center = normalizeSafeZoneCenter(pet.safeZone?.center);
+
+    geofenceMap = null;
+    geofenceSafeZoneMarker = null;
+    geofenceSafeZoneCircle = null;
+    editedSafeZoneCoordinates = center
+        ? { lat: center[0], lng: center[1] }
+        : null;
+
+    if (!container) return;
+
+    container.innerHTML = '<div class="geofence-map-empty"><i class="bi bi-geo-alt"></i><span>Loading safe-zone map...</span></div>';
+
+    try {
+        await loadGoogleMaps();
+
+        if (editGeofencePetId !== pet.id) return;
+
+        container.innerHTML = '';
+        geofenceMap = new window.google.maps.Map(container, {
+            center: editedSafeZoneCoordinates || { lat: 12.8797, lng: 121.7740 },
+            zoom: editedSafeZoneCoordinates ? 17 : 6,
+            mapTypeId: 'roadmap',
+            mapTypeControl: true,
+            streetViewControl: false,
+            fullscreenControl: false,
+            zoomControl: true
+        });
+        geofenceMap.addListener('click', event => {
+            setEditedSafeZoneLocation({
+                lat: event.latLng.lat(),
+                lng: event.latLng.lng()
+            }, false, true);
+        });
+        if (editedSafeZoneCoordinates) {
+            setEditedSafeZoneLocation(editedSafeZoneCoordinates);
+        }
+    } catch (error) {
+        console.error('Unable to initialize geofence map:', error);
+        container.innerHTML = '<div class="geofence-map-empty"><i class="bi bi-exclamation-circle"></i><span>Google Maps could not be loaded.</span></div>';
+    }
+}
+
+async function findEditedSafeZoneAddress() {
+    const pet = pets.find(item => item.id === editGeofencePetId);
+    const addressInput = $('#geofenceAddress');
+    const findButton = $('#findGeofenceAddressBtn');
+    const address = addressInput?.value.trim() || '';
+
+    if (!pet || !address) {
+        setAddressFeedback(
+            '#geofenceAddressFeedback',
+            'Enter an address or place to search.',
+            'error'
+        );
+        addressInput?.focus();
+        return;
+    }
+
+    if (findButton) findButton.disabled = true;
+    setAddressFeedback(
+        '#geofenceAddressFeedback',
+        'Finding this location on Google Maps...'
+    );
+
+    try {
+        if (!geofenceMap) await initializeGeofenceMap(pet);
+        if (!geofenceMap) throw new Error('MAP_UNAVAILABLE');
+        const result = await geocodeSafeZoneAddress(address);
+        const location = result.geometry.location;
+        const formattedAddress = result.formatted_address || address;
+
+        editedSafeZoneAddress = formattedAddress;
+        if (addressInput) addressInput.value = formattedAddress;
+        setEditedSafeZoneLocation({
+            lat: location.lat(),
+            lng: location.lng()
+        }, true, true);
+        setAddressFeedback(
+            '#geofenceAddressFeedback',
+            'Location found. Click the map or drag the pin to adjust the exact center.',
+            'success'
+        );
+    } catch (error) {
+        console.warn('Safe-zone address could not be geocoded:', error);
+        const message = error.message === 'ZERO_RESULTS' ||
+            error.message === 'INVALID_REQUEST'
+            ? 'Location not found. Try entering a more complete address.'
+            : 'Address search is unavailable. Check Google Maps and try again.';
+        setAddressFeedback(
+            '#geofenceAddressFeedback',
+            message,
+            'error'
+        );
+    } finally {
+        if (findButton) findButton.disabled = false;
+    }
+}
+
+function openGeofenceEditor(petId) {
+    const pet = pets.find(item => item.id === petId);
+    const modalElement = $('#geofenceModal');
+
+    if (!pet || !modalElement) return;
+
+    editGeofencePetId = pet.id;
+
+    const nameInput = $('#geofenceName');
+    const addressInput = $('#geofenceAddress');
+    const radiusInput = $('#geofenceRadius');
+    const radius = numberOrNull(pet.safeZone?.radius ?? pet.radius);
+    const center = normalizeSafeZoneCenter(pet.safeZone?.center);
+
+    editedSafeZoneCoordinates = center
+        ? { lat: center[0], lng: center[1] }
+        : null;
+    editedSafeZoneAddress = String(pet.safeZone?.address || '').trim();
+    editedSafeZoneAddressNeedsLocation = false;
+
+    if (nameInput) {
+        nameInput.value = pet.safeZone?.name || pet.geofence || '';
+    }
+
+
+    if (addressInput) {
+        addressInput.value = editedSafeZoneAddress;
+    }
+
+    setAddressFeedback(
+        '#geofenceAddressFeedback',
+        center
+            ? 'Search for a different address, or click and drag the pin to adjust it.'
+            : 'Enter an address above. PawSense will locate it on the map.'
+    );
+
+    if (radiusInput) {
+        radiusInput.min = String(radius !== null && radius > 0
+            ? Math.min(50, radius)
+            : 50);
+        radiusInput.max = String(radius !== null
+            ? Math.max(1000, radius)
+            : 1000);
+        radiusInput.value = String(radius ?? 100);
+    }
+
+    updateGeofenceRadiusDisplay(radius !== null);
+
+    modalElement.addEventListener(
+        'shown.bs.modal',
+        () => initializeGeofenceMap(pet),
+        { once: true }
+    );
+
+    window.bootstrap.Modal
+        .getOrCreateInstance(modalElement)
+        .show();
 }
 
 function attachPetManagementEvents() {
@@ -821,17 +1184,6 @@ if (deletePetModalElement) {
         deletePetModalElement
     );
 }
-
-    console.log(
-    'PET MANAGEMENT EVENTS ATTACHED'
-);
-
-console.log(
-    'ADD LOCATION BUTTON:',
-    document.getElementById(
-        'addSafeZoneLocationBtn'
-    )
-);
 
             $('#newPetPhoto')
         ?.addEventListener(
@@ -886,18 +1238,23 @@ console.log(
             }
         );
     
-                $('#addSafeZoneLocationBtn')
+    $('#findSafeZoneAddressBtn')
         ?.addEventListener(
             'click',
-            async event => {
-
+            event => {
                 event.preventDefault();
+                findNewSafeZoneAddress();
+            }
+        );
 
-                console.log(
-                    'ADD LOCATION CLICKED'
+    $('#newSafeZoneAddress')
+        ?.addEventListener(
+            'input',
+            event => {
+                const address = event.currentTarget.value.trim();
+                newSafeZoneAddressNeedsLocation = Boolean(
+                    address && address !== newSafeZoneAddress
                 );
-
-                await initializeAddPetSafeZoneMap();
             }
         );
 
@@ -919,6 +1276,13 @@ console.log(
                     updateNewPetInitialPreview();
                 }
             }
+        );
+
+
+    $('#addPetModal')
+        ?.addEventListener(
+            'shown.bs.modal',
+            initializeAddPetSafeZoneMap
         );
 
 
@@ -1001,6 +1365,18 @@ console.log(
                 )
                 .show();
         }
+
+        const geofenceTarget =
+            event.target.closest(
+                '[data-edit-geofence]'
+            );
+
+        if (geofenceTarget) {
+            event.preventDefault();
+            openGeofenceEditor(
+                geofenceTarget.dataset.editGeofence
+            );
+        }
     }
 );
 
@@ -1009,10 +1385,13 @@ console.log(
     // ==================================================
 
     $('#addPetForm')?.addEventListener(
-        'submit',
-        async event => {
+    'submit',
+    async event => {
 
-            event.preventDefault();
+        event.preventDefault();
+
+        const addPetForm =
+            event.currentTarget;
 
 
             // Maximum 3 pets
@@ -1032,10 +1411,10 @@ console.log(
             const index = pets.length;
 
 
-if (!newSafeZoneCoordinates) {
+if (!isValidMapPosition(newSafeZoneCoordinates)) {
 
     showToast(
-        'Please select a safe-zone location.',
+        'Find an address or place the safe-zone pin on the map.',
         'bi-geo-alt-fill'
     );
 
@@ -1056,6 +1435,25 @@ const safeZoneRadius =
             ?.value ||
         100
     );
+
+if (!Number.isFinite(safeZoneRadius) || safeZoneRadius <= 0) {
+    showToast(
+        'Enter a valid safe-zone radius.',
+        'bi-exclamation-circle-fill'
+    );
+    return;
+}
+
+if (newSafeZoneAddressNeedsLocation) {
+    showToast(
+        'Find the typed address on the map or adjust the pin before saving.',
+        'bi-geo-alt-fill'
+    );
+    return;
+}
+
+newSafeZoneAddress =
+    $('#newSafeZoneAddress')?.value.trim() || '';
 
 
 // Information entered by user
@@ -1105,6 +1503,10 @@ const petData = {
 
         name:
             safeZoneName,
+
+        ...(newSafeZoneAddress
+            ? { address: newSafeZoneAddress }
+            : {}),
 
         center: [
             Number(
@@ -1170,7 +1572,7 @@ const petData = {
                     ?.hide();
 
 
-                event.currentTarget.reset();
+                addPetForm.reset();
 
 
                 showToast(
@@ -1323,7 +1725,7 @@ const petData = {
                     ?.hide();
 
 
-                event.currentTarget.reset();
+                addPetForm.reset();
 
 
                 showToast(
@@ -1623,11 +2025,28 @@ const petData = {
     $('#geofenceRadius')
         ?.addEventListener(
             'input',
-            event => {
+            () => updateGeofenceRadiusDisplay(true)
+        );
 
-                $('#radiusValue')
-                    .textContent =
-                    event.target.value;
+
+    $('#findGeofenceAddressBtn')
+        ?.addEventListener(
+            'click',
+            event => {
+                event.preventDefault();
+                findEditedSafeZoneAddress();
+            }
+        );
+
+
+    $('#geofenceAddress')
+        ?.addEventListener(
+            'input',
+            event => {
+                const address = event.currentTarget.value.trim();
+                editedSafeZoneAddressNeedsLocation = Boolean(
+                    address && address !== editedSafeZoneAddress
+                );
             }
         );
 
@@ -1639,13 +2058,13 @@ const petData = {
     $('#saveGeofenceBtn')
         ?.addEventListener(
             'click',
-            () => {
+            async event => {
 
                 const pet =
                     pets.find(
                         item =>
                             item.id ===
-                            selectedPetId
+                            editGeofencePetId
                     );
 
 
@@ -1654,26 +2073,126 @@ const petData = {
                 }
 
 
-                pet.radius =
-                    Number(
-                        $('#geofenceRadius')
-                            .value
+                const name = $('#geofenceName')
+                    .value
+                    .trim();
+                const radius = getGeofenceRadius();
+
+                if (!name) {
+                    showToast(
+                        'Enter a safe-zone name.',
+                        'bi-exclamation-circle-fill'
                     );
+                    return;
+                }
 
+                if (!editedGeofenceHasRadius) {
+                    showToast(
+                        'Choose a safe-zone radius.',
+                        'bi-exclamation-circle-fill'
+                    );
+                    return;
+                }
 
-                pet.geofence =
-                    $('#geofenceName')
-                        .value
-                        .trim() ||
-                    'Safe zone';
+                if (radius === null || radius <= 0) {
+                    showToast(
+                        'Enter a valid safe-zone radius.',
+                        'bi-exclamation-circle-fill'
+                    );
+                    return;
+                }
 
+                if (!isValidMapPosition(editedSafeZoneCoordinates)) {
+                    showToast(
+                        'Find an address or place the safe-zone pin on the map.',
+                        'bi-exclamation-circle-fill'
+                    );
+                    return;
+                }
 
-                renderPetDetail();
+                if (editedSafeZoneAddressNeedsLocation) {
+                    showToast(
+                        'Find the typed address on the map or adjust the pin before saving.',
+                        'bi-geo-alt-fill'
+                    );
+                    return;
+                }
 
+                editedSafeZoneAddress =
+                    $('#geofenceAddress')?.value.trim() || '';
 
-                showToast(
-                    'Geofence preview updated.'
-                );
+                const existingSafeZone = { ...(pet.safeZone || {}) };
+                delete existingSafeZone.address;
+
+                const safeZone = {
+                    ...existingSafeZone,
+                    name,
+                    ...(editedSafeZoneAddress
+                        ? { address: editedSafeZoneAddress }
+                        : {}),
+                    center: [
+                        editedSafeZoneCoordinates.lat,
+                        editedSafeZoneCoordinates.lng
+                    ],
+                    radius
+                };
+
+                const saveButton = event.currentTarget;
+                saveButton.disabled = true;
+
+                try {
+                    if (DATA_MODE !== 'demo') {
+                        const result = await petService.updatePet(
+                            pet.id,
+                            {
+                                safeZone,
+                                geofenceName: name,
+                                geofenceRadius: radius
+                            }
+                        );
+
+                        if (!result.success) {
+                            console.error(
+                                'Failed to update geofence in Firestore:',
+                                result.message || result.error
+                            );
+                            showToast(
+                                'Failed to save geofence.',
+                                'bi-exclamation-circle-fill'
+                            );
+                            return;
+                        }
+                    }
+
+                    pet.safeZone = safeZone;
+                    pet.geofenceName = name;
+                    pet.geofenceRadius = radius;
+                    pet.geofence = name;
+                    pet.radius = radius;
+
+                    renderPetDetail();
+
+                    window.bootstrap.Modal
+                        .getInstance($('#geofenceModal'))
+                        ?.hide();
+
+                    showToast(
+                        DATA_MODE === 'demo'
+                            ? 'Geofence preview updated.'
+                            : 'Geofence saved.'
+                    );
+                } catch (error) {
+                    console.error(
+                        'Unexpected error updating geofence:',
+                        error
+                    );
+                    showToast(
+                        'Failed to save geofence.',
+                        'bi-exclamation-circle-fill'
+                    );
+                } finally {
+                    saveButton.disabled = false;
+                }
             }
         );
 }
