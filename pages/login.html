@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="../css/login.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
     <style>
         .spinner {
             display: inline-block;
@@ -43,7 +43,7 @@
             <!-- LEFT VISUAL -->
             <section class="login-visual">
                 <a href="login.html" class="brand">
-                    <div class="brand-icon">♥</div>
+                    <div class="brand-icon"><img src="../assets/images/pawsense-logo.png" alt=""></div>
                     <div class="brand-name">Paw<span>Sense</span></div>
                 </a>
                 <div class="pet-image-container">
@@ -60,10 +60,6 @@
                         <div><strong>GPS & Safe Zones</strong><span>Real-time location tracking with custom alerts.</span></div>
                     </div>
                     <div class="mini-feature">
-                        <div class="feature-icon heart">♥</div>
-                        <div><strong>Health Monitoring</strong><span>Monitor heart rate and other vital information.</span></div>
-                    </div>
-                    <div class="mini-feature">
                         <div class="feature-icon activity">⌁</div>
                         <div><strong>Activity Tracking</strong><span>Understand your pet's daily activity and behavior.</span></div>
                     </div>
@@ -77,7 +73,7 @@
                     <div class="form-heading">
                         <span class="eyebrow">OWNER SIGN IN</span>
                         <h2>Good to see you again.</h2>
-                        <p>Sign in to check on your pet's location, activity, and health in real time.</p>
+                        <p>Sign in to check on your pet's location, activity, and safety in real time.</p>
                     </div>
 
                     <!-- Message placeholders -->
@@ -115,205 +111,6 @@
     <!-- ========================================================= -->
     <!-- ✅ USING ES MODULES – SAME AS REGISTER & DASHBOARD         -->
     <!-- ========================================================= -->
-    <script type="importmap">
-        {
-            "imports": {
-                "../js/firebase-init.js": "../js/firebase-init.js"
-            }
-        }
-    </script>
-
-    <script type="module">
-        // ============================================
-        // IMPORT FROM YOUR FIREBASE INIT (SAME AS REGISTER)
-        // ============================================
-        import { 
-            auth,
-            signInWithIdentifier,
-            signOut,
-            onAuthStateChanged
-        } from '../js/firebase-init.js';
-
-        // ============================================
-        // DOM REFS
-        // ============================================
-        const identifierInput = document.getElementById('loginIdentifier');
-        const passwordInput = document.getElementById('password');
-        const showPasswordBtn = document.getElementById('showPassword');
-        const loginForm = document.getElementById('loginForm');
-        const statusText = document.getElementById('statusText');
-        const statusDot = document.getElementById('statusDot');
-        const signInBtn = document.getElementById('signInBtn');
-        const forgotLink = document.getElementById('forgotLink');
-        const errorMsg = document.getElementById('errorMessage');
-        const successMsg = document.getElementById('successMessage');
-        let loginInProgress = false;
-        const accountDoesNotExistMessage = 'Invalid username/email and password!';
-
-        function loginErrorMessage(code, identifier) {
-            if (code === 'auth/account-pending') return 'Verify your email address before signing in.';
-            if (code === 'auth/username-lookup-unavailable') return 'Username lookup is blocked by Firestore permissions. Try signing in with your email address.';
-            if (code === 'auth/user-not-found' && !identifier.includes('@')) return 'No username lookup record was found. Try signing in with your email address.';
-            if (code === 'auth/network-request-failed' || code === 'unavailable') return 'Could not reach Firebase. Check your internet connection and try again.';
-            return accountDoesNotExistMessage;
-        }
-
-        // ============================================
-        // HELPER FUNCTIONS
-        // ============================================
-        function updateStatus(msg, success = false) {
-            if (statusText) statusText.textContent = msg;
-            if (statusDot) statusDot.classList.toggle('success', success);
-            console.log('📌 Status:', msg);
-        }
-
-        function showError(msg) {
-            if (errorMsg) {
-                errorMsg.textContent = msg;
-                errorMsg.style.display = 'block';
-                if (successMsg) successMsg.style.display = 'none';
-            }
-        }
-
-        function showSuccess(msg) {
-            if (successMsg) {
-                successMsg.textContent = msg;
-                successMsg.style.display = 'block';
-                if (errorMsg) errorMsg.style.display = 'none';
-            }
-        }
-
-        function hideMessages() {
-            if (errorMsg) errorMsg.style.display = 'none';
-            if (successMsg) successMsg.style.display = 'none';
-        }
-
-        function setLoading(isLoading) {
-            if (!signInBtn) return;
-            signInBtn.disabled = isLoading;
-            signInBtn.innerHTML = isLoading
-                ? '<span class="spinner" aria-hidden="true"></span><span>Signing in...</span>'
-                : '<span>Sign in</span>';
-        }
-
-        function clearLoginFields() {
-            loginForm.reset();
-            passwordInput.type = 'password';
-            showPasswordBtn.textContent = 'Show';
-        }
-
-        // ============================================
-        // 1. PASSWORD TOGGLE
-        // ============================================
-        if (showPasswordBtn && passwordInput) {
-            showPasswordBtn.addEventListener('click', function() {
-                const isPassword = passwordInput.type === 'password';
-                passwordInput.type = isPassword ? 'text' : 'password';
-                this.textContent = isPassword ? 'Hide' : 'Show';
-            });
-        }
-
-        // ============================================
-        // 2. AUTH STATE
-        // ============================================
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                console.log('✅ User logged in:', user.email);
-                if (!user.emailVerified) {
-                    if (loginInProgress) return;
-                    await signOut();
-                    showError(accountDoesNotExistMessage);
-                    updateStatus('Login failed', false);
-                    setLoading(false);
-                    return;
-                } else {
-                    hideMessages();
-                    // Keep the login page visible when it was opened from the landing page.
-                    updateStatus(`Signed in as ${user.email}. Sign in to continue or choose another account.`, true);
-                }
-            } else {
-                updateStatus('Not logged in', false);
-                hideMessages();
-            }
-        });
-
-        // ============================================
-        // 3. USERNAME OR EMAIL SIGN IN
-        // ============================================
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            hideMessages();
-
-            const identifier = identifierInput.value.trim();
-            const password = passwordInput.value;
-
-            if (!identifier || !password) {
-                showError(accountDoesNotExistMessage);
-                return;
-            }
-
-            setLoading(true);
-            loginInProgress = true;
-            updateStatus('Signing in...', false);
-
-            try {
-                const result = await signInWithIdentifier(identifier, password);
-                loginInProgress = false;
-                clearLoginFields();
-                
-                console.log('✅ Login result:', result);
-
-                if (result.success) {
-                    console.log('✅ Login success:', result.user.email);
-                    loginInProgress = false;
-                    setLoading(false);
-                    hideMessages();
-                    updateStatus('Not logged in', false);
-
-                    // Open live monitoring after login
-                    window.location.replace('dashboard.html#live-tracking');
-                } else {
-                    // ❌ Show the actual Firebase error
-                    console.error('❌ Login error:', result);
-                    if (result.error === 'auth/account-pending') {
-                        console.error('Login error code:', result.error, 'Details:', result.message || '(none)');
-                        await signOut();
-                        showError(loginErrorMessage(result.error, identifier));
-                        updateStatus('Login failed', false);
-                        setLoading(false);
-                        return;
-                    }
-                    console.error('Login error code:', result.error || 'unknown', 'Details:', result.message || '(none)');
-                    showError(loginErrorMessage(result.error, identifier));
-                    updateStatus('Login failed', false);
-                    setLoading(false);
-                }
-            } catch (error) {
-                loginInProgress = false;
-                clearLoginFields();
-                console.error('❌ Unexpected login error:', error);
-                showError(accountDoesNotExistMessage);
-                updateStatus('Login failed', false);
-                setLoading(false);
-            }
-        });
-
-        // ============================================
-        // 4. FORGOT PASSWORD
-        // ============================================
-        if (forgotLink) {
-            forgotLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                const identifier = identifierInput.value.trim();
-                if (identifier) {
-                    localStorage.setItem('forgotPasswordIdentifier', identifier.toLowerCase());
-                }
-                window.location.href = 'forgot-password.html';
-            });
-        }
-
-        console.log('✅ Login page ready (ES Module version)!');
-        console.log('🔥 Using the SAME Firebase instance as register.html');
-    </script>
+    <script type="module" src="../js/pages/login.js"></script>
 </body>
 </html>

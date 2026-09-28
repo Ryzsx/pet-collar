@@ -1,0 +1,34 @@
+# Local editor and IDE files
+.vs/
+*.user
+*.suo
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+serviceAccountKey.json
+*firebase-adminsdk*.json
+*.pem
+*.p12
+*.pfx
+*.key
+
+# .NET build output (for a future backend)
+bin/
+obj/
+TestResults/
+
+# JavaScript dependencies and generated output
+node_modules/
+coverage/
+dist/
+
+# Logs and Firebase CLI cache
+*.log
+firebase-debug.log
+.firebase/
+
+# Operating system files
+.DS_Store
+Thumbs.db
