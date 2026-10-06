@@ -1,10 +1,24 @@
 import { DATA_MODE } from '../core/data-mode.js';
+
+import { db } from '../core/firebase-config.js';
+
+import {
+    doc,
+    onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 import { liveTrackingPets as demoLiveTrackingPets } from './demo-data.js';
 import { $, escapeHtml, showToast } from './dom.js';
+
 import {
-    hasCollarInternet, getLivePetState, getTrackingMessage,
-    getDisplayedCoordinates, getDisplayedSafeZoneStatus, getSafeZoneLabel
+    hasCollarInternet,
+    getLivePetState,
+    getTrackingMessage,
+    getDisplayedCoordinates,
+    getDisplayedSafeZoneStatus,
+    getSafeZoneLabel
 } from './pet-status.js';
+
 import { updateActivityData } from './activity.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDMI3xEi1DxPNlaM76B-sFigPOB3khJsGk';
@@ -23,6 +37,7 @@ let liveTrackingPets =
 let selectedLivePetId =
     liveTrackingPets[0]?.id || null;
 
+let livePetRealtimeUnsubscribe = null;
 
 // ======================================================
 // GOOGLE MAP STATE
@@ -64,43 +79,167 @@ function getMapCoordinates(pet) {
 
 function toTrackingPet(rawPet, index) {
     const safeZone = rawPet.safeZone || {};
-    const coordinates = Array.isArray(rawPet.coordinates) ? rawPet.coordinates : null;
-    const fallbackCoordinates = Array.isArray(rawPet.lastKnownCoordinates)
-        ? rawPet.lastKnownCoordinates
-        : Array.isArray(safeZone.center) ? safeZone.center : null;
+
+    const coordinates =
+        Array.isArray(rawPet.coordinates)
+            ? rawPet.coordinates
+            : null;
+
+    // Do NOT use the safe-zone center as the pet's location.
+    // Until real GPS data exists, pet location remains unavailable.
+    const fallbackCoordinates =
+        Array.isArray(rawPet.lastKnownCoordinates)
+            ? rawPet.lastKnownCoordinates
+            : null;
+
+    const formatFirestoreTime = value => {
+        if (!value) return null;
+
+        try {
+            const date =
+                typeof value.toDate === 'function'
+                    ? value.toDate()
+                    : new Date(value);
+
+            if (Number.isNaN(date.getTime())) {
+                return null;
+            }
+
+            return date.toLocaleString();
+        }
+        catch {
+            return null;
+        }
+    };
+
     const rawActivity = rawPet.activity;
-    const activity = rawActivity && typeof rawActivity === 'object'
-        ? rawActivity
-        : { value: typeof rawActivity === 'string' ? rawActivity : '', available: false, updated: null };
-    const online = rawPet.collarOnline ?? rawPet.online ?? ['active', 'online'].includes(String(rawPet.status || '').toLowerCase());
+
+    const activity =
+        rawActivity && typeof rawActivity === 'object'
+            ? rawActivity
+            : {
+                value:
+                    typeof rawActivity === 'string'
+                        ? rawActivity
+                        : '',
+
+                available:
+                    Boolean(
+                        rawPet.collarOnline &&
+                        typeof rawActivity === 'string' &&
+                        rawActivity.trim()
+                    ),
+
+                updated:
+                    formatFirestoreTime(
+                        rawPet.activityUpdatedAt
+                    )
+            };
+
+    const online =
+        rawPet.collarOnline ??
+        rawPet.online ??
+        ['active', 'online'].includes(
+            String(rawPet.status || '').toLowerCase()
+        );
+
+    const lastSeen =
+        formatFirestoreTime(rawPet.lastSeen);
 
     return {
         ...rawPet,
-        id: rawPet.id || `pet-${index + 1}`,
-        name: rawPet.name || rawPet.petName || `Pet ${index + 1}`,
-        type: rawPet.type || rawPet.petType || '',
-        photo: rawPet.photoURL || rawPet.photo || rawPet.imageUrl || '',
-        collarOnline: Boolean(online),
-        gpsAvailable: rawPet.gpsAvailable ?? Boolean(coordinates),
+
+        id:
+            rawPet.id ||
+            `pet-${index + 1}`,
+
+        name:
+            rawPet.name ||
+            rawPet.petName ||
+            `Pet ${index + 1}`,
+
+        type:
+            rawPet.type ||
+            rawPet.petType ||
+            '',
+
+        photo:
+            rawPet.photoURL ||
+            rawPet.photo ||
+            rawPet.imageUrl ||
+            '',
+
+        collarOnline:
+            Boolean(online),
+
+        gpsAvailable:
+            rawPet.gpsAvailable ??
+            Boolean(coordinates),
+
         coordinates,
-        lastKnownCoordinates: fallbackCoordinates,
-        locationName: rawPet.locationName || 'No location received yet',
+
+        lastKnownCoordinates:
+            fallbackCoordinates,
+
+        locationName:
+            rawPet.locationName ||
+            'No location received yet',
+
         safeZone: {
-            name: safeZone.name || rawPet.geofenceName || 'Home',
-            center: Array.isArray(safeZone.center) ? safeZone.center : fallbackCoordinates,
-            radius: Number(safeZone.radius ?? rawPet.geofenceRadius ?? 100)
+            name:
+                safeZone.name ||
+                rawPet.geofenceName ||
+                'Home',
+
+            center:
+                Array.isArray(safeZone.center)
+                    ? safeZone.center
+                    : null,
+
+            radius:
+                Number(
+                    safeZone.radius ??
+                    rawPet.geofenceRadius ??
+                    100
+                )
         },
-        safeZoneStatus: rawPet.safeZoneStatus ?? null,
-        lastKnownSafeZoneStatus: rawPet.lastKnownSafeZoneStatus ?? null,
-        battery: rawPet.battery !== null && rawPet.battery !== undefined && Number.isFinite(Number(rawPet.battery))
-            ? Number(rawPet.battery)
-            : null,
-        batteryUpdated: rawPet.batteryUpdated || null,
-        batteryCondition: rawPet.batteryCondition || null,
-        cellular: rawPet.cellular || { internetAvailable: Boolean(online), carrier: '', network: '', signal: '' },
+
+        safeZoneStatus:
+            rawPet.safeZoneStatus ?? null,
+
+        lastKnownSafeZoneStatus:
+            rawPet.lastKnownSafeZoneStatus ?? null,
+
+        battery:
+            rawPet.battery !== null &&
+            rawPet.battery !== undefined &&
+            Number.isFinite(Number(rawPet.battery))
+                ? Number(rawPet.battery)
+                : null,
+
+        batteryUpdated:
+            rawPet.batteryUpdated || null,
+
+        batteryCondition:
+            rawPet.batteryCondition || null,
+
+        cellular:
+            rawPet.cellular || {
+                internetAvailable: Boolean(online),
+                carrier: '',
+                network: '',
+                signal: ''
+            },
+
         activity,
-        updated: rawPet.updated || 'No update recorded',
-        lastSync: rawPet.lastSync || 'Never'
+
+        updated:
+            rawPet.updated ||
+            'No location recorded',
+
+        lastSync:
+            lastSeen ||
+            'Never'
     };
 }
 
@@ -477,6 +616,95 @@ function fitAllLivePetsOnMap() {
     liveTrackingMap.fitBounds(bounds, 72);
 }
 
+function startSelectedPetRealtimeListener() {
+
+    // No Firestore listener while using demo data.
+    if (DATA_MODE === 'demo') {
+        return;
+    }
+
+    // Stop the previous listener before creating a new one.
+    if (livePetRealtimeUnsubscribe) {
+        livePetRealtimeUnsubscribe();
+        livePetRealtimeUnsubscribe = null;
+    }
+
+    // Nothing to listen to if no pet is selected.
+    if (!selectedLivePetId) {
+        return;
+    }
+
+    const petRef =
+        doc(
+            db,
+            'pets',
+            selectedLivePetId
+        );
+
+    console.log(
+        'Starting real-time pet listener:',
+        selectedLivePetId
+    );
+
+    livePetRealtimeUnsubscribe =
+        onSnapshot(
+            petRef,
+
+            snapshot => {
+
+                if (!snapshot.exists()) {
+                    console.warn(
+                        'Selected pet document does not exist.'
+                    );
+                    return;
+                }
+
+                const index =
+                    liveTrackingPets.findIndex(
+                        pet => pet.id === snapshot.id
+                    );
+
+                if (index === -1) {
+                    return;
+                }
+
+                const realtimePet = {
+                    id: snapshot.id,
+                    ...snapshot.data()
+                };
+
+                liveTrackingPets[index] =
+                    toTrackingPet(
+                        realtimePet,
+                        index
+                    );
+
+                console.log(
+                    'REAL-TIME PET UPDATE:',
+                    realtimePet.activity
+                );
+
+                renderLivePetSelector();
+                renderActivityPetSelector();
+                renderSelectedLivePet();
+
+                syncLiveMapMarkers();
+                updateLiveMapSelection();
+
+                if (liveMapFallbackActive) {
+                    renderFallbackMap();
+                }
+            },
+
+            error => {
+                console.error(
+                    'Real-time pet listener failed:',
+                    error
+                );
+            }
+        );
+}
+
 function setLiveTrackingPets(petList) {
     liveTrackingPets = Array.isArray(petList)
         ? petList.map(toTrackingPet)
@@ -484,6 +712,8 @@ function setLiveTrackingPets(petList) {
     if (!liveTrackingPets.some(pet => pet.id === selectedLivePetId)) {
         selectedLivePetId = liveTrackingPets[0]?.id || null;
     }
+
+    startSelectedPetRealtimeListener();
 
     renderLivePetSelector();
     renderActivityPetSelector();
@@ -876,14 +1106,23 @@ function initializeLiveTrackingMap() {
 }
 
 function selectLiveTrackingPet(petId) {
-    if (!liveTrackingPets.some(pet => pet.id === petId)) return;
+    if (!liveTrackingPets.some(pet => pet.id === petId)) {
+        return;
+    }
+
     selectedLivePetId = petId;
+
+    startSelectedPetRealtimeListener();
+
     renderLivePetSelector();
     renderActivityPetSelector();
     renderSelectedLivePet();
     updateActivityData(petId);
     updateLiveMapSelection();
-    if (liveMapFallbackActive) renderFallbackMap();
+
+    if (liveMapFallbackActive) {
+        renderFallbackMap();
+    }
 }
 
 function initializeLiveTracking() {
