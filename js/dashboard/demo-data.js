@@ -100,7 +100,7 @@ const liveTrackingPets = [
 
         // Activity
         activity: {
-            value: 'Walking',
+            value: 'Running',
             available: true,
             updated: '3:42 PM'
         },
@@ -175,8 +175,8 @@ const liveTrackingPets = [
             name: 'Home',
 
             center: [
-                14.6764,
-                121.0439
+                14.6728,
+                121.0478
             ],
 
             radius: 100
@@ -185,7 +185,7 @@ const liveTrackingPets = [
         safeZoneStatus: null,
 
         lastKnownSafeZoneStatus:
-            'outside',
+            'inside',
 
         // Battery
         battery: 23,
@@ -283,8 +283,8 @@ const liveTrackingPets = [
             name: 'Home',
 
             center: [
-                14.6764,
-                121.0439
+                14.6805,
+                121.0384
             ],
 
             radius: 100

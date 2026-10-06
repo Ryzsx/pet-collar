@@ -79,8 +79,8 @@ body {
 ===================================================== */
 .login-visual {
     background:
-        radial-gradient(circle at 12% 10%, rgba(29,150,143,.12), transparent 30%),
-        linear-gradient(145deg, #f7faf8 0%, #e8f3f0 100%);
+        radial-gradient(circle at 12% 10%, rgba(255,255,255,.1), transparent 30%),
+        linear-gradient(145deg, #073c3e 0%, #0f5654 48%, #138480 100%);
     padding: 42px 36px;
     position: relative;
     overflow: hidden;
@@ -134,7 +134,7 @@ body {
 }
 .brand-icon img { display: block; height: 100%; object-fit: contain; opacity: 0; width: 100%; }
 .brand-icon {
-    background: var(--green);
+    background: #ffffff;
     box-shadow: none;
     -webkit-mask: url('../assets/images/pawsense-logo.png') center / 128% no-repeat;
     mask: url('../assets/images/pawsense-logo.png') center / 128% no-repeat;
@@ -143,10 +143,10 @@ body {
     font-size: 20px;
     font-weight: 800;
     letter-spacing: -0.5px;
-    color: var(--dark);
+    color: #ffffff;
 }
 .brand-name span {
-    color: var(--green);
+    color: #ffffff;
 }
 
 /* =====================================================
@@ -186,9 +186,10 @@ body {
     color: var(--dark);
     letter-spacing: -0.6px;
 }
+.visual-content h1 { color: #ffffff; }
 .visual-content h1 span {
     display: block;
-    color: var(--green);
+    color: #8de0d7;
     margin-top: 3px;
 }
 .visual-content p {
@@ -336,6 +337,7 @@ body {
     color: var(--dark);
     letter-spacing: -0.5px;
 }
+.visual-content p { color: rgba(255,255,255,.78); }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -609,7 +611,7 @@ body {
     height: 46px;
     border: none;
     border-radius: 11px;
-    background: linear-gradient(135deg, var(--green), var(--green-dark));
+    background: linear-gradient(135deg, #0f5654 0%, #1d968f 58%, #27aaa2 100%);
     color: white;
     display: flex;
     align-items: center;
@@ -623,6 +625,7 @@ body {
     transition: all 0.3s ease;
 }
 .sign-in-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0b4646 0%, #16817c 58%, #219b95 100%);
     transform: translateY(-2px);
     box-shadow: 0 13px 30px rgba(15,76,78,.26);
 }

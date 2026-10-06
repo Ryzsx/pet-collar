@@ -25,7 +25,7 @@
             <nav class="sidebar-nav nav flex-column" id="appNav">
                 <span class="nav-heading">Dashboard</span>
                 <button class="nav-link active" type="button" data-section="live-tracking" title="Live Tracking"><i class="bi bi-activity"></i><span>Live Tracking</span></button>
-                <button class="nav-link" type="button" data-section="health-activity" title="Activity Monitoring"><i class="bi bi-graph-up-arrow"></i><span>Activity Monitoring</span></button>
+                <button class="nav-link" type="button" data-section="health-activity" title="Pet Activity and Route History"><i class="bi bi-graph-up-arrow"></i><span>Pet Activity and Route History</span></button>
                 <button class="nav-link" type="button" data-section="pet-management" title="Pet Management"><img class="nav-paw-icon" src="../assets/images/pet-management-icon.png" alt=""><span>Pet Management</span></button>
                 <button class="nav-link" type="button" data-section="notifications" title="Notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
                 <button class="nav-link" type="button" data-section="settings" title="Settings"><i class="bi bi-gear"></i><span>Settings</span></button>
@@ -36,17 +36,21 @@
                     <div class="user-copy"><strong id="userName">User</strong><span id="userEmail">user@email.com</span></div>
                     <button class="sidebar-account-logout" type="button" data-logout-action title="Logout" aria-label="Log out"><i class="bi bi-box-arrow-right"></i></button>
                 </div>
-                <div class="sidebar-logout-confirm" id="logoutConfirmPanel" hidden>
-                    <strong>Log out of PawSense?</strong>
-                    <span>Are you sure you want to log out?</span>
-                    <div>
-                        <button type="button" id="confirmLogoutBtn">Yes</button>
-                        <button type="button" id="cancelLogoutBtn">No</button>
-                    </div>
-                </div>
             </div>
         </aside>
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <div class="logout-modal" id="logoutConfirmPanel" role="alertdialog" aria-modal="true" aria-labelledby="logoutDialogTitle" aria-describedby="logoutDialogMessage" hidden>
+            <div class="logout-dialog">
+                <span class="logout-dialog-icon"><i class="bi bi-box-arrow-right" aria-hidden="true"></i></span>
+                <strong id="logoutDialogTitle">Log out of PawSense?</strong>
+                <span id="logoutDialogMessage">Are you sure you want to log out?</span>
+                <div class="logout-dialog-actions">
+                    <button type="button" id="cancelLogoutBtn">No, stay</button>
+                    <button type="button" id="confirmLogoutBtn">Yes, log out</button>
+                </div>
+            </div>
+        </div>
 
         <main class="dashboard-main">
             <header class="topbar page-topbar">
@@ -58,7 +62,7 @@
                 <section class="dashboard-section active" id="live-tracking">
                     <div class="section-toolbar live-page-toolbar">
                         <div class="live-title-copy">
-                            <h1>Welcome to PawSense, <span id="liveWelcomeName">User</span>! <span class="welcome-paw" aria-hidden="true">🐾</span></h1>
+                            <h1>Welcome to PawSense, <span id="liveWelcomeName">User</span>!</h1>
                             <p class="live-welcome-message">We are thrilled to have you and your furry companion on board. Your dashboard is your central hub for keeping your pet safe and happy.</p>
                         </div>
                     </div>
@@ -93,17 +97,15 @@
                     <div class="monitoring-pet-control">
                         <div class="live-pet-icon-list" id="activityPetSelector" role="group" aria-label="Choose a pet to view activity"></div>
                     </div>
-                    <div class="activity-subscription-notice" id="activitySubscriptionNotice" hidden><i class="bi bi-calendar-x"></i><div><strong>Data subscription expired</strong><span>Recorded information remains visible, but no activity or route updates are available after September 19, 2026.</span></div></div>
+                    <div class="activity-subscription-notice" id="activitySubscriptionNotice" hidden><i class="bi bi-calendar-x"></i><div><strong>Data subscription expired</strong><span>Activity and route information is unavailable until the subscription is renewed.</span></div></div>
                     <div class="data-notice"><i class="bi bi-info-circle-fill"></i><div><strong>Activity Monitoring</strong><span>Current activity data from the selected pet. Last update: <span id="activityUpdated">Today, 10:42 AM</span></span></div><div class="state-key"><span class="soft-badge info">Available</span><span class="soft-badge neutral">Unavailable</span></div></div>
                     <div class="row g-4">
-                        <div class="col-sm-6"><article class="health-metric"><div class="health-metric-top"><span class="metric-icon blue"><i class="bi bi-person-walking"></i></span><span class="soft-badge info" id="activityStateBadge">Live</span></div><span id="activityStatusLabel">Current activity</span><strong class="word-value" id="currentActivity">Walking</strong><div class="activity-pills"><i></i><i class="active"></i><i></i></div><small id="activityRecordedTime">Updated 3:42 PM</small></article></div>
-                        <div class="col-sm-6">
+                        <div class="col-12">
                             <article class="health-metric calendar-card">
                                 <div class="calendar-card-head">
-                                    <div class="calendar-card-icon"><i class="bi bi-calendar3"></i></div>
-                                    <button class="calendar-card-add" type="button" aria-label="Add date"><i class="bi bi-plus-lg"></i></button>
+                                    <div class="calendar-card-heading"><div class="calendar-card-icon" aria-hidden="true"><i class="bi bi-calendar3"></i></div><div><span class="calendar-card-label">Activity calendar</span><div class="calendar-card-title" id="activityCalendarTitle"></div></div></div>
+                                    <div class="calendar-card-controls"><button class="calendar-today" id="activityCalendarToday" type="button">Today</button><label class="calendar-date-picker"><span>Choose date</span><input type="date" id="activityCalendarPicker" aria-label="Choose activity date"></label></div>
                                 </div>
-                                <div class="calendar-card-title" id="activityCalendarTitle">Today 4th Sep 2023</div>
                                 <div class="calendar-days" id="activityCalendarDays" aria-label="Date selector"></div>
                             </article>
                         </div>
@@ -124,13 +126,9 @@
                     <div class="history-block" id="history">
                         <div class="activity-records-toolbar">
                             <div class="activity-records-heading"><span class="section-kicker">Recorded insights</span><h2>Recorded Activity &amp; Location</h2><p>Review previous location, activity, and anomaly records for the selected pet.</p></div>
-                            <div class="activity-records-controls">
-                                <div class="history-type-tabs" role="tablist"><button class="active" type="button" data-history-type="location"><i class="bi bi-geo-alt"></i> Location</button><button type="button" data-history-type="activity"><i class="bi bi-activity"></i> Activity</button></div>
-                                <label class="history-range-control" for="historyRange"><span>Time range</span><select class="form-select" id="historyRange"><option value="today">Today</option><option value="week">This week</option></select></label>
-                            </div>
                         </div>
                         <div class="history-panel active" id="history-location"><div class="row g-4"><div class="col-xl-8"><article class="app-card"><div class="card-topline"><div><h3>Recorded route</h3><p id="recordedRouteDateText">Recorded path for today</p></div><span class="soft-badge neutral" id="recordedRouteDateBadge"><i class="bi bi-calendar3"></i> Today</span></div><div class="route-map" id="recordedRouteMap" role="application" aria-label="Map showing the selected pet's recorded route"></div></article></div><div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Trip summary</h3><p id="tripSummaryDateText">Today’s movement</p></div></div><div class="trip-stats"><div><span>Distance traveled</span><strong>3.8 km</strong></div><div><span>Time outside</span><strong>1h 42m</strong></div><div><span>Locations visited</span><strong>4 places</strong></div></div><div class="timeline"><div><i></i><span><strong>Riverside Park</strong><small>10:42 AM · Last recorded point</small></span></div><div><i></i><span><strong>Oak Street</strong><small>9:36 AM · Walking</small></span></div><div><i></i><span><strong>Home</strong><small>7:15 AM · Start point</small></span></div></div></article></div></div></div>
-                        <div class="history-panel" id="history-activity"><article class="app-card"><div class="card-topline"><div><h3>Weekly activity summary</h3><p>Activity duration by day · Last updated 10:42 AM</p></div><span class="soft-badge success"><i class="bi bi-graph-up-arrow"></i> 12% vs last week</span></div><div class="bar-chart"><div style="--rest:55%;--walk:24%;--run:10%"><span></span><i></i><b></b><small>Mon</small></div><div style="--rest:68%;--walk:18%;--run:7%"><span></span><i></i><b></b><small>Tue</small></div><div style="--rest:50%;--walk:30%;--run:12%"><span></span><i></i><b></b><small>Wed</small></div><div style="--rest:62%;--walk:20%;--run:9%"><span></span><i></i><b></b><small>Thu</small></div><div style="--rest:48%;--walk:34%;--run:13%"><span></span><i></i><b></b><small>Fri</small></div><div style="--rest:42%;--walk:38%;--run:16%"><span></span><i></i><b></b><small>Sat</small></div><div style="--rest:58%;--walk:26%;--run:11%"><span></span><i></i><b></b><small>Sun</small></div></div><div class="activity-total-row"><div><i class="activity-dot resting"></i><span>Resting<strong>98h 25m</strong></span></div><div><i class="activity-dot walking"></i><span>Walking<strong>12h 40m</strong></span></div><div><i class="activity-dot running"></i><span>Running<strong>3h 12m</strong></span></div></div></article></div>
+                        <div class="history-panel active" id="history-activity"><article class="app-card"><div class="card-topline"><div><h3>Weekly activity summary</h3><p>Activity duration by day · Last updated 10:42 AM</p></div><span class="soft-badge success"><i class="bi bi-graph-up-arrow"></i> 12% vs last week</span></div><div class="bar-chart"><div style="--rest:55%;--walk:24%;--run:10%"><span></span><i></i><b></b><small>Mon</small></div><div style="--rest:68%;--walk:18%;--run:7%"><span></span><i></i><b></b><small>Tue</small></div><div style="--rest:50%;--walk:30%;--run:12%"><span></span><i></i><b></b><small>Wed</small></div><div style="--rest:62%;--walk:20%;--run:9%"><span></span><i></i><b></b><small>Thu</small></div><div style="--rest:48%;--walk:34%;--run:13%"><span></span><i></i><b></b><small>Fri</small></div><div style="--rest:42%;--walk:38%;--run:16%"><span></span><i></i><b></b><small>Sat</small></div><div style="--rest:58%;--walk:26%;--run:11%"><span></span><i></i><b></b><small>Sun</small></div></div><div class="activity-total-row"><div><i class="activity-dot resting"></i><span>Resting<strong>98h 25m</strong></span></div><div><i class="activity-dot walking"></i><span>Walking<strong>12h 40m</strong></span></div><div><i class="activity-dot running"></i><span>Running<strong>3h 12m</strong></span></div></div></article></div>
                     </div>
                 </section>
 

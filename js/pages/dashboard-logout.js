@@ -5,16 +5,31 @@ const logoutConfirmPanel = document.getElementById('logoutConfirmPanel');
 const confirmLogoutButton = document.getElementById('confirmLogoutBtn');
 const cancelLogoutButton = document.getElementById('cancelLogoutBtn');
 let logoutInProgress = false;
+let logoutTrigger = null;
+
+function closeLogoutDialog() {
+    if (!logoutConfirmPanel || logoutInProgress) return;
+    logoutConfirmPanel.hidden = true;
+    logoutTrigger?.focus();
+}
 
 logoutButtons.forEach(button => button.addEventListener('click', () => {
     if (logoutInProgress || !logoutConfirmPanel) return;
-    document.getElementById('sidebar')?.classList.remove('collapsed');
+    logoutTrigger = button;
     logoutConfirmPanel.hidden = false;
     confirmLogoutButton?.focus();
 }));
 
 cancelLogoutButton?.addEventListener('click', () => {
-    logoutConfirmPanel.hidden = true;
+    closeLogoutDialog();
+});
+
+logoutConfirmPanel?.addEventListener('click', event => {
+    if (event.target === logoutConfirmPanel) closeLogoutDialog();
+});
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && logoutConfirmPanel && !logoutConfirmPanel.hidden) closeLogoutDialog();
 });
 
 confirmLogoutButton?.addEventListener('click', async () => {

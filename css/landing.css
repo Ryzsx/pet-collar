@@ -730,7 +730,7 @@ a {
 
     border-radius: 10px;
 
-    background: rgba(255, 255, 255, 0.55);
+    background: linear-gradient(135deg, #ffffff 0%, #edf8f5 100%);
 
     text-decoration: none;
 
@@ -749,7 +749,7 @@ a {
 
     color: var(--green);
 
-    background: white;
+    background: linear-gradient(135deg, #edf8f5 0%, #dcf1ef 100%);
 
     transform:
         translateY(-2px);
@@ -1734,39 +1734,69 @@ body {
 }
 
 .navbar {
-    background: rgba(238, 242, 240, .88);
-    border-bottom: 1px solid rgba(29, 150, 143, .1);
+    background: linear-gradient(100deg, rgba(7, 60, 62, .98) 0%, rgba(15, 86, 84, .97) 48%, rgba(19, 132, 128, .94) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
 }
 
 .navbar.scrolled {
-    background: rgba(255, 255, 255, .94);
-    border-bottom-color: var(--border);
-    box-shadow: 0 10px 30px rgba(18, 59, 60, .08);
+    background: linear-gradient(100deg, rgba(7, 60, 62, .99) 0%, rgba(15, 86, 84, .98) 48%, rgba(19, 132, 128, .97) 100%);
+    border-bottom-color: rgba(255, 255, 255, .1);
+    box-shadow: 0 10px 30px rgba(3, 45, 47, .18);
 }
 
 .logo-mark {
-    background: rgba(29, 150, 143, .1);
-    border: 1px solid rgba(29, 150, 143, .25);
+    background: #ffffff;
+    border: 1px solid rgba(255, 255, 255, .3);
     box-shadow: none;
-    color: var(--green);
+    color: #ffffff;
 }
 
-.nav-links a { color: var(--text); }
-.nav-links a:hover { color: var(--green-dark); }
-.nav-links a::after { background: var(--green); }
+.nav-logo .logo-mark { background: #ffffff; }
+
+.logo-text,
+.logo-text span {
+    color: #ffffff;
+    font-family: "Inter", sans-serif;
+    font-weight: 800;
+    letter-spacing: -.6px;
+}
+
+.nav-links a {
+    color: rgba(255, 255, 255, .82);
+    font-family: "DM Sans", sans-serif;
+    font-weight: 600;
+    letter-spacing: .1px;
+}
+.nav-links a:hover,
+.nav-links a.active { color: #ffffff; }
+.nav-links a::after { background: #7bd2ca; }
+
+.nav-links .nav-btn {
+    background: linear-gradient(135deg, #0f5654 0%, #1d968f 58%, #27aaa2 100%);
+    border: 1px solid rgba(255, 255, 255, .16);
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.nav-links .nav-btn:hover {
+    background: linear-gradient(135deg, #0b4646 0%, #16817c 58%, #219b95 100%);
+    color: #ffffff;
+}
+
+.hamburger span { background: #ffffff; }
 
 .nav-cta,
 .btn-primary {
-    background: var(--green);
+    background: linear-gradient(135deg, #0f5654 0%, #1d968f 58%, #27aaa2 100%);
     border: 1px solid var(--green);
     box-shadow: 0 9px 22px rgba(29, 150, 143, .2);
 }
 
 .nav-cta:hover,
 .btn-primary:hover {
-    background: var(--green-dark);
+    background: linear-gradient(135deg, #0b4646 0%, #16817c 58%, #219b95 100%);
     border-color: var(--green-dark);
     box-shadow: 0 12px 28px rgba(15, 76, 78, .22);
 }
@@ -1790,6 +1820,34 @@ body {
 .dashboard-content h2 span,
 .about-content h2 span,
 .cta-content h2 span { color: var(--green); }
+
+.hero-title,
+.section-header h2,
+.dashboard-content h2,
+.about-content h2 {
+    color: #0f4c4e;
+    font-family: "Inter", sans-serif;
+    font-weight: 800;
+}
+
+.hero-title span,
+.section-header h2 span,
+.dashboard-content h2 span,
+.about-content h2 span {
+    background: linear-gradient(100deg, #0f5654 0%, #1d968f 65%, #27aaa2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.hero-description,
+.section-header p,
+.dashboard-content p,
+.about-content p { color: #496967; }
+
+.feature-card h3,
+.step-card h3,
+.benefit-item h3 { color: #0f5654; }
 
 .hero-stat,
 .feature-card,
@@ -3327,7 +3385,7 @@ body {
         width: 290px;
         height: 100vh;
 
-        background: white;
+        background: linear-gradient(180deg, rgba(7, 60, 62, .99) 0%, rgba(15, 86, 84, .98) 48%, rgba(19, 132, 128, .97) 100%);
 
         flex-direction: column;
 
@@ -3340,7 +3398,7 @@ body {
         gap: 23px;
 
         box-shadow:
-            -15px 0 40px rgba(0,0,0,0.08);
+            -15px 0 40px rgba(3, 45, 47, .22);
 
         transition:
             right 0.35s ease;

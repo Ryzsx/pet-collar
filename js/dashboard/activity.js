@@ -6,6 +6,10 @@ import { getRecordedRouteSummary, renderRecordedRouteMap } from './route-map.js'
 let selectedActivityDate = new Date();
 let selectedActivityPetId = null;
 
+function getCalendarDateKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function getSubscriptionExpiry(pet) {
     const value = pet?.subscription?.expiresOn;
     if (!value) return null;
@@ -20,6 +24,10 @@ function isAfterSubscriptionExpiry(pet, date) {
 
 function getActivityCalendarDates() {
     const today = new Date();
+    const earliest = new Date(today);
+    earliest.setDate(earliest.getDate() - 5);
+    earliest.setHours(0, 0, 0, 0);
+    if (selectedActivityDate < earliest) today.setTime(selectedActivityDate.getTime());
     today.setHours(12, 0, 0, 0);
     const dates = [];
 
@@ -27,7 +35,7 @@ function getActivityCalendarDates() {
         const date = new Date(today);
         date.setDate(today.getDate() + offset);
         dates.push({
-            key: date.toISOString().slice(0, 10),
+            key: getCalendarDateKey(date),
             day: date.getDate(),
             label: date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3).toLowerCase(),
             display: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -145,16 +153,28 @@ function renderActivityCalendar() {
     if (!container) return;
 
     const dates = getActivityCalendarDates();
-    const selectedKey = selectedActivityDate.toISOString().slice(0, 10);
+    const selectedKey = getCalendarDateKey(selectedActivityDate);
 
     container.innerHTML = dates.map(item => `
         <button type="button" class="calendar-day ${item.key === selectedKey ? 'is-selected' : ''}" data-activity-date="${item.key}" aria-label="View activity for ${item.display}" aria-pressed="${item.key === selectedKey}">
-            <span>${item.day}</span>
             <small>${item.label}</small>
+            <span>${item.day}</span>
         </button>
     `).join('');
 
     if (title) title.textContent = formatActivityCalendarTitle(selectedActivityDate);
+    const picker = $('#activityCalendarPicker');
+    if (picker) {
+        picker.max = getCalendarDateKey(new Date());
+        picker.value = selectedKey;
+        picker.onchange = () => {
+            if (picker.value && picker.value <= picker.max) {
+                selectActivityDate(`${picker.value}T12:00:00`, selectedActivityPetId);
+            }
+        };
+    }
+    const todayButton = $('#activityCalendarToday');
+    if (todayButton) todayButton.onclick = () => selectActivityDate(new Date(), selectedActivityPetId);
     const selectedPet = liveTrackingPets.find(pet => pet.id === selectedActivityPetId) || null;
     updateRecordedRouteDate(selectedActivityDate, selectedPet);
 }
@@ -214,11 +234,19 @@ function updateActivityData(petId){
     const subscriptionNotice = $('#activitySubscriptionNotice');
     const subscriptionExpired = String(pet.subscription?.status || '').toLowerCase() === 'expired';
     if (subscriptionNotice) subscriptionNotice.hidden = !subscriptionExpired;
+    const activitySection = $('#health-activity');
+    activitySection?.classList.toggle('subscription-expired', subscriptionExpired);
+    activitySection?.querySelectorAll('.data-notice, :scope > .row, .history-block').forEach(element => {
+        element.inert = subscriptionExpired;
+        element.setAttribute('aria-disabled', String(subscriptionExpired));
+    });
     const online = hasCollarInternet(pet);
     const hasRecord = typeof pet.activity?.value === 'string' && pet.activity.value.trim() && !['unavailable', 'unknown'].includes(pet.activity.value.trim().toLowerCase());
     const liveActivity = Boolean(!subscriptionExpired && online && hasRecord && pet.activity?.available);
     const timestamp = subscriptionExpired ? pet.subscription.expires : hasRecord && pet.activity?.updated ? pet.activity.updated : 'Timestamp not recorded';
-    $('#currentActivity').textContent = hasRecord ? pet.activity.value : 'No activity recorded'; $('#activityUpdated').textContent = timestamp;
+    const currentActivityElement = $('#currentActivity');
+    if (currentActivityElement) currentActivityElement.textContent = hasRecord ? pet.activity.value : 'No activity recorded';
+    $('#activityUpdated').textContent = timestamp;
     const setText = (selector, value) => { const element = $(selector); if (element) element.textContent = value; };
     setText('#activityStatusLabel', subscriptionExpired ? 'Last recorded activity' : liveActivity ? 'Current activity' : hasRecord ? 'Last activity' : 'Activity');
     setText('#activityRecordedTime', hasRecord ? `${liveActivity ? 'Updated' : 'Last recorded'} ${timestamp}` : 'No activity received yet');
