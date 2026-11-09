@@ -1,12 +1,23 @@
-// ============================================
-// IMPORT FROM YOUR FIREBASE INIT
-// ============================================
-import { 
+import {
     auth,
     onAuthStateChanged
 } from '../firebase-init.js';
+
+import {
+    reload,
+    deleteUser,
+    EmailAuthProvider,
+    reauthenticateWithCredential
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
 import { authService } from '../services/AuthService.js';
-import { isValidEmail, isValidUsername, isStrongPassword, passwordRules } from '../utils/validators.js';
+
+import {
+    isValidEmail,
+    isValidUsername,
+    isStrongPassword,
+    passwordRules
+} from '../utils/validators.js';
 
 // ============================================
 // DOM ELEMENTS
@@ -38,6 +49,7 @@ let verificationResendSeconds = 0;
 let verificationCheckRunning = false;
 let registrationSubmitting = false;
 let registrationCompleted = false;
+let registrationPasswordInMemory = null;
 const pendingRegistrationKey = user => `pendingRegistration:${user.uid}`;
 
 // ============================================
@@ -112,27 +124,57 @@ function stopVerificationResendTimer() {
     if (verificationResendTimer) window.clearInterval(verificationResendTimer);
     verificationResendTimer = null;
 }
+    
 
-function startVerificationResendTimer() {
+// ============================================
+// SERVER-SYNCHRONIZED 120-SECOND TIMER
+// ============================================
+
+
+const verificationCooldownKey = user =>
+    `pawsense:verificationResendUntil:${user.uid}`;
+
+function startVerificationResendTimer(user, emailJustSent = false) {
     stopVerificationResendTimer();
-    verificationResendSeconds = 60;
-    registrationResendBtn.disabled = true;
+
+    if (!user?.uid) return;
+
+    const key = verificationCooldownKey(user);
+    let deadline = Number(sessionStorage.getItem(key) || 0);
+
+    if (emailJustSent) {
+        deadline = Date.now() + 60_000;
+        sessionStorage.setItem(key, String(deadline));
+    }
 
     const updateCountdown = () => {
-        registrationResendBtn.textContent = `Resend verification in ${verificationResendSeconds}s`;
+        verificationResendSeconds = Math.max(
+            0,
+            Math.ceil((deadline - Date.now()) / 1000)
+        );
+
+        if (verificationResendSeconds === 0) {
+            stopVerificationResendTimer();
+            sessionStorage.removeItem(key);
+
+            registrationResendBtn.disabled = false;
+            registrationResendBtn.textContent =
+                'Resend Verification Email';
+
+            return;
+        }
+
+        registrationResendBtn.disabled = true;
+        registrationResendBtn.textContent =
+            `Resend verification in ${verificationResendSeconds}s`;
     };
 
     updateCountdown();
-    verificationResendTimer = window.setInterval(() => {
-        verificationResendSeconds -= 1;
-        if (verificationResendSeconds <= 0) {
-            stopVerificationResendTimer();
-            registrationResendBtn.disabled = false;
-            registrationResendBtn.textContent = 'Resend Verification Email';
-            return;
-        }
-        updateCountdown();
-    }, 1000);
+
+    if (deadline > Date.now()) {
+        verificationResendTimer =
+            window.setInterval(updateCountdown, 1000);
+    }
 }
 
 function setVerificationStatus(message, type = '') {
@@ -140,12 +182,22 @@ function setVerificationStatus(message, type = '') {
     verificationStatus.className = `registration-verification-status ${type}`.trim();
 }
 
-function storePendingRegistration(user, username, email) {
-    localStorage.setItem(pendingRegistrationKey(user), JSON.stringify({
-        uid: user.uid,
-        username,
-        email
-    }));
+
+function storePendingRegistration(
+    user,
+    username,
+    email,
+    verificationSent = false
+) {
+    localStorage.setItem(
+        pendingRegistrationKey(user),
+        JSON.stringify({
+            uid: user.uid,
+            username,
+            email,
+            verificationSent: Boolean(verificationSent)
+        })
+    );
 }
 
 function getPendingRegistration(user) {
@@ -158,6 +210,40 @@ function getPendingRegistration(user) {
     }
 }
 
+const REGISTRATION_FLOW_KEY = 'pawsense:activeRegistrationUid';
+
+function activateRegistrationFlow(user) {
+    const pending = getPendingRegistration(user);
+
+    if (!pending || !user?.uid) {
+        throw new Error('No valid pending registration.');
+    }
+
+    sessionStorage.setItem(REGISTRATION_FLOW_KEY, user.uid);
+}
+
+function isActiveRegistrationFlow(user) {
+    if (!user?.uid) return false;
+
+    const pending = getPendingRegistration(user);
+
+    return Boolean(
+        pending &&
+        pending.uid === user.uid &&
+        pending.email?.toLowerCase() === user.email?.toLowerCase() &&
+        sessionStorage.getItem(REGISTRATION_FLOW_KEY) === user.uid
+    );
+}
+
+function clearActiveRegistrationFlow(uid) {
+    if (
+        !uid ||
+        sessionStorage.getItem(REGISTRATION_FLOW_KEY) === uid
+    ) {
+        sessionStorage.removeItem(REGISTRATION_FLOW_KEY);
+    }
+}
+
 function clearPendingRegistration(user) {
     localStorage.removeItem(pendingRegistrationKey(user));
 }
@@ -167,28 +253,79 @@ function startVerificationPoll() {
     verificationPoll = window.setInterval(() => checkVerificationStatus(false), 5000);
 }
 
-function showPendingVerification(user, verificationSent = true, statusMessage = '') {
+
+
+function showPendingVerification(
+    user,
+    verificationSent = true,
+    statusMessage = ''
+) {
     hideMessages();
+
     registerForm.hidden = true;
     loginPrompt.hidden = true;
     registrationVerification.hidden = false;
+
     verificationIcon.textContent = '@';
     verificationHeading.textContent = 'Check your email';
+
     const emailLabel = document.createElement('strong');
     emailLabel.textContent = user?.email || 'your email address';
+
     verificationDescription.replaceChildren(
         'A verification link was sent to ',
         emailLabel,
         '. Your registration will be completed after Firebase verifies your email.'
     );
+
     registrationResendBtn.hidden = false;
     continueToLoginBtn.hidden = true;
-    setVerificationStatus(statusMessage || (verificationSent
-        ? 'Waiting for email verification…'
-        : 'The verification email could not be sent. Use the resend button below.'),
-        verificationSent ? '' : 'error');
-    startVerificationResendTimer();
+
+    setVerificationStatus(
+        statusMessage || (
+            verificationSent
+                ? 'Waiting for email verification…'
+                : 'The verification email could not be sent. Use the resend button below.'
+        ),
+        verificationSent ? '' : 'error'
+    );
+
+    startVerificationResendTimer(user);
     startVerificationPoll();
+}
+
+function showRegistrationForm() {
+    stopVerificationPoll();
+    stopVerificationResendTimer();
+    registrationVerification.hidden = true;
+    registerForm.hidden = false;
+    loginPrompt.hidden = false;
+}
+
+function resetCompletedRegistrationUI() {
+    // Stop verification processes
+    stopVerificationPoll();
+    stopVerificationResendTimer();
+
+    // Clear messages and registration fields
+    hideMessages();
+    setVerificationStatus('');
+    clearRegistrationFields();
+
+    // Restore normal registration page
+    registrationVerification.hidden = true;
+    registerForm.hidden = false;
+    loginPrompt.hidden = false;
+
+    // Reset verification buttons
+    registrationResendBtn.hidden = false;
+    registrationResendBtn.disabled = false;
+    registrationResendBtn.textContent = 'Resend Verification Email';
+
+    continueToLoginBtn.hidden = true;
+
+    // Reset completion state
+    registrationCompleted = false;
 }
 
 async function completeVerifiedRegistration(user) {
@@ -212,8 +349,16 @@ async function completeVerifiedRegistration(user) {
         return;
     }
 
+    
     registrationCompleted = true;
+
     clearPendingRegistration(user);
+    clearActiveRegistrationFlow(user.uid);
+
+    sessionStorage.removeItem(verificationCooldownKey(user));
+
+    registrationPasswordInMemory = null;
+
 
     registrationVerification.hidden = false;
     verificationIcon.textContent = '✓';
@@ -228,14 +373,213 @@ async function completeVerifiedRegistration(user) {
     await authService.logout();
 }
 
+
+let cancellationInProgress = false;
+
+function showCancellationPasswordPrompt() {
+    let form = document.getElementById('registrationCancelReauth');
+
+    if (form) {
+        form.querySelector('input')?.focus();
+        return;
+    }
+
+    form = document.createElement('form');
+    form.id = 'registrationCancelReauth';
+    form.className = 'mt-3';
+
+    const label = document.createElement('label');
+    label.className = 'form-label';
+    label.textContent = 'Enter your password to cancel registration';
+
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.className = 'form-control';
+    input.autocomplete = 'current-password';
+    input.required = true;
+
+    const button = document.createElement('button');
+    button.type = 'submit';
+    button.className = 'btn btn-primary mt-2';
+    button.textContent = 'Cancel Registration';
+
+    form.append(label, input, button);
+    registrationVerification.appendChild(form);
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const password = input.value;
+
+        if (!password) return;
+
+        button.disabled = true;
+
+        await cancelPendingRegistration(password);
+
+        input.value = '';
+        button.disabled = false;
+    });
+
+    input.focus();
+}
+
+async function cancelPendingRegistration(passwordOverride = null) {
+    if (cancellationInProgress) return;
+
+    cancellationInProgress = true;
+    verificationCancelBtn.disabled = true;
+
+    stopVerificationPoll();
+
+    try {
+        const user = auth.currentUser;
+
+        if (!user || !isActiveRegistrationFlow(user)) {
+            throw new Error('No active registration found.');
+        }
+
+        await reload(user);
+
+        if (
+            auth.currentUser?.uid !== user.uid ||
+            !isActiveRegistrationFlow(user)
+        ) {
+            throw new Error('Registration session changed.');
+        }
+
+        // Never delete a verified account.
+        if (user.emailVerified) {
+            await completeVerifiedRegistration(user);
+            return;
+        }
+
+        const password =
+            passwordOverride || registrationPasswordInMemory;
+
+        // Refresh Firebase authentication when possible.
+        if (password) {
+            const credential = EmailAuthProvider.credential(
+                user.email,
+                password
+            );
+
+            await reauthenticateWithCredential(user, credential);
+
+            await reload(user);
+
+            if (
+                auth.currentUser?.uid !== user.uid ||
+                !isActiveRegistrationFlow(user)
+            ) {
+                throw new Error('Registration session changed.');
+            }
+
+            if (user.emailVerified) {
+                await completeVerifiedRegistration(user);
+                return;
+            }
+        }
+
+        // Delete the unverified Firebase account.
+        await deleteUser(user);
+
+        // Clear registration state only after deletion succeeds.
+        clearPendingRegistration(user);
+        clearActiveRegistrationFlow(user.uid);
+
+        sessionStorage.removeItem(
+            verificationCooldownKey(user)
+        );
+
+        registrationPasswordInMemory = null;
+        registrationCompleted = false;
+
+        stopVerificationPoll();
+        stopVerificationResendTimer();
+
+        document.getElementById('registrationCancelReauth')?.remove();
+
+        hideMessages();
+        setVerificationStatus('');
+        clearRegistrationFields();
+        showRegistrationForm();
+
+        // No success popup or toast.
+
+    } catch (error) {
+        console.error('Cancellation failed:', error);
+
+        if (error.code === 'auth/requires-recent-login') {
+            showCancellationPasswordPrompt();
+        } else if (
+            error.code === 'auth/wrong-password' ||
+            error.code === 'auth/invalid-credential'
+        ) {
+            setVerificationStatus(
+                'Incorrect password. Please try again.',
+                'error'
+            );
+            showCancellationPasswordPrompt();
+        } else {
+            setVerificationStatus(
+                'Unable to cancel registration. Please try again.',
+                'error'
+            );
+        }
+
+    } finally {
+        cancellationInProgress = false;
+        verificationCancelBtn.disabled = false;
+
+        if (
+            !registrationCompleted &&
+            isActiveRegistrationFlow(auth.currentUser) &&
+            !verificationPoll
+        ) {
+            startVerificationPoll();
+        }
+    }
+}
+
 async function checkVerificationStatus(manualCheck = false) {
-    if (verificationCheckRunning || registrationCompleted || !auth.currentUser) return;
+    const user = auth.currentUser;
+
+    if (
+        verificationCheckRunning ||
+        cancellationInProgress ||
+        registrationCompleted ||
+        !isActiveRegistrationFlow(user)
+    ) {
+        return;
+    }
+
     verificationCheckRunning = true;
 
-    const result = await authService.reloadUser();
-    verificationCheckRunning = false;
+    let result;
 
-    if (result.success && result.user?.emailVerified) {
+    try {
+        result = await authService.reloadUser();
+    } catch (error) {
+        console.error('Verification status check failed:', error);
+        result = { success: false };
+    } finally {
+        verificationCheckRunning = false;
+    }
+
+    if (
+        cancellationInProgress ||
+        auth.currentUser?.uid !== user.uid ||
+        !isActiveRegistrationFlow(auth.currentUser)
+    ) {
+        return;
+    }
+
+    if (
+        result.success &&
+        result.user?.uid === user.uid &&
+        result.user.emailVerified
+    ) {
         await completeVerifiedRegistration(result.user);
         return;
     }
@@ -251,36 +595,106 @@ async function checkVerificationStatus(manualCheck = false) {
 }
 
 registrationResendBtn.addEventListener('click', async () => {
-    registrationResendBtn.disabled = true;
-    registrationResendBtn.textContent = 'Sending…';
-    const result = await authService.resendVerification(auth.currentUser);
+    const user = auth.currentUser;
 
-    if (result.success && result.alreadyVerified) {
-        await checkVerificationStatus(true);
-    } else if (result.success) {
-        setVerificationStatus('A new verification link was sent to your email.', 'success');
-    } else {
-        setVerificationStatus('The verification email could not be sent. Please try again.', 'error');
+    if (
+        cancellationInProgress ||
+        registrationCompleted ||
+        !isActiveRegistrationFlow(user)
+    ) {
+        setVerificationStatus(
+            'No active registration. Please start a new registration.',
+            'error'
+        );
+        return;
     }
 
-    if (result.success && !result.alreadyVerified) {
-        startVerificationResendTimer();
-    } else if (!result.success) {
+    const deadline = Number(
+        sessionStorage.getItem(verificationCooldownKey(user)) || 0
+    );
+
+    if (Date.now() < deadline) {
+        startVerificationResendTimer(user);
+        return;
+    }
+
+    registrationResendBtn.disabled = true;
+    registrationResendBtn.textContent = 'Sending…';
+
+    try {
+        const result = await authService.resendVerification(user);
+
+        if (
+            auth.currentUser?.uid !== user.uid ||
+            !isActiveRegistrationFlow(auth.currentUser)
+        ) {
+            return;
+        }
+
+        if (result.success && result.alreadyVerified) {
+            await checkVerificationStatus(true);
+
+        } else if (result.success) {
+            const pending = getPendingRegistration(user);
+
+            storePendingRegistration(
+                user,
+                pending.username,
+                pending.email,
+                true
+            );
+
+            setVerificationStatus(
+                'A new verification link was sent to your email.',
+                'success'
+            );
+
+            startVerificationResendTimer(user, true);
+
+        } else {
+            setVerificationStatus(
+                'The verification email could not be sent. Please try again.',
+                'error'
+            );
+
+            registrationResendBtn.disabled = false;
+            registrationResendBtn.textContent =
+                'Resend Verification Email';
+        }
+
+    } catch (error) {
+        console.error('Verification resend failed:', error);
+
+        setVerificationStatus(
+            'The verification email could not be sent. Please try again.',
+            'error'
+        );
+
         registrationResendBtn.disabled = false;
-        registrationResendBtn.textContent = 'Resend Verification Email';
+        registrationResendBtn.textContent =
+            'Resend Verification Email';
     }
 });
 
 verificationCancelBtn.addEventListener('click', async () => {
-    stopVerificationPoll();
-    stopVerificationResendTimer();
-    await authService.logout();
-    registrationVerification.hidden = true;
-    registerForm.hidden = false;
-    loginPrompt.hidden = false;
+
+    // Registration already completed:
+    // Close the verification section only.
+    if (registrationCompleted) {
+        resetCompletedRegistrationUI();
+        return;
+    }
+
+    // Registration still pending:
+    // Cancel and delete the unverified account.
+    await cancelPendingRegistration();
 });
 
 continueToLoginBtn.addEventListener('click', () => {
+    // Reset the registration interface
+    resetCompletedRegistrationUI();
+
+    // Redirect to Login
     window.location.href = 'login.html';
 });
 
@@ -289,21 +703,41 @@ window.addEventListener('beforeunload', () => {
     stopVerificationResendTimer();
 });
 
-// ============================================
-// CHECK AUTH STATE (in case already logged in)
-// ============================================
+ // ============================================
+ // CHECK AUTH STATE - ACTIVE REGISTRATION ONLY
+ // ============================================
 onAuthStateChanged(auth, async user => {
-    if (registrationSubmitting || registrationCompleted) return;
+    if (
+    registrationSubmitting ||
+    cancellationInProgress ||
+    registrationCompleted
+) {
+    return;
+}
 
+    // No Firebase user: show normal registration form.
     if (!user) {
-        registerForm.hidden = false;
-        loginPrompt.hidden = false;
-        registrationVerification.hidden = true;
-        stopVerificationPoll();
+        showRegistrationForm();
         return;
     }
 
-    showPendingVerification(user);
+    // Only restore an explicitly active registration
+    // with matching pending registration details.
+    if (!isActiveRegistrationFlow(user)) {
+        showRegistrationForm();
+        return;
+    }
+
+    // Valid active registration: resume verification.
+        const pending = getPendingRegistration(user);
+
+        showPendingVerification(
+            user,
+            pending.verificationSent !== false
+    );
+
+    // Check verification status without sending
+    // another verification email automatically.
     await checkVerificationStatus(false);
 });
 
@@ -400,16 +834,38 @@ registerForm.addEventListener('submit', async function(event) {
 
     try {
         const result = await authService.register(username, email, password);
-        registrationSubmitting = false;
 
         console.log('✅ Registration result:', result);
 
         if (result.success) {
+            registrationPasswordInMemory = password;
             clearRegistrationFields();
-            storePendingRegistration(result.user, username, email);
+
+            // Save the newly created pending account.
+            storePendingRegistration(
+                result.user,
+                username,
+                email,
+                result.verificationSent
+            );
+
+            // Activate only this new registration flow.
+            activateRegistrationFlow(result.user);
+
+            registrationSubmitting = false;
             setLoading(false);
-            showPendingVerification(result.user, result.verificationSent);
+
+            // Display the verification screen.
+            showPendingVerification(
+                result.user,
+                result.verificationSent
+            );
+
+            if (result.verificationSent) {
+                startVerificationResendTimer(result.user, true);
+            }
         } else {
+            registrationSubmitting = false;
             // ❌ Show the actual Firebase error
             const errorMessages = {
                 'auth/email-already-in-use': 'EMAIL ALREADY REGISTERED.',
@@ -432,6 +888,16 @@ registerForm.addEventListener('submit', async function(event) {
         console.error('💥 Unexpected error:', err);
         showError('An unexpected error occurred. Please try again.');
         setLoading(false);
+    }
+});
+
+window.addEventListener('pageshow', (event) => {
+    if (
+        event.persisted &&
+        registrationCompleted &&
+        !isActiveRegistrationFlow(auth.currentUser)
+    ) {
+        resetCompletedRegistrationUI();
     }
 });
 

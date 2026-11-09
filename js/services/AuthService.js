@@ -98,47 +98,136 @@ async function signInWithIdentifier(identifier, password) {
     return result;
 }
 
+
 async function registerWithUsername(username, email, password) {
     const cleanUsername = String(username || '').trim();
     const usernameLower = normalizeUsername(cleanUsername);
     const cleanEmail = String(email || '').trim().toLowerCase();
-    const usernameRef = doc(db, 'usernames', usernameLower);
+
+    const usernameRef = doc(
+        db,
+        'usernames',
+        usernameLower
+    );
+
+    // ============================================
+    // VALIDATE REGISTRATION DETAILS
+    // ============================================
 
     if (!isValidUsername(usernameLower)) {
-        return { success: false, error: 'auth/invalid-username' };
+        return {
+            success: false,
+            error: 'auth/invalid-username'
+        };
     }
+
     if (!isValidEmail(cleanEmail)) {
-        return { success: false, error: 'auth/invalid-email' };
+        return {
+            success: false,
+            error: 'auth/invalid-email'
+        };
     }
+
     if (!isStrongPassword(password)) {
-        return { success: false, error: 'auth/weak-password' };
+        return {
+            success: false,
+            error: 'auth/weak-password'
+        };
     }
+
+    // ============================================
+    // CHECK USERNAME AVAILABILITY
+    // ============================================
 
     try {
         const existingUsername = await getDoc(usernameRef);
-        if (existingUsername.exists()) return { success: false, error: 'auth/username-already-in-use' };
+
+        if (existingUsername.exists()) {
+            return {
+                success: false,
+                error: 'auth/username-already-in-use'
+            };
+        }
+
     } catch (error) {
-        return { success: false, error: error.code === 'permission-denied' ? 'auth/username-check-unavailable' : error.code, message: error.message };
+        return {
+            success: false,
+            error: error.code === 'permission-denied'
+                ? 'auth/username-check-unavailable'
+                : error.code,
+            message: error.message
+        };
     }
 
-    let credential = null;
-    try {
-        credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-        await updateProfile(credential.user, { displayName: cleanUsername });
+    // ============================================
+    // CREATE FIREBASE AUTHENTICATION ACCOUNT
+    // ============================================
 
-        const registrationUrl = new URL('../../pages/register.html', import.meta.url);
+    let credential = null;
+
+    try {
+        credential = await createUserWithEmailAndPassword(
+            auth,
+            cleanEmail,
+            password
+        );
+
+        await updateProfile(credential.user, {
+            displayName: cleanUsername
+        });
+
+        // ============================================
+        // CUSTOM PAWSENSE EMAIL VERIFICATION
+        // ============================================
+        
+        const registrationUrl = new URL(
+            '../../pages/register.html',
+            import.meta.url
+        );
+
         let verificationSent = true;
+
         try {
-            await sendEmailVerification(credential.user, { url: registrationUrl.href, handleCodeInApp: false });
+            await sendEmailVerification(credential.user, {
+                url: registrationUrl.href,
+                handleCodeInApp: false
+            });
+
         } catch (verificationError) {
+            console.error(
+                'Firebase verification email failed:',
+                verificationError
+            );
+
             verificationSent = false;
         }
-        return { success: true, user: credential.user, verificationSent };
+
+        return {
+            success: true,
+            user: credential.user,
+            verificationSent
+        };
+
     } catch (error) {
+        // Roll back account creation if the
+        // registration process itself fails.
+
         if (credential?.user) {
-            try { await deleteUser(credential.user); } catch { /* Best-effort rollback. */ }
+            try {
+                await deleteUser(credential.user);
+            } catch (rollbackError) {
+                console.error(
+                    'Registration rollback failed:',
+                    rollbackError
+                );
+            }
         }
-        return { success: false, error: error.code, message: error.message };
+
+        return {
+            success: false,
+            error: error.code,
+            message: error.message
+        };
     }
 }
 
@@ -307,18 +396,56 @@ async function completePasswordReset(code, newPassword) {
     }
 }
 
+
+
 async function resendVerification(user) {
     try {
         const target = user || auth.currentUser;
-        if (!target) return { success: false, message: 'No user' };
+
+        if (!target) {
+            return {
+                success: false,
+                message: 'No user'
+            };
+        }
+
         await reload(target);
-        if (target.emailVerified) return { success: true, alreadyVerified: true };
-        const registrationUrl = new URL('../../pages/register.html', import.meta.url);
-        const settings = { url: registrationUrl.href, handleCodeInApp: false };
+
+        if (target.emailVerified) {
+            return {
+                success: true,
+                alreadyVerified: true
+            };
+        }
+
+        const registrationUrl = new URL(
+            '../../pages/register.html',
+            import.meta.url
+        );
+
+        const settings = {
+            url: registrationUrl.href,
+            handleCodeInApp: false
+        };
+
         await sendEmailVerification(target, settings);
-        return { success: true, alreadyVerified: false };
+
+        return {
+            success: true,
+            alreadyVerified: false
+        };
+
     } catch (error) {
-        return { success: false, error: error.code, message: error.message };
+        console.error(
+            'Verification resend failed:',
+            error
+        );
+
+        return {
+            success: false,
+            error: error.code,
+            message: error.message
+        };
     }
 }
 
@@ -433,30 +560,90 @@ async function reloadUser() {
 
 // One entry point for page-level authentication flows. The named exports below
 // keep existing callers compatible while page modules migrate to this service.
+
 export class AuthService {
-    login(identifier, password) { return signInWithIdentifier(identifier, password); }
-    logout() { return signOutUser(); }
-    register(username, email, password) { return registerWithUsername(username, email, password); }
-    checkUsername(username) { return checkUsernameExists(username); }
-    checkRegistrationEmail(email, password) { return checkRegistrationEmail(email, password); }
-    completeRegistration(uid, data) { return completeVerifiedRegistration(uid, data); }
-    sendPasswordReset(identifier) { return resetPasswordByIdentifier(identifier); }
-    verifyResetCode(code) { return verifyPasswordResetAction(code); }
-    completePasswordReset(code, password) { return completePasswordReset(code, password); }
-    resendVerification(user) { return resendVerification(user); }
-    reloadUser() { return reloadUser(); }
+
+    login(identifier, password) {
+        return signInWithIdentifier(identifier, password);
+    }
+
+    logout() {
+        return signOutUser();
+    }
+
+    register(username, email, password) {
+        return registerWithUsername(username, email, password);
+    }
+
+    checkUsername(username) {
+        return checkUsernameExists(username);
+    }
+
+    checkRegistrationEmail(email, password) {
+        return checkRegistrationEmail(email, password);
+    }
+
+    completeRegistration(uid, data) {
+        return completeVerifiedRegistration(uid, data);
+    }
+
+    sendPasswordReset(identifier) {
+        return resetPasswordByIdentifier(identifier);
+    }
+
+    verifyResetCode(code) {
+        return verifyPasswordResetAction(code);
+    }
+
+    completePasswordReset(code, password) {
+        return completePasswordReset(code, password);
+    }
+
+    resendVerification(user) {
+        return resendVerification(user);
+    }
+
+    reloadUser() {
+        return reloadUser();
+    }
+
+    reloadUser() {
+        return reloadUser();
+    }
 }
 
 export const authService = new AuthService();
 
+
 export {
-    checkUsernameExists, checkRegisteredEmail,
-    checkRegistrationEmail, completeVerifiedRegistration, 
-    resetPasswordByIdentifier, signOutUser,
-    resetPassword, verifyPasswordResetAction, completePasswordReset,
-    resendVerification, handleEmailVerification,
+    checkUsernameExists,
+    checkRegisteredEmail,
+    checkRegistrationEmail,
+    completeVerifiedRegistration,
+
+    resetPasswordByIdentifier,
+    signOutUser,
+
+    resetPassword,
+    verifyPasswordResetAction,
+    completePasswordReset,
+
+    resendVerification,
+    handleEmailVerification,
+
     checkActionCodeStatus,
-    updateUserProfile, reauthenticateUser, deleteUserAccount,
-    changePassword, changeEmail, checkEmailExists, getCurrentUser,
-    isLoggedIn, isEmailVerified, reloadUser
+
+    updateUserProfile,
+    reauthenticateUser,
+    deleteUserAccount,
+
+    changePassword,
+    changeEmail,
+    checkEmailExists,
+    getCurrentUser,
+
+    isLoggedIn,
+    isEmailVerified,
+    reloadUser
 };
+

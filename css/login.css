@@ -111,6 +111,7 @@ body {
 /* =====================================================
    LOGO
 ===================================================== */
+
 .brand {
     display: inline-flex;
     align-items: center;
@@ -119,7 +120,10 @@ body {
     position: relative;
     z-index: 2;
     margin-bottom: 30px;
+    cursor: default;
+    user-select: none;
 }
+
 .brand-icon {
     width: 36px;
     height: 36px;

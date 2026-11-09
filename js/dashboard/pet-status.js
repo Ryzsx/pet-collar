@@ -2,8 +2,20 @@ function hasCollarInternet(pet) {
     return Boolean(pet.collarOnline && pet.cellular?.internetAvailable);
 }
 
+
 function hasLiveLocation(pet) {
-    return Boolean(hasCollarInternet(pet) && pet.gpsAvailable && pet.coordinates);
+    const coordinates = pet?.lastKnownCoordinates;
+
+    return Boolean(
+        hasCollarInternet(pet) &&
+        pet.gpsAvailable === true &&
+        Array.isArray(coordinates) &&
+        coordinates.length === 2 &&
+        coordinates.every(value =>
+            typeof value === 'number' &&
+            Number.isFinite(value)
+        )
+    );
 }
 
 function getLivePetState(pet) {
@@ -54,7 +66,20 @@ function getTrackingMessage(pet) {
 }
 
 function getDisplayedCoordinates(pet) {
-    return hasLiveLocation(pet) ? pet.coordinates : pet.lastKnownCoordinates;
+    const coordinates = pet?.lastKnownCoordinates;
+
+    if (
+        Array.isArray(coordinates) &&
+        coordinates.length === 2 &&
+        coordinates.every(value =>
+            typeof value === 'number' &&
+            Number.isFinite(value)
+        )
+    ) {
+        return coordinates;
+    }
+
+    return null;
 }
 
 function getDisplayedSafeZoneStatus(pet) {

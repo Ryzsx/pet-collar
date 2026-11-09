@@ -42,6 +42,38 @@ let resendAttempts = 0;
 const resendDelaySeconds = 60;
 const maxResendAttempts = 3;
 
+
+const RESET_SESSION_KEY = 'pawsense:forgotPassword:resetSession';
+
+function getResetSession() {
+    try {
+        const raw = sessionStorage.getItem(RESET_SESSION_KEY);
+        if (!raw) return null;
+
+        const data = JSON.parse(raw);
+
+        if (
+            !data ||
+            typeof data.identifier !== 'string' ||
+            typeof data.displayEmail !== 'string' ||
+            !Number.isFinite(data.resendUntil)
+        ) {
+            return null;
+        }
+
+        return data;
+    } catch {
+        return null;
+    }
+}
+
+function saveResetSession(data) {
+    sessionStorage.setItem(
+        RESET_SESSION_KEY,
+        JSON.stringify(data)
+    );
+}
+
 function showStatus(element, message, type) {
     element.textContent = message;
     element.className = `status-message show ${type}`;
@@ -112,29 +144,55 @@ function stopResendTimer() {
 
 function startResendTimer() {
     stopResendTimer();
-    let secondsRemaining = resendDelaySeconds;
-    resendResetButton.disabled = true;
+
+    const label = resendResetButton.querySelector('.button-label');
 
     const updateCountdown = () => {
-        resendResetButton.querySelector('.button-label').textContent = `Resend new link in ${secondsRemaining}s`;
+        const state = getResetSession();
+
+        if (!state) {
+            stopResendTimer();
+            resendResetButton.disabled = false;
+            label.textContent = 'Resend New Link';
+            return;
+        }
+
+        // Preserve the 3-attempt limit after refresh.
+        if (state.resendAttempts >= maxResendAttempts) {
+            stopResendTimer();
+            resendResetButton.disabled = true;
+            label.textContent = 'Resend New Link';
+            return;
+        }
+
+        const remaining = Math.max(
+            0,
+            Math.ceil((state.resendUntil - Date.now()) / 1000)
+        );
+
+        if (remaining === 0) {
+            stopResendTimer();
+            resendResetButton.disabled = false;
+            label.textContent = 'Resend New Link';
+            resendCountdown.textContent = '';
+            return;
+        }
+
+        resendResetButton.disabled = true;
+        label.textContent = `Resend new link in ${remaining}s`;
     };
 
     updateCountdown();
-    resendTimer = window.setInterval(() => {
-        secondsRemaining -= 1;
-        if (secondsRemaining <= 0) {
-            stopResendTimer();
-            resendCountdown.textContent = '';
-            if (resendAttempts >= maxResendAttempts) {
-                resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
-                return;
-            }
-            resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
-            resendResetButton.disabled = false;
-            return;
-        }
-        updateCountdown();
-    }, 1000);
+
+    const state = getResetSession();
+
+    if (
+        state &&
+        state.resendAttempts < maxResendAttempts &&
+        state.resendUntil > Date.now()
+    ) {
+        resendTimer = window.setInterval(updateCountdown, 1000);
+    }
 }
 
 function maskEmail(email) {
@@ -146,16 +204,42 @@ function maskEmail(email) {
     return `${visiblePart}${maskedPart}@${domain}`;
 }
 
-function showEmailSentState(identifier, deliveryEmail) {
-    lastResetIdentifier = identifier;
-    resendAttempts = 0;
-    sentEmailAccount.textContent = identifier.includes('@')
-        ? identifier.toLowerCase()
-        : maskEmail(deliveryEmail);
+
+function restoreEmailSentState(state) {
+    lastResetIdentifier = state.identifier;
+    resendAttempts = state.resendAttempts;
+
+    sentEmailAccount.textContent = state.displayEmail;
+
+    requestSection.hidden = false;
     requestEntryState.hidden = true;
     emailSentState.hidden = false;
+    changeSection.hidden = true;
+
     clearStatus(resendStatus);
     startResendTimer();
+
+    if (resendAttempts >= maxResendAttempts) {
+        showStatus(
+            resendStatus,
+            'The 3 attempts have been used',
+            'error'
+        );
+    }
+}
+
+function showEmailSentState(identifier, deliveryEmail) {
+    const state = {
+        identifier,
+        displayEmail: identifier.includes('@')
+            ? identifier.toLowerCase()
+            : maskEmail(deliveryEmail),
+        resendAttempts: 0,
+        resendUntil: Date.now() + 60000
+    };
+
+    saveResetSession(state);
+    restoreEmailSentState(state);
 }
 
 function showRequestState(clearUrl = false) {
@@ -185,6 +269,8 @@ function showInvalidResetLink() {
 }
 
 function showPasswordResetSuccess() {
+    sessionStorage.removeItem(RESET_SESSION_KEY);
+    stopResendTimer();
     requestSection.hidden = true;
     changeSection.hidden = false;
     verificationState.hidden = true;
@@ -310,17 +396,42 @@ resendResetButton.addEventListener('click', async () => {
     setButtonLoading(resendResetButton, true);
     const result = await authService.sendPasswordReset(lastResetIdentifier);
     setButtonLoading(resendResetButton, false);
-
+ 
     if (result.success) {
-        resendAttempts += 1;
-        showStatus(resendStatus, 'A new reset link was sent. Check your email.', 'success');
+        const state = getResetSession();
+
+        if (!state) {
+            showRequestState();
+            return;
+        }
+
+        state.resendAttempts += 1;
+        state.resendUntil = Date.now() + 60000;
+
+        saveResetSession(state);
+        resendAttempts = state.resendAttempts;
+
         if (resendAttempts >= maxResendAttempts) {
             resendResetButton.disabled = true;
-            resendResetButton.querySelector('.button-label').textContent = 'Resend New Link';
-            showStatus(resendStatus, 'The 3 attempts have been used', 'error');
+            resendResetButton.querySelector('.button-label').textContent =
+                'Resend New Link';
+
+            showStatus(
+                resendStatus,
+                'The 3 attempts have been used',
+                'error'
+            );
+
             stopResendTimer();
             return;
         }
+
+        showStatus(
+            resendStatus,
+            'A new reset link was sent. Check your email.',
+            'success'
+        );
+
         startResendTimer();
         return;
     }
@@ -403,6 +514,7 @@ document.querySelectorAll('[data-password-toggle]').forEach(button => {
 requestNewResetButton.addEventListener('click', () => {
     clearStatus(changeStatus);
     showRequestState(true);
+    sessionStorage.removeItem(RESET_SESSION_KEY);
 });
 
 const savedIdentifier = localStorage.getItem('forgotPasswordIdentifier') || localStorage.getItem('forgotPasswordUsername');
@@ -427,6 +539,18 @@ if (mode === 'resetPassword') {
 } else if (resetCompleted) {
     showPasswordResetSuccess();
     window.history.replaceState({}, document.title, window.location.pathname);
+
 } else {
-    showRequestState();
+    const savedState = getResetSession();
+
+    const navigationType =
+        performance.getEntriesByType('navigation')[0]?.type;
+
+    // Restore only when refreshing the existing flow.
+    if (savedState && navigationType === 'reload') {
+        restoreEmailSentState(savedState);
+    } else {
+        showRequestState();
+    }
 }
+

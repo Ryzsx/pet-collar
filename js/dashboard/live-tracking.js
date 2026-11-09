@@ -1,15 +1,29 @@
 import { DATA_MODE } from '../core/data-mode.js';
+
+import { db } from '../core/firebase-config.js';
+
+import {
+    doc,
+    onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 import { liveTrackingPets as demoLiveTrackingPets } from './demo-data.js';
 import { $, escapeHtml, showToast } from './dom.js';
+
 import {
-    hasCollarInternet, getLivePetState, getTrackingMessage,
-    getDisplayedCoordinates, getDisplayedSafeZoneStatus, getSafeZoneLabel
+    hasCollarInternet,
+    getLivePetState,
+    getTrackingMessage,
+    getDisplayedCoordinates,
+    getDisplayedSafeZoneStatus,
+    getSafeZoneLabel
 } from './pet-status.js';
+
 import { updateActivityData } from './activity.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDMI3xEi1DxPNlaM76B-sFigPOB3khJsGk';
 let googleMapsLoader = null;
-const LIVE_PET_FOCUS_ZOOM = 18;
+const CELLULAR_NETWORK_LABEL = 'Globe · 4G LTE';
 
 // ======================================================
 // LIVE TRACKING DATA
@@ -23,6 +37,7 @@ let liveTrackingPets =
 let selectedLivePetId =
     liveTrackingPets[0]?.id || null;
 
+let livePetRealtimeUnsubscribe = null;
 
 // ======================================================
 // GOOGLE MAP STATE
@@ -31,8 +46,6 @@ let selectedLivePetId =
 let liveTrackingMap = null;
 let liveSafeZoneCircle = null;
 let liveSafeZoneCenter = null;
-let visibleGeofencePetId = null;
-let liveMapZoomTimer = null;
 let liveMapFallbackActive = false;
 let fallbackTrackingMap = null;
 let leafletLoader = null;
@@ -50,6 +63,144 @@ const DEFAULT_MAP_CENTER = {
 
 const DEFAULT_MAP_ZOOM = 6;
 
+
+function normalizeCoordinates(value) {
+    if (value == null) return null;
+
+    let latitude;
+    let longitude;
+
+    if (Array.isArray(value) && value.length >= 2) {
+        latitude = value[0];
+        longitude = value[1];
+    } else if (typeof value === 'object') {
+        latitude = value.latitude ?? value.lat;
+        longitude = value.longitude ?? value.lng;
+    } else {
+        return null;
+    }
+
+    if (latitude == null || longitude == null ||
+        latitude === '' || longitude === '') {
+        return null;
+    }
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (!Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat < -90 || lat > 90 ||
+        lng < -180 || lng > 180) {
+        return null;
+    }
+
+    return [lat, lng];
+}
+
+
+const lastKnownAddressCache = new Map();
+const pendingAddressLookups = new Set();
+
+function getLastKnownPosition(pet) {
+    return normalizeCoordinates(pet?.lastKnownCoordinates)
+        ?? normalizeCoordinates(pet?.coordinates);
+}
+
+function getAddressCacheKey(coordinates) {
+    if (!coordinates) return null;
+
+    return coordinates
+        .map(value => value.toFixed(6))
+        .join(',');
+}
+
+const GEOAPIFY_API_KEY = "e25eb522791c4a93956e0505de4ad1e6";
+
+
+async function resolveSelectedPetAddress() {
+    const pet = liveTrackingPets.find(
+        item => item.id === selectedLivePetId
+    );
+
+    if (!pet) return;
+
+    const coordinates = getLastKnownPosition(pet);
+    if (!coordinates) return;
+
+    const key = getAddressCacheKey(coordinates);
+
+    // Avoid duplicate address lookups
+    if (
+        lastKnownAddressCache.has(key) ||
+        pendingAddressLookups.has(key)
+    ) {
+        return;
+    }
+
+    pendingAddressLookups.add(key);
+
+    try {
+        const params = new URLSearchParams({
+            lat: String(coordinates[0]),
+            lon: String(coordinates[1]),
+            format: "json",
+            lang: "en",
+            apiKey: GEOAPIFY_API_KEY
+        });
+
+        const response = await fetch(
+            `https://api.geoapify.com/v1/geocode/reverse?${params}`
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `Geoapify HTTP ${response.status}`
+            );
+        }
+
+        const data = await response.json();
+        const result = data.results?.[0];
+
+        const address =
+            result?.formatted ||
+            [
+                result?.city,
+                result?.state,
+                result?.country
+            ].filter(Boolean).join(", ") ||
+            "Approximate address unavailable";
+
+        lastKnownAddressCache.set(key, address);
+
+        liveTrackingPets.forEach(item => {
+            const currentKey = getAddressCacheKey(
+                getLastKnownPosition(item)
+            );
+
+            if (currentKey === key) {
+                item.locationName = address;
+            }
+        });
+
+        renderSelectedLivePet();
+
+        console.log(
+            "PawSense approximate address:",
+            address
+        );
+
+    } catch (error) {
+        console.error(
+            "Geoapify address lookup failed:",
+            error
+        );
+    } finally {
+        pendingAddressLookups.delete(key);
+    }
+}
+
+
 function isValidCoordinatePair(coordinates) {
     return Array.isArray(coordinates)
         && coordinates.length >= 2
@@ -66,43 +217,180 @@ function getMapCoordinates(pet) {
 
 function toTrackingPet(rawPet, index) {
     const safeZone = rawPet.safeZone || {};
-    const coordinates = Array.isArray(rawPet.coordinates) ? rawPet.coordinates : null;
-    const fallbackCoordinates = Array.isArray(rawPet.lastKnownCoordinates)
-        ? rawPet.lastKnownCoordinates
-        : Array.isArray(safeZone.center) ? safeZone.center : null;
+
+    
+    // Canonical latest valid GPS location from Firestore
+    const fallbackCoordinates =
+        normalizeCoordinates(rawPet.lastKnownCoordinates);
+
+    // Prefer the canonical location over legacy coordinates.
+    // These arrays exist only in the frontend; Firestore stays unchanged.
+    const coordinates =
+        fallbackCoordinates ??
+        normalizeCoordinates(rawPet.coordinates);
+
+    const formatFirestoreTime = value => {
+        if (!value) return null;
+
+        try {
+            const date =
+                typeof value.toDate === 'function'
+                    ? value.toDate()
+                    : new Date(value);
+
+            if (Number.isNaN(date.getTime())) {
+                return null;
+            }
+
+            return date.toLocaleString();
+        }
+        catch {
+            return null;
+        }
+    };
+
     const rawActivity = rawPet.activity;
-    const activity = rawActivity && typeof rawActivity === 'object'
-        ? rawActivity
-        : { value: typeof rawActivity === 'string' ? rawActivity : '', available: false, updated: null };
-    const online = rawPet.collarOnline ?? rawPet.online ?? ['active', 'online'].includes(String(rawPet.status || '').toLowerCase());
+
+    const activity =
+        rawActivity && typeof rawActivity === 'object'
+            ? rawActivity
+            : {
+                value:
+                    typeof rawActivity === 'string'
+                        ? rawActivity
+                        : '',
+
+                available:
+                    Boolean(
+                        rawPet.collarOnline &&
+                        typeof rawActivity === 'string' &&
+                        rawActivity.trim()
+                    ),
+
+                updated:
+                    formatFirestoreTime(
+                        rawPet.activityUpdatedAt
+                    )
+            };
+
+    const online =
+        rawPet.collarOnline ??
+        rawPet.online ??
+        ['active', 'online'].includes(
+            String(rawPet.status || '').toLowerCase()
+        );
+
+    const lastSeen =
+        formatFirestoreTime(rawPet.lastSeen);
 
     return {
         ...rawPet,
-        id: rawPet.id || `pet-${index + 1}`,
-        name: rawPet.name || rawPet.petName || `Pet ${index + 1}`,
-        type: rawPet.type || rawPet.petType || '',
-        photo: rawPet.photoURL || rawPet.photo || rawPet.imageUrl || '',
-        collarOnline: Boolean(online),
-        gpsAvailable: rawPet.gpsAvailable ?? Boolean(coordinates),
+
+        id:
+            rawPet.id ||
+            `pet-${index + 1}`,
+
+        name:
+            rawPet.name ||
+            rawPet.petName ||
+            `Pet ${index + 1}`,
+
+        type:
+            rawPet.type ||
+            rawPet.petType ||
+            '',
+
+        photo:
+            rawPet.photoURL ||
+            rawPet.photo ||
+            rawPet.imageUrl ||
+            '',
+
+        collarOnline:
+            Boolean(online),
+
+        gpsAvailable:
+            rawPet.gpsAvailable ??
+            Boolean(coordinates),
+
         coordinates,
-        lastKnownCoordinates: fallbackCoordinates,
-        locationName: rawPet.locationName || 'No location received yet',
+
+        lastKnownCoordinates:
+            fallbackCoordinates,
+
+        
+        // Latest GPS-based address
+        
+        locationName:
+            lastKnownAddressCache.get(
+                getAddressCacheKey(
+                    fallbackCoordinates ?? coordinates
+                )
+            ) ??
+            (
+                fallbackCoordinates ?? coordinates
+                    ? "Resolving approximate address..."
+                    : "No GPS location recorded"
+            ),
+
+
         safeZone: {
-            name: safeZone.name || rawPet.geofenceName || 'Home',
-            center: Array.isArray(safeZone.center) ? safeZone.center : fallbackCoordinates,
-            radius: Number(safeZone.radius ?? rawPet.geofenceRadius ?? 100)
+            name:
+                safeZone.name ||
+                rawPet.geofenceName ||
+                'Home',
+
+            center:
+                Array.isArray(safeZone.center)
+                    ? safeZone.center
+                    : null,
+
+            radius:
+                Number(
+                    safeZone.radius ??
+                    rawPet.geofenceRadius ??
+                    100
+                )
         },
-        safeZoneStatus: rawPet.safeZoneStatus ?? null,
-        lastKnownSafeZoneStatus: rawPet.lastKnownSafeZoneStatus ?? null,
-        battery: rawPet.battery !== null && rawPet.battery !== undefined && Number.isFinite(Number(rawPet.battery))
-            ? Number(rawPet.battery)
-            : null,
-        batteryUpdated: rawPet.batteryUpdated || null,
-        batteryCondition: rawPet.batteryCondition || null,
-        cellular: rawPet.cellular || { internetAvailable: Boolean(online), carrier: '', network: '', signal: '' },
+
+        safeZoneStatus:
+            rawPet.safeZoneStatus ?? null,
+
+        lastKnownSafeZoneStatus:
+            rawPet.lastKnownSafeZoneStatus ?? null,
+
+        
+        battery: rawPet.batteryPercent != null
+            ? Number(rawPet.batteryPercent)
+            : rawPet.battery != null
+                ? Number(rawPet.battery)
+                : null,
+
+        batteryUpdated: rawPet.batteryUpdatedAt?.toDate?.()
+            ?.toLocaleString('en-PH', {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            }) ?? rawPet.batteryUpdated ?? null,
+
+        batteryCondition:
+            rawPet.batteryCondition || null,
+
+        cellular:
+            rawPet.cellular || {
+                internetAvailable: Boolean(online),
+                carrier: '',
+                network: '',
+                signal: ''
+            },
+
         activity,
-        updated: rawPet.updated || 'No update recorded',
-        lastSync: rawPet.lastSync || 'Never'
+
+        updated: formatFirestoreTime(rawPet.gpsUpdatedAt)
+            || 'No GPS update recorded',
+
+        lastSync:
+            lastSeen ||
+            'Never'
     };
 }
 
@@ -273,7 +561,7 @@ function renderSelectedLivePet() {
 
         primaryRow.innerHTML = `
             <div class="col-12 col-md-6 col-xl-4">
-                <article class="tracking-status-card collar-connection-card">
+                <article class="tracking-status-card">
                     <header><span>Collar Connection</span><i class="bi bi-router"></i></header>
                     <div class="status-card-value"><i class="status-dot"></i><strong class="muted">Not paired</strong></div>
                     <div class="status-card-details">
@@ -367,14 +655,6 @@ function renderSelectedLivePet() {
         Walking: 'bi-person-walking',
         Running: 'bi-lightning-charge'
     }[activityValue] || 'bi-dash-circle';
-    const petActivityIconClass = {
-        running: 'running-pet-icon',
-        walking: 'walking-pet-icon',
-        resting: 'resting-pet-icon'
-    }[recordedActivity.toLowerCase()];
-    const activityIconMarkup = petActivityIconClass
-        ? `<span class="value-icon activity" aria-hidden="true"><span class="${petActivityIconClass}"></span></span>`
-        : `<i class="bi ${activityIcon} value-icon activity" aria-hidden="true"></i>`;
     const statusMessage = getTrackingMessage(pet);
 
     trackingMessage.hidden = !statusMessage;
@@ -385,11 +665,12 @@ function renderSelectedLivePet() {
 
     primaryRow.innerHTML = `
         <div class="col-12 col-md-6 col-xl-4">
-            <article class="tracking-status-card collar-connection-card">
+            <article class="tracking-status-card">
                 <header><span>Collar Connection</span><i class="bi bi-router"></i></header>
                 <div class="status-card-value"><i class="status-dot ${internetAvailable ? 'good' : 'danger'}"></i><strong class="${internetAvailable ? 'good' : 'danger'}">${internetAvailable ? 'Online' : 'Offline'}</strong></div>
                 <div class="status-card-details">
-                    <span><i class="bi bi-globe2"></i>${internetAvailable ? `${escapeHtml(pet.cellular.carrier)} · ${escapeHtml(pet.cellular.network)}` : 'No Internet Connection'}</span>
+                    
+                    <span><i class="bi bi-globe2"></i>${escapeHtml(CELLULAR_NETWORK_LABEL)}</span>
                     <span><i class="bi bi-arrow-repeat"></i>Last Sync: ${escapeHtml(pet.lastSync)}</span>
                 </div>
             </article>
@@ -408,7 +689,7 @@ function renderSelectedLivePet() {
         <div class="col-12 col-md-6 col-xl-4">
             <article class="tracking-status-card">
                 <header><span>${activityHeading}</span><i class="bi bi-activity"></i></header>
-                <div class="status-card-value">${activityIconMarkup}<strong class="${hasActivityRecord ? '' : 'muted'}">${escapeHtml(activityValue)}</strong></div>
+                <div class="status-card-value"><i class="bi ${activityIcon} value-icon activity"></i><strong class="${hasActivityRecord ? '' : 'muted'}">${escapeHtml(activityValue)}</strong></div>
                 <div class="status-card-details"><span><i class="bi bi-clock"></i>${escapeHtml(activityTimestamp)}</span></div>
             </article>
         </div>
@@ -487,18 +768,124 @@ function fitAllLivePetsOnMap() {
     liveTrackingMap.fitBounds(bounds, 72);
 }
 
+function startSelectedPetRealtimeListener() {
+
+    // No Firestore listener while using demo data.
+    if (DATA_MODE === 'demo') {
+        return;
+    }
+
+    // Stop the previous listener before creating a new one.
+    if (livePetRealtimeUnsubscribe) {
+        livePetRealtimeUnsubscribe();
+        livePetRealtimeUnsubscribe = null;
+    }
+
+    // Nothing to listen to if no pet is selected.
+    if (!selectedLivePetId) {
+        return;
+    }
+
+    const petRef =
+        doc(
+            db,
+            'pets',
+            selectedLivePetId
+        );
+
+    console.log(
+        'Starting real-time pet listener:',
+        selectedLivePetId
+    );
+
+    livePetRealtimeUnsubscribe =
+        onSnapshot(
+            petRef,
+
+            snapshot => {
+
+                if (!snapshot.exists()) {
+                    console.warn(
+                        'Selected pet document does not exist.'
+                    );
+                    return;
+                }
+
+                const index =
+                    liveTrackingPets.findIndex(
+                        pet => pet.id === snapshot.id
+                    );
+
+                if (index === -1) {
+                    return;
+                }
+
+                const realtimePet = {
+                    id: snapshot.id,
+                    ...snapshot.data()
+                };
+
+                liveTrackingPets[index] =
+                    toTrackingPet(
+                        realtimePet,
+                        index
+                    );
+
+                console.log(
+                    'REAL-TIME PET UPDATE:',
+                    realtimePet.activity
+                );
+
+                renderLivePetSelector();
+                renderActivityPetSelector();
+                renderSelectedLivePet();
+
+                void resolveSelectedPetAddress();
+
+                syncLiveMapMarkers();
+                updateLiveMapSelection();
+
+                if (liveMapFallbackActive) {
+                    renderFallbackMap();
+                }
+            },
+
+            error => {
+                console.error(
+                    'Real-time pet listener failed:',
+                    error
+                );
+            }
+        );
+}
+
 function setLiveTrackingPets(petList) {
+
+    console.log(
+    "PAWSENSE MAP DATA:",
+    petList.map(pet => ({
+        name: pet.name,
+        coordinates: pet.coordinates,
+        lastKnownCoordinates: pet.lastKnownCoordinates,
+        gpsAvailable: pet.gpsAvailable
+    }))
+);
+
     liveTrackingPets = Array.isArray(petList)
         ? petList.map(toTrackingPet)
         : [];
     if (!liveTrackingPets.some(pet => pet.id === selectedLivePetId)) {
         selectedLivePetId = liveTrackingPets[0]?.id || null;
-        visibleGeofencePetId = null;
     }
+
+    startSelectedPetRealtimeListener();
 
     renderLivePetSelector();
     renderActivityPetSelector();
     renderSelectedLivePet();
+
+    void resolveSelectedPetAddress();
+
     syncLiveMapMarkers();
     updateLiveMapSelection();
     if (liveMapFallbackActive) renderFallbackMap();
@@ -542,22 +929,7 @@ function refreshLiveMapLayout() {
     }
 }
 
-function updateSafeZoneAppearance() {
-    if (!liveTrackingMap || !liveSafeZoneCircle) return;
-
-    const mapType = liveTrackingMap.getMapTypeId();
-    const satellite = mapType === 'satellite' || mapType === 'hybrid';
-    liveSafeZoneCircle.setOptions({
-        strokeColor: '#359574',
-        strokeOpacity: satellite ? 1 : 0.75,
-        strokeWeight: satellite ? 4 : 2,
-        fillColor: '#359574',
-        fillOpacity: satellite ? 0.12 : 0.1
-    });
-}
-
-function updateLiveMapSelection(animate = false) {
-    window.clearTimeout(liveMapZoomTimer);
+function updateLiveMapSelection() {
     if (!liveTrackingMap) {
         return;
     }
@@ -588,15 +960,12 @@ function updateLiveMapSelection(animate = false) {
         return;
     }
 
+    
     const coordinates = getDisplayedCoordinates(pet);
-    liveSafeZoneCircle?.setMap(null);
-    liveSafeZoneCenter?.setMap(null);
-    if (!Array.isArray(coordinates) || coordinates.length < 2) {
-        liveTrackingMap.setCenter(DEFAULT_MAP_CENTER);
-        liveTrackingMap.setZoom(DEFAULT_MAP_ZOOM);
-        return;
-    }
-    const petPosition = toGoogleCoordinates(coordinates);
+
+    const petPosition = isValidCoordinatePair(coordinates)
+        ? toGoogleCoordinates(coordinates)
+        : null;
 
     // ==========================================
     // PET MARKERS
@@ -604,7 +973,7 @@ function updateLiveMapSelection(animate = false) {
     livePetMarkers.forEach((marker, petId) => {
         marker.content?.classList.toggle(
             'selected',
-            petId === visibleGeofencePetId
+            petId === selectedLivePetId
         );
 
         setPetMarkerZIndex(marker, petId === selectedLivePetId ? 1000 : 0);
@@ -614,19 +983,19 @@ function updateLiveMapSelection(animate = false) {
     const selectedMarker =
         livePetMarkers.get(selectedLivePetId);
 
-    if (selectedMarker) {
-        setPetMarkerPosition(selectedMarker, petPosition);
-    }
+    if (selectedMarker && petPosition) {
+    setPetMarkerPosition(selectedMarker, petPosition);
+}
 
     // ==========================================
     // SAFE ZONE
     // ==========================================
     if (
-        pet.id === visibleGeofencePetId &&
-        isValidCoordinatePair(pet.safeZone?.center) &&
-        Number.isFinite(Number(pet.safeZone.radius)) &&
-        Number(pet.safeZone.radius) > 0
+    isValidCoordinatePair(pet.safeZone?.center) &&
+    Number.isFinite(Number(pet.safeZone.radius)) &&
+    Number(pet.safeZone.radius) > 0
     ) {
+
         const safeZoneCenter =
             toGoogleCoordinates(pet.safeZone.center);
 
@@ -643,8 +1012,7 @@ function updateLiveMapSelection(animate = false) {
                     strokeWeight: 2,
 
                     fillColor: '#359574',
-                    fillOpacity: 0.1,
-                    clickable: false
+                    fillOpacity: 0.1
                 });
         } else {
             liveSafeZoneCircle.setMap(liveTrackingMap);
@@ -653,8 +1021,6 @@ function updateLiveMapSelection(animate = false) {
                 Number(pet.safeZone.radius)
             );
         }
-
-        updateSafeZoneAppearance();
 
         // Create safe-zone center only once
         if (!liveSafeZoneCenter) {
@@ -690,24 +1056,54 @@ function updateLiveMapSelection(animate = false) {
         liveSafeZoneCenter?.setMap(null);
     }
 
+
     // ==========================================
     // MOVE EXISTING MAP
     // ==========================================
-    if (!visibleGeofencePetId) return;
 
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    if (!animate || reducedMotion) {
-        liveTrackingMap.setCenter(petPosition);
+    if (petPosition) {
+
+        // Show both pet and safe zone when far apart
+        const zoneBounds = liveSafeZoneCircle?.getBounds();
+
+        if (zoneBounds &&
+            !zoneBounds.contains(petPosition)) {
+
+            const bounds =
+                new window.google.maps.LatLngBounds();
+
+            bounds.union(zoneBounds);
+            bounds.extend(petPosition);
+
+            liveTrackingMap.fitBounds(bounds, 60);
+            return;
+        }
+
         liveTrackingMap.setZoom(LIVE_PET_FOCUS_ZOOM);
+
+        if (
+            window.matchMedia?.(
+                '(prefers-reduced-motion: reduce)'
+            )?.matches
+        ) {
+            liveTrackingMap.setCenter(petPosition);
+        } else {
+            liveTrackingMap.panTo(petPosition);
+        }
+
+    } else if (isValidCoordinatePair(pet.safeZone?.center)) {
+
+        // No GPS location: display saved geofence
+        liveTrackingMap.setCenter(
+            toGoogleCoordinates(pet.safeZone.center)
+        );
+
+        liveTrackingMap.setZoom(15);
+
     } else {
-        liveTrackingMap.panTo(petPosition);
-        const zoomStep = () => {
-            const zoom = liveTrackingMap.getZoom() ?? DEFAULT_MAP_ZOOM;
-            if (zoom === LIVE_PET_FOCUS_ZOOM) return;
-            liveTrackingMap.setZoom(zoom + Math.sign(LIVE_PET_FOCUS_ZOOM - zoom));
-            liveMapZoomTimer = window.setTimeout(zoomStep, 120);
-        };
-        liveMapZoomTimer = window.setTimeout(zoomStep, 180);
+
+        liveTrackingMap.setCenter(DEFAULT_MAP_CENTER);
+        liveTrackingMap.setZoom(DEFAULT_MAP_ZOOM);
     }
 }
 
@@ -811,7 +1207,7 @@ async function renderFallbackMap(message = '') {
         const bounds = [];
         positions.forEach(({ pet, coordinates }) => {
             const point = [Number(coordinates[0]), Number(coordinates[1])];
-            const selected = pet.id === visibleGeofencePetId;
+            const selected = pet.id === selectedLivePetId;
             const offline = getLivePetState(pet).key === 'offline';
             const icon = L.divIcon({
                 className: 'fallback-pet-marker-shell',
@@ -826,19 +1222,6 @@ async function renderFallbackMap(message = '') {
 
         if (bounds.length > 1) fallbackTrackingMap.fitBounds(bounds, { padding: [55, 55], maxZoom: 16 });
         else if (bounds.length === 1) fallbackTrackingMap.setView(bounds[0], 16);
-
-        const geofencePet = liveTrackingPets.find(pet => pet.id === visibleGeofencePetId);
-        if (isValidCoordinatePair(geofencePet?.safeZone?.center) && Number(geofencePet.safeZone.radius) > 0) {
-            const circle = L.circle(geofencePet.safeZone.center.map(Number), {
-                radius: Number(geofencePet.safeZone.radius),
-                color: '#359574', weight: 2, opacity: 0.75,
-                fillColor: '#359574', fillOpacity: 0.1, interactive: false
-            }).addTo(fallbackTrackingMap);
-            const petCoordinates = getDisplayedCoordinates(geofencePet);
-            if (isValidCoordinatePair(petCoordinates)) {
-                fallbackTrackingMap.setView(petCoordinates.map(Number), LIVE_PET_FOCUS_ZOOM);
-            }
-        }
 
         if (message) {
             container.insertAdjacentHTML('beforeend', '<div class="map-fallback-note"><i class="bi bi-info-circle"></i><span>Using the backup map while Google Maps reconnects.</span></div>');
@@ -906,8 +1289,6 @@ function initializeLiveTrackingMap() {
                     }
                 );
 
-            liveTrackingMap.addListener('maptypeid_changed', updateSafeZoneAppearance);
-
             liveMapFallbackActive = false;
 
             console.log('GOOGLE MAP CREATED ONCE');
@@ -929,25 +1310,23 @@ function initializeLiveTrackingMap() {
 }
 
 function selectLiveTrackingPet(petId) {
-    if (!liveTrackingPets.some(pet => pet.id === petId)) return;
+    if (!liveTrackingPets.some(pet => pet.id === petId)) {
+        return;
+    }
+
     selectedLivePetId = petId;
-    visibleGeofencePetId = petId;
+
+    startSelectedPetRealtimeListener();
+
     renderLivePetSelector();
     renderActivityPetSelector();
     renderSelectedLivePet();
     updateActivityData(petId);
-    updateLiveMapSelection(true);
-    if (liveMapFallbackActive && fallbackTrackingMap) {
-        const pet = liveTrackingPets.find(item => item.id === petId);
-        const coordinates = getDisplayedCoordinates(pet);
-        if (isValidCoordinatePair(coordinates)) {
-            fallbackTrackingMap.flyTo(coordinates.map(Number), LIVE_PET_FOCUS_ZOOM, {
-                animate: !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
-                duration: 0.8
-            });
-            fallbackTrackingMap.once('moveend', () => renderFallbackMap());
-        }
-    } else if (liveMapFallbackActive) renderFallbackMap();
+    updateLiveMapSelection();
+
+    if (liveMapFallbackActive) {
+        renderFallbackMap();
+    }
 }
 
 function initializeLiveTracking() {

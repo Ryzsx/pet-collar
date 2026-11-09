@@ -28,6 +28,9 @@ function loginErrorMessage(code, identifier) {
     if (code === 'auth/username-lookup-unavailable') return 'Username lookup is unavailable. Try signing in with your email address.';
     if (code === 'auth/user-not-found' && !identifier.includes('@')) return 'Username was not found. Try signing in with your email address.';
     if (code === 'auth/network-request-failed' || code === 'unavailable') return 'Could not reach Firebase. Check your internet connection and try again.';
+    if (code === 'auth/too-many-requests') {
+    return 'Firebase has temporarily limited sign-in attempts. Please try again later.';
+    }
     return accountDoesNotExistMessage;
 }
 
@@ -76,6 +79,124 @@ function clearLoginFields() {
 }
 
 // ============================================
+// LOGIN LOCKOUT - 3 ATTEMPTS / 120 SECONDS
+// ============================================
+
+const LOGIN_MAX_ATTEMPTS = 3;
+const LOGIN_COOLDOWN_MS = 120_000;
+const LOGIN_LOCK_KEY = 'pawsense:loginLockout';
+
+let loginLockMessageVisible = false;
+
+const INVALID_LOGIN_ERRORS = new Set([
+    'auth/invalid-credential',
+    'auth/invalid-login-credentials',
+    'auth/wrong-password',
+    'auth/user-not-found',
+    'auth/invalid-email'
+]);
+
+function getLoginLockState() {
+    let stored = {};
+
+    try {
+        stored = JSON.parse(
+            localStorage.getItem(LOGIN_LOCK_KEY) || '{}'
+        );
+    } catch {
+        stored = {};
+    }
+
+    const attempts = Number(stored.attempts) || 0;
+    const lockedUntil = Number(stored.lockedUntil) || 0;
+
+    if (lockedUntil > 0 && Date.now() >= lockedUntil) {
+        localStorage.removeItem(LOGIN_LOCK_KEY);
+
+        return {
+            attempts: 0,
+            lockedUntil: 0
+        };
+    }
+
+    return {
+        attempts,
+        lockedUntil
+    };
+}
+
+function getLoginCooldownSeconds() {
+    const state = getLoginLockState();
+
+    return Math.max(
+        0,
+        Math.ceil((state.lockedUntil - Date.now()) / 1000)
+    );
+}
+
+function showActiveLoginLockout() {
+    const seconds = getLoginCooldownSeconds();
+
+    if (seconds > 0) {
+        showError(
+            `Maximum number of attempts reached. Please try again after ${seconds} second(s)`
+        );
+
+        loginLockMessageVisible = true;
+        return true;
+    }
+
+    if (loginLockMessageVisible) {
+        loginLockMessageVisible = false;
+        hideMessages();
+    }
+
+    return false;
+}
+
+function recordInvalidLogin() {
+    const state = getLoginLockState();
+
+    if (state.lockedUntil > Date.now()) {
+        return state;
+    }
+
+    state.attempts += 1;
+
+    if (state.attempts >= LOGIN_MAX_ATTEMPTS) {
+        state.attempts = LOGIN_MAX_ATTEMPTS;
+        state.lockedUntil = Date.now() + LOGIN_COOLDOWN_MS;
+    }
+
+    localStorage.setItem(
+        LOGIN_LOCK_KEY,
+        JSON.stringify(state)
+    );
+
+    return state;
+}
+
+function clearLoginLockout() {
+    localStorage.removeItem(LOGIN_LOCK_KEY);
+    loginLockMessageVisible = false;
+}
+
+// Restore cooldown after page refresh.
+showActiveLoginLockout();
+
+// Keep the error message updated every second.
+window.setInterval(() => {
+    showActiveLoginLockout();
+}, 1000);
+
+// Synchronize lockout changes across browser tabs.
+window.addEventListener('storage', event => {
+    if (event.key === LOGIN_LOCK_KEY) {
+        showActiveLoginLockout();
+    }
+});
+
+// ============================================
 // 1. PASSWORD TOGGLE
 // ============================================
 if (showPasswordBtn && passwordInput) {
@@ -86,35 +207,68 @@ if (showPasswordBtn && passwordInput) {
     });
 }
 
+
 // ============================================
 // 2. AUTH STATE
 // ============================================
+
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         console.log('✅ User logged in:', user.email);
+
         if (!user.emailVerified) {
             if (loginInProgress) return;
+
             await authService.logout();
-            showError(accountDoesNotExistMessage);
+
+            if (!showActiveLoginLockout()) {
+                showError(accountDoesNotExistMessage);
+            }
+
             updateStatus('Login failed', false);
             setLoading(false);
             return;
+
         } else {
-            hideMessages();
-            // Keep the login page visible when it was opened from the landing page.
-            updateStatus(`Signed in as ${user.email}. Sign in to continue or choose another account.`, true);
+            if (!showActiveLoginLockout()) {
+                hideMessages();
+            }
+
+            updateStatus(
+                `Signed in as ${user.email}. Sign in to continue or choose another account.`,
+                true
+            );
         }
+
     } else {
         updateStatus('Not logged in', false);
-        hideMessages();
+
+        if (!showActiveLoginLockout()) {
+            hideMessages();
+        }
     }
 });
+
 
 // ============================================
 // 3. USERNAME OR EMAIL SIGN IN
 // ============================================
+
 loginForm.addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    // Prevent duplicate requests.
+    if (loginInProgress) return;
+
+    // ============================================
+    // CHECK EXISTING LOGIN LOCKOUT FIRST
+    // ============================================
+
+    if (showActiveLoginLockout()) {
+        updateStatus('Login temporarily locked', false);
+        return;
+    }
+
     hideMessages();
 
     const identifier = identifierInput.value.trim();
@@ -125,47 +279,99 @@ loginForm.addEventListener('submit', async function(e) {
         return;
     }
 
-    setLoading(true);
     loginInProgress = true;
+    setLoading(true);
     updateStatus('Signing in...', false);
 
     try {
-        const result = await authService.login(identifier, password);
-        loginInProgress = false;
+        const result = await authService.login(
+            identifier,
+            password
+        );
+
         clearLoginFields();
 
-        console.log('✅ Login result:', result);
+        console.log('Login result:', result);
+
+        // ============================================
+        // SUCCESSFUL LOGIN
+        // ============================================
 
         if (result.success) {
-            console.log('✅ Login success:', result.user.email);
-            loginInProgress = false;
-            setLoading(false);
-            hideMessages();
-            updateStatus('Not logged in', false);
+            clearLoginLockout();
 
-            // Open live monitoring after login
-            window.location.replace('dashboard.html#live-tracking');
-        } else {
-            // ❌ Show the actual Firebase error
-            console.error('❌ Login error:', result);
-            if (result.error === 'auth/account-pending') {
-                await authService.logout();
-                showError(loginErrorMessage(result.error, identifier));
-                updateStatus('Login failed', false);
-                setLoading(false);
+            hideMessages();
+            updateStatus('Login successful', true);
+
+            window.location.replace(
+                'dashboard.html#live-tracking'
+            );
+
+            return;
+        }
+
+        // ============================================
+        // UNVERIFIED ACCOUNT
+        // ============================================
+
+        if (result.error === 'auth/account-pending') {
+            await authService.logout();
+
+            showError(
+                loginErrorMessage(result.error, identifier)
+            );
+
+            updateStatus('Login failed', false);
+            return;
+        }
+
+        // ============================================
+        // INVALID LOGIN CREDENTIALS
+        // ============================================
+
+        if (INVALID_LOGIN_ERRORS.has(result.error)) {
+            const state = recordInvalidLogin();
+
+            if (state.attempts >= LOGIN_MAX_ATTEMPTS) {
+                showActiveLoginLockout();
+
+                updateStatus(
+                    'Login temporarily locked',
+                    false
+                );
+
                 return;
             }
-            console.error('Login error code:', result.error || 'unknown', 'Details:', result.message || '(none)');
-            showError(loginErrorMessage(result.error, identifier));
+
+            showError(
+                loginErrorMessage(result.error, identifier)
+            );
+
             updateStatus('Login failed', false);
-            setLoading(false);
+            return;
         }
-    } catch (error) {
-        loginInProgress = false;
-        clearLoginFields();
-        console.error('❌ Unexpected login error:', error);
-        showError(accountDoesNotExistMessage);
+
+        // Other errors are not counted as
+        // invalid credential attempts.
+        console.error('Login error:', result);
+
+        showError(
+            loginErrorMessage(result.error, identifier)
+        );
+
         updateStatus('Login failed', false);
+
+    } catch (error) {
+        console.error('Unexpected login error:', error);
+
+        showError(
+            'Unable to sign in. Please try again.'
+        );
+
+        updateStatus('Login failed', false);
+
+    } finally {
+        loginInProgress = false;
         setLoading(false);
     }
 });

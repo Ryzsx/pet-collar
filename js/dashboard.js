@@ -11,6 +11,9 @@ import { setPetManagementUser, renderAllPets, loadUserPets, attachPetManagementE
 import { acknowledgeNotificationBadge, renderNotifications, attachNotificationEvents } from './dashboard/notifications.js';
 import { setSettingsUser, setUserInterface, updateConnectionStatus, attachSettingsEvents } from './dashboard/settings.js';
 
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
 
 const pageMeta = {
     'live-tracking': ['Live Tracking', 'Track your pet’s current location, safe-zone status, and live collar information.'],
@@ -191,27 +194,57 @@ function attachStaticEvents() {
     window.addEventListener('resize', handleSidebarViewportChange);
 }
 
+
 initializePageHeaders();
 attachStaticEvents();
 attachPetManagementEvents();
 attachLiveTrackingEvents();
 attachNotificationEvents();
 attachSettingsEvents();
+
 syncSidebarForViewport();
 renderAllPets();
 renderNotifications();
 updateConnectionStatus();
 updateLiveDateTime();
 renderActivityCalendar();
-initializeLiveTracking();
 
 const initialSection = location.hash.slice(1);
 
+// Show the correct page header immediately.
 showSection(
     initialSection === 'history' || pageMeta[initialSection]
         ? initialSection
         : 'live-tracking'
 );
+
+
+// Ensure Live Tracking starts at the Welcome Header after login.
+function resetInitialDashboardScroll() {
+    if (window.location.hash !== '#live-tracking') return;
+
+    const dashboardMain = document.querySelector('.dashboard-main');
+
+    if (dashboardMain) {
+        dashboardMain.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: 'instant'
+        });
+    }
+
+    window.scrollTo(0, 0);
+}
+
+// Correct browser anchor scrolling after the page is shown.
+window.addEventListener('pageshow', () => {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(resetInitialDashboardScroll);
+    });
+});
+
+// Initialize the map after the page header is visible.
+initializeLiveTracking();
 
 onAuthStateChanged(auth, async user => {
 
@@ -258,8 +291,7 @@ onAuthStateChanged(auth, async user => {
 
     let profileEmail =
         user.email || '';
-
-
+    
     // ==================================================
     // LOAD REAL USER PROFILE FROM FIRESTORE
     // ==================================================
@@ -287,13 +319,13 @@ onAuthStateChanged(auth, async user => {
              * 4. email prefix
              */
 
+            
             name =
-                profile.fullName ||
                 profile.username ||
+                profile.fullName ||
                 user.displayName ||
                 user.email?.split('@')[0] ||
                 'User';
-
 
             profileEmail =
                 profile.email ||
@@ -308,6 +340,14 @@ onAuthStateChanged(auth, async user => {
             'User profile details were unavailable.',
             error
         );
+    }
+
+    
+    // Update Welcome message with the registered username.
+    const welcomeName = document.getElementById('liveWelcomeName');
+
+    if (welcomeName) {
+        welcomeName.textContent = name;
     }
 
 

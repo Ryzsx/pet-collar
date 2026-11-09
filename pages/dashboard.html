@@ -40,18 +40,6 @@
         </aside>
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-        <div class="logout-modal" id="logoutConfirmPanel" role="alertdialog" aria-modal="true" aria-labelledby="logoutDialogTitle" aria-describedby="logoutDialogMessage" hidden>
-            <div class="logout-dialog">
-                <span class="logout-dialog-icon"><i class="bi bi-box-arrow-right" aria-hidden="true"></i></span>
-                <strong id="logoutDialogTitle">Log out of PawSense?</strong>
-                <span id="logoutDialogMessage">Are you sure you want to log out?</span>
-                <div class="logout-dialog-actions">
-                    <button type="button" id="cancelLogoutBtn">No, stay</button>
-                    <button type="button" id="confirmLogoutBtn">Yes, log out</button>
-                </div>
-            </div>
-        </div>
-
         <main class="dashboard-main">
             <header class="topbar page-topbar">
                 <button class="mobile-brand-toggle d-lg-none" id="mobileLogoToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" title="Open navigation"><span class="brand-mark light-surface-brand-mark"><img class="brand-logo-icon" src="../assets/images/pawsense-logo.png" alt=""></span></button>
@@ -150,7 +138,18 @@
                     <div class="settings-layout">
                         <aside class="settings-nav" aria-label="Settings sections"><button class="active" type="button" data-settings-target="account"><i class="bi bi-person"></i><span>Account Information<small>Profile and contact details</small></span></button><button type="button" data-settings-target="security"><i class="bi bi-shield-lock"></i><span>Password &amp; Security<small>Manage your password</small></span></button><button type="button" data-settings-target="preferences"><i class="bi bi-bell"></i><span>Notification Preferences<small>Choose the alerts you receive</small></span></button></aside>
                         <div class="settings-content">
-                            <article class="app-card settings-panel active" id="settings-account"><div class="settings-panel-heading"><h3>Account Information</h3><p>Keep your profile details up to date.</p></div><div class="profile-photo-row"><div class="profile-photo" id="settingsAvatar">U</div><div><strong>Profile photo</strong><span>PNG or JPG, up to 2 MB</span><button class="btn btn-soft btn-sm" type="button" id="changeProfilePhotoBtn"><i class="bi bi-camera"></i> Change photo</button><input class="visually-hidden" type="file" id="profilePhotoInput" accept="image/png,image/jpeg"></div></div><form id="accountForm" class="settings-form"><div class="row g-3"><div class="col-md-6"><label class="form-label" for="profileName">Full name</label><input class="form-control" id="profileName" type="text" value="User"></div><div class="col-md-6"><label class="form-label" for="profileEmail">Email address</label><input class="form-control" id="profileEmail" type="email" value="user@email.com" readonly><div class="form-text">Email is managed by your sign-in provider.</div></div></div><div class="form-actions"><button class="btn btn-brand" type="submit"><i class="bi bi-check2"></i> Save changes</button></div></form></article>
+                            
+                            <article class="app-card settings-panel active" id="settings-account">
+                                <div class="settings-panel-heading"><h3>Account Information</h3><p>Manage your username and account details.</p></div>
+                                <form id="accountForm" class="settings-form">
+                                    <div class="row g-3">
+                                        <div class="col-md-6"><label class="form-label" for="profileName">Username</label><input class="form-control" id="profileName" name="username" type="text" placeholder="Enter your username" autocomplete="username" required><div class="form-text">Your username must be unique.</div></div>
+                                        <div class="col-md-6"><label class="form-label" for="profileEmail">Email Address</label><input class="form-control" id="profileEmail" type="email" readonly><div class="form-text">Your registered email cannot be changed here.</div></div>
+                                    </div>
+                                    <div class="form-actions"><button class="btn btn-brand" type="submit"><i class="bi bi-check2"></i> Save Changes</button></div>
+                                </form>
+                            </article>
+
                             <article class="app-card settings-panel" id="settings-security"><div class="settings-panel-heading"><h3>Password &amp; Security</h3><p>Use a strong password you do not reuse elsewhere.</p></div><form id="passwordForm" class="settings-form narrow"><label class="form-label" for="currentPassword">Current password</label><div class="password-field"><input class="form-control" id="currentPassword" type="password" required><button type="button" data-password-toggle="currentPassword" aria-label="Show current password"><i class="bi bi-eye"></i></button></div><label class="form-label" for="newPassword">New password</label><div class="password-field"><input class="form-control" id="newPassword" type="password" minlength="8" required><button type="button" data-password-toggle="newPassword" aria-label="Show new password"><i class="bi bi-eye"></i></button></div><div class="password-strength"><span></span><span></span><span></span><span></span><small>Use at least 8 characters with a number and symbol.</small></div><label class="form-label" for="confirmPassword">Confirm new password</label><div class="password-field"><input class="form-control" id="confirmPassword" type="password" minlength="8" required><button type="button" data-password-toggle="confirmPassword" aria-label="Show confirmed password"><i class="bi bi-eye"></i></button></div><div class="form-actions"><button class="btn btn-brand" type="submit"><i class="bi bi-shield-check"></i> Update password</button></div></form></article>
                             <article class="app-card settings-panel" id="settings-preferences"><div class="settings-panel-heading"><h3>Notification Preferences</h3><p>Choose which SmartCollars alerts you want to receive.</p></div><div class="preference-list"><label><span class="preference-icon green"><i class="bi bi-geo-alt"></i></span><span><strong>Geofence alerts</strong><small>When a pet enters or leaves a safe zone</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon orange"><i class="bi bi-battery-half"></i></span><span><strong>Low battery alerts</strong><small>When collar battery falls below 20%</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon blue"><i class="bi bi-wifi-off"></i></span><span><strong>Collar offline alerts</strong><small>When a collar loses its connection</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon purple"><i class="bi bi-exclamation-triangle"></i></span><span><strong>Device data alerts</strong><small>When GPS or activity data is unavailable</small></span><input class="form-check-input" type="checkbox" role="switch" checked></label><label><span class="preference-icon green"><i class="bi bi-phone"></i></span><span><strong>Push notifications</strong><small>Receive alerts on this browser or device</small></span><input class="form-check-input" type="checkbox" role="switch"></label></div><div class="form-actions"><button class="btn btn-brand" id="savePreferencesBtn" type="button"><i class="bi bi-check2"></i> Save preferences</button></div></article>
                         </div>
@@ -159,6 +158,18 @@
             </div>
         </main>
     </div>
+
+    <div class="logout-modal" id="logoutConfirmPanel" role="alertdialog" aria-modal="true" aria-labelledby="logoutDialogTitle" aria-describedby="logoutDialogMessage" hidden>
+            <div class="logout-dialog">
+                <span class="logout-dialog-icon"><i class="bi bi-box-arrow-right" aria-hidden="true"></i></span>
+                <strong id="logoutDialogTitle">Log out of PawSense?</strong>
+                <span id="logoutDialogMessage">Are you sure you want to log out?</span>
+                <div class="logout-dialog-actions">
+                    <button type="button" id="cancelLogoutBtn">No, stay</button>
+                    <button type="button" id="confirmLogoutBtn">Yes, log out</button>
+                </div>
+            </div>
+        </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3"><div class="toast app-toast" id="appToast" role="status" aria-live="polite" aria-atomic="true"><div class="toast-body"><i class="bi bi-check-circle-fill"></i><span id="toastMessage">Changes saved.</span><button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div></div>
 
