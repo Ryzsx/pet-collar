@@ -5,6 +5,7 @@ import { getRecordedRouteSummary, renderRecordedRouteMap } from './route-map.js'
 
 let selectedActivityDate = new Date();
 let selectedActivityPetId = null;
+let selectedRouteDate = new Date();
 
 function getCalendarDateKey(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -175,9 +176,98 @@ function renderActivityCalendar() {
     }
     const todayButton = $('#activityCalendarToday');
     if (todayButton) todayButton.onclick = () => selectActivityDate(new Date(), selectedActivityPetId);
-    const selectedPet = liveTrackingPets.find(pet => pet.id === selectedActivityPetId) || null;
-    updateRecordedRouteDate(selectedActivityDate, selectedPet);
+   const selectedPet = liveTrackingPets.find(pet => pet.id === selectedActivityPetId) || null;updateRecordedRouteDate(selectedRouteDate, selectedPet);
+
+
+    // ============================================
+    // PET ROUTE HISTORY - CALENDAR DATES
+    // ============================================
+
+    const routeCalendarDays = $('#routeCalendarDays');
+    const routeCalendarTitle = $('#routeCalendarTitle');
+
+    if (routeCalendarDays) {
+        const today = new Date();
+        today.setHours(12, 0, 0, 0);
+
+        const routeDates = [];
+
+        for (let offset = -5; offset <= 0; offset++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + offset);
+
+            routeDates.push({
+                key: getCalendarDateKey(date),
+                day: date.getDate(),
+                label: date.toLocaleDateString('en-US', {
+                    weekday: 'short'
+                }).slice(0, 3).toLowerCase(),
+                display: date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                })
+            });
+        }
+
+     const selectedRouteKey = getCalendarDateKey(selectedRouteDate);
+
+        routeCalendarDays.innerHTML = routeDates.map(item => `
+            <button type="button"
+                class="calendar-day ${item.key === selectedRouteKey ? 'is-selected' : ''}"
+                data-route-date="${item.key}"
+                aria-label="View route for ${item.display}"
+               aria-pressed="${item.key === selectedRouteKey}"
+                <small>${item.label}</small>
+                <span>${item.day}</span>
+            </button>
+        `).join('');
+
+
+        if (routeCalendarTitle) {
+            routeCalendarTitle.textContent =
+                formatActivityCalendarTitle(today);
+        }
+
+        // ============================================
+        // ROUTE HISTORY - DATE SELECTION
+        // ============================================
+
+        routeCalendarDays.onclick = event => {
+            const dateButton = event.target.closest('[data-route-date]');
+
+            if (!dateButton || !routeCalendarDays.contains(dateButton)) {
+                return;
+            }
+
+            const selectedDate = new Date(
+                `${dateButton.dataset.routeDate}T12:00:00`
+            );
+
+            if (Number.isNaN(selectedDate.getTime())) {
+                return;
+            }
+
+            // Update selected calendar date
+            routeCalendarDays.querySelectorAll('[data-route-date]').forEach(button => {
+                const isSelected = button === dateButton;
+
+                button.classList.toggle('is-selected', isSelected);
+                button.setAttribute('aria-pressed', String(isSelected));
+            });
+
+            // Update calendar title
+            if (routeCalendarTitle) {
+                routeCalendarTitle.textContent =
+                    formatActivityCalendarTitle(selectedDate);
+            }
+
+            // Update recorded route and trip summary
+            updateRecordedRouteDate(selectedDate, selectedPet);
+        };
+    }
 }
+
 
 function renderPetAnomalyChart(pet) {
     const container = $('#petAnomalyChart');
@@ -198,9 +288,109 @@ function renderPetAnomalyChart(pet) {
         container.innerHTML = '<div class="activity-chart-empty"><i class="bi bi-activity" aria-hidden="true"></i><strong>No activity records available</strong><span>The graph will appear when timestamped activity readings are available.</span></div>';
         return;
     }
+    
+    // ============================================
+    // TODAY'S ACTIVITY - TIMELINE SYNCHRONIZATION
+    // ============================================
 
-    const points = history.map((sample, index) => ({
-        ...sample,
+    const activityDurations = {
+        Resting: 0,
+        Walking: 0,
+        Running: 0
+    };
+
+    // Convert timeline time (12 AM, 3 AM, etc.) to minutes.
+    function activityTimeToMinutes(time) {
+        const match = time.trim().match(
+            /^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i
+        );
+
+        if (!match) return null;
+
+        const hour = Number(match[1]);
+        const minute = Number(match[2] || 0);
+
+        if (hour < 1 || hour > 12 || minute > 59) {
+            return null;
+        }
+
+        return ((hour % 12) +
+            (match[3].toUpperCase() === 'PM' ? 12 : 0))
+            * 60 + minute;
+    }
+
+    // Calculate duration between consecutive activity records.
+    for (let i = 0; i < history.length - 1; i++) {
+        const start = activityTimeToMinutes(history[i].time);
+        const end = activityTimeToMinutes(history[i + 1].time);
+
+        if (start === null || end === null || end <= start) {
+            continue;
+        }
+
+        activityDurations[history[i].activity] += end - start;
+    }
+
+    const recordedMinutes = Object.values(
+        activityDurations
+    ).reduce((sum, minutes) => sum + minutes, 0);
+
+    const activeMinutes =
+        activityDurations.Walking +
+        activityDurations.Running;
+
+    function formatDuration(minutes) {
+        const hours = Math.floor(minutes / 60);
+        const remaining = minutes % 60;
+
+        if (hours && remaining) return `${hours}h ${remaining}m`;
+        if (hours) return `${hours}h`;
+        return `${remaining}m`;
+    }
+
+    function updateDailyValue(id, minutes) {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.textContent = recordedMinutes > 0
+                ? formatDuration(minutes)
+                : '—';
+        }
+    }
+
+    updateDailyValue('psRingDayResting', activityDurations.Resting);
+    updateDailyValue('psRingDayWalking', activityDurations.Walking);
+    updateDailyValue('psRingDayRunning', activityDurations.Running);
+    updateDailyValue('psDailyActiveTime', activeMinutes);
+
+    // ============================================
+    // UPDATE TODAY'S ACTIVITY DONUT GRAPH
+    // ============================================
+
+    const dailyRing = document.getElementById('psDailyRing');
+
+    if (dailyRing) {
+        if (recordedMinutes > 0) {
+            const restingPercent =
+                activityDurations.Resting / recordedMinutes * 100;
+
+            const walkingEndPercent =
+                (activityDurations.Resting + activityDurations.Walking)
+                / recordedMinutes * 100;
+
+            dailyRing.style.background = `conic-gradient(
+                #6899cb 0% ${restingPercent}%,
+                #169f96 ${restingPercent}% ${walkingEndPercent}%,
+                #e5aa4f ${walkingEndPercent}% 100%
+            )`;
+        } else {
+            dailyRing.style.background = '';
+        }
+    }
+
+
+    const points = history.map((sample, index) => ({  ...sample,
+        
         x: history.length === 1 ? 360 : 12 + (index / (history.length - 1)) * 696,
         y: activityLevels[sample.activity]
     }));

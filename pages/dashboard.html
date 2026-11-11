@@ -25,7 +25,9 @@
             <nav class="sidebar-nav nav flex-column" id="appNav">
                 <span class="nav-heading">Dashboard</span>
                 <button class="nav-link active" type="button" data-section="live-tracking" title="Live Tracking"><i class="bi bi-activity"></i><span>Live Tracking</span></button>
-                <button class="nav-link" type="button" data-section="health-activity" title="Pet Activity and Route History"><i class="bi bi-graph-up-arrow"></i><span>Pet Activity and Route History</span></button>
+                
+                 <button class="nav-link" type="button" data-section="health-activity" title="Pet Activity"><i class="bi bi-graph-up-arrow"></i><span>Pet Activity</span></button>
+                <button class="nav-link" type="button" data-section="pet-route-history" title="Pet Route History"><i class="bi bi-map"></i><span>Pet Route History</span></button>
                 <button class="nav-link" type="button" data-section="pet-management" title="Pet Management"><img class="nav-paw-icon" src="../assets/images/pet-management-icon.png" alt=""><span>Pet Management</span></button>
                 <button class="nav-link" type="button" data-section="notifications" title="Notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
                 <button class="nav-link" type="button" data-section="settings" title="Settings"><i class="bi bi-gear"></i><span>Settings</span></button>
@@ -42,7 +44,7 @@
 
         <main class="dashboard-main">
             <header class="topbar page-topbar">
-                <button class="mobile-brand-toggle d-lg-none" id="mobileLogoToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" title="Open navigation"><span class="brand-mark light-surface-brand-mark"><img class="brand-logo-icon" src="../assets/images/pawsense-logo.png" alt=""></span></button>
+                <button class="mobile-brand-toggle d-lg-none" id="mobileLogoToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" title="Open navigation"><span class="brand-mark light-surface-brand-mark"><img class="brand-logo-icon" src="../assets/images/pawsenselogo.png" alt=""></span></button>
                 <div class="page-header-content" id="pageHeaderContent"></div>
             </header>
 
@@ -80,46 +82,79 @@
                     <div class="row g-3 live-secondary-status-row" id="liveSecondaryStatusRow" aria-live="polite"></div>
                 </section>
 
-                <section class="dashboard-section" id="health-activity">
-                    <div class="section-toolbar compact"><div><span class="section-kicker">Activity monitoring</span><h1>Activity</h1><p>View your pet’s current activity and recent behavior patterns.</p></div></div>
-                    <div class="monitoring-pet-control">
-                        <div class="live-pet-icon-list" id="activityPetSelector" role="group" aria-label="Choose a pet to view activity"></div>
-                    </div>
-                    <div class="activity-subscription-notice" id="activitySubscriptionNotice" hidden><i class="bi bi-calendar-x"></i><div><strong>Data subscription expired</strong><span>Activity and route information is unavailable until the subscription is renewed.</span></div></div>
-                    <div class="data-notice"><i class="bi bi-info-circle-fill"></i><div><strong>Activity Monitoring</strong><span>Current activity data from the selected pet. Last update: <span id="activityUpdated">Today, 10:42 AM</span></span></div><div class="state-key"><span class="soft-badge info">Available</span><span class="soft-badge neutral">Unavailable</span></div></div>
-                    <div class="row g-4">
-                        <div class="col-12">
-                            <article class="health-metric calendar-card">
-                                <div class="calendar-card-head">
-                                    <div class="calendar-card-heading"><div class="calendar-card-icon" aria-hidden="true"><i class="bi bi-calendar3"></i></div><div><span class="calendar-card-label">Activity calendar</span><div class="calendar-card-title" id="activityCalendarTitle"></div></div></div>
-                                    <div class="calendar-card-controls"><button class="calendar-today" id="activityCalendarToday" type="button">Today</button><label class="calendar-date-picker"><span>Choose date</span><input type="date" id="activityCalendarPicker" aria-label="Choose activity date"></label></div>
-                                </div>
-                                <div class="calendar-days" id="activityCalendarDays" aria-label="Date selector"></div>
-                            </article>
-                        </div>
-                    </div>
-                    <div class="row g-4 mt-0">
-                        <div class="col-xl-8">
-                            <article class="app-card chart-panel pet-anomaly-card h-100">
-                                <div class="anomaly-chart-heading">
-                                    <div class="anomaly-chart-title"><span class="anomaly-heading-icon" aria-hidden="true"><i class="bi bi-activity"></i></span><div><h3>Pet's Anomaly</h3><p id="petAnomalyDescription">Activity changes over time</p></div></div>
-                                    <div class="anomaly-chart-legend" aria-label="Activity colors"><span class="resting">Resting</span><span class="walking">Walking</span><span class="running">Running</span></div>
-                                </div>
-                                <div class="activity-anomaly-chart" id="petAnomalyChart"></div>
-                            </article>
-                        </div>
-                        <div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Today's activity</h3><p>Daily movement breakdown</p></div><span class="soft-badge success">On track</span></div><div class="activity-donut"><div class="donut"><div><strong>68%</strong><span>daily goal</span></div></div></div><div class="activity-breakdown"><div><span><i class="activity-dot resting"></i> Resting</span><strong>14h 20m</strong></div><div><span><i class="activity-dot walking"></i> Walking</span><strong>1h 45m</strong></div><div><span><i class="activity-dot running"></i> Running</span><strong>28m</strong></div></div></article></div>
-                    </div>
+            
+<!-- PET ACTIVITY -->
+<section class="dashboard-section" id="health-activity">
+    <div class="section-toolbar compact"><div><span class="section-kicker">Activity Monitoring</span><h1>Pet Activity</h1><p>Monitor your pet's daily activities, movement patterns, and wellness baseline.</p></div></div>
 
-                    <div class="history-block" id="history">
-                        <div class="activity-records-toolbar">
-                            <div class="activity-records-heading"><span class="section-kicker">Recorded insights</span><h2>Recorded Activity &amp; Location</h2><p>Review previous location, activity, and anomaly records for the selected pet.</p></div>
-                        </div>
-                        <div class="history-panel active" id="history-location"><div class="row g-4"><div class="col-xl-8"><article class="app-card"><div class="card-topline"><div><h3>Recorded route</h3><p id="recordedRouteDateText">Recorded path for today</p></div><span class="soft-badge neutral" id="recordedRouteDateBadge"><i class="bi bi-calendar3"></i> Today</span></div><div class="route-map" id="recordedRouteMap" role="application" aria-label="Map showing the selected pet's recorded route"></div></article></div><div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Trip summary</h3><p id="tripSummaryDateText">Today’s movement</p></div></div><div class="trip-stats"><div><span>Distance traveled</span><strong>3.8 km</strong></div><div><span>Time outside</span><strong>1h 42m</strong></div><div><span>Locations visited</span><strong>4 places</strong></div></div><div class="timeline"><div><i></i><span><strong>Riverside Park</strong><small>10:42 AM · Last recorded point</small></span></div><div><i></i><span><strong>Oak Street</strong><small>9:36 AM · Walking</small></span></div><div><i></i><span><strong>Home</strong><small>7:15 AM · Start point</small></span></div></div></article></div></div></div>
-                        <div class="history-panel active" id="history-activity"><article class="app-card"><div class="card-topline"><div><h3>Weekly activity summary</h3><p>Activity duration by day · Last updated 10:42 AM</p></div><span class="soft-badge success"><i class="bi bi-graph-up-arrow"></i> 12% vs last week</span></div><div class="bar-chart"><div style="--rest:55%;--walk:24%;--run:10%"><span></span><i></i><b></b><small>Mon</small></div><div style="--rest:68%;--walk:18%;--run:7%"><span></span><i></i><b></b><small>Tue</small></div><div style="--rest:50%;--walk:30%;--run:12%"><span></span><i></i><b></b><small>Wed</small></div><div style="--rest:62%;--walk:20%;--run:9%"><span></span><i></i><b></b><small>Thu</small></div><div style="--rest:48%;--walk:34%;--run:13%"><span></span><i></i><b></b><small>Fri</small></div><div style="--rest:42%;--walk:38%;--run:16%"><span></span><i></i><b></b><small>Sat</small></div><div style="--rest:58%;--walk:26%;--run:11%"><span></span><i></i><b></b><small>Sun</small></div></div><div class="activity-total-row"><div><i class="activity-dot resting"></i><span>Resting<strong>98h 25m</strong></span></div><div><i class="activity-dot walking"></i><span>Walking<strong>12h 40m</strong></span></div><div><i class="activity-dot running"></i><span>Running<strong>3h 12m</strong></span></div></div></article></div>
-                    </div>
-                </section>
+    <div class="monitoring-pet-control"><div class="live-pet-icon-list" id="activityPetSelector" role="group" aria-label="Choose a pet to view activity"></div></div>
 
+    <div class="activity-subscription-notice" id="activitySubscriptionNotice" hidden><i class="bi bi-calendar-x"></i><div><strong>Data subscription expired</strong><span>Activity information is unavailable until the subscription is renewed.</span></div></div>
+
+    <div class="data-notice"><i class="bi bi-info-circle-fill"></i><div><strong>Activity Monitoring</strong><span>Current activity data from the selected pet. Last update: <span id="activityUpdated">Unavailable</span></span></div><div class="state-key"><span class="soft-badge info">Available</span><span class="soft-badge neutral">Unavailable</span></div></div>
+
+    <!-- DATE SELECTION -->
+    <article class="health-metric calendar-card ps-activity-calendar">
+         <div class="calendar-card-head"><div class="calendar-card-heading"><div class="calendar-card-icon"><i class="bi bi-calendar3"></i></div><div><span class="calendar-card-label">Select Date</span><p class="ps-activity-subtitle">View activity and patterns for a specific day.</p><div class="calendar-card-title" id="activityCalendarTitle"></div></div></div></div>
+        <div class="calendar-days" id="activityCalendarDays" aria-label="Date selector"></div>
+    </article>
+
+    <!-- ACTIVITY MONITORING GRID -->
+    <div class="history-block ps-activity-layout" id="history">
+        <div class="ps-activity-dashboard-grid">
+
+            <!-- ACTIVITY TIMELINE -->
+            <article class="app-card chart-panel pet-anomaly-card ps-activity-timeline-card">
+                <div class="ps-activity-card-heading"><span class="ps-activity-card-icon"><i class="bi bi-activity"></i></span><div><h3>Activity Timeline</h3><p id="petAnomalyDescription">Activity changes throughout the selected day</p></div></div>
+                <div class="anomaly-chart-legend"><span class="resting">Resting</span><span class="walking">Walking</span><span class="running">Running</span></div>
+                <div class="ps-activity-timeline-body"><div class="ps-activity-timeline-rows"><span>Running</span><span>Walking</span><span>Resting</span></div><div class="activity-anomaly-chart ps-activity-timeline-graph" id="petAnomalyChart"></div></div>
+                <div class="ps-activity-hours"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+                <div class="ps-activity-stats"><div><span><i class="activity-dot resting"></i>Resting</span><strong id="psDayResting">—</strong></div><div><span><i class="activity-dot walking"></i>Walking</span><strong id="psDayWalking">—</strong></div><div><span><i class="activity-dot running"></i>Running</span><strong id="psDayRunning">—</strong></div></div>
+            </article>
+
+            <!-- TODAY'S ACTIVITY -->
+            <article class="app-card ps-activity-ring-card">
+                <div class="ps-activity-card-heading"><span class="ps-activity-card-icon"><i class="bi bi-bullseye"></i></span><div><h3>Today's Activity</h3><p>Daily movement breakdown</p></div></div>
+                <div class="ps-activity-ring-area"><div class="ps-activity-ring" id="psDailyRing" style="--ring-progress:0%;"><div><strong id="psDailyActiveTime">—</strong><span>active time</span></div></div></div>
+                <div class="ps-activity-range"><small>Usual active-time range</small><strong id="psDailyUsualRange">Not established</strong></div>
+                <div class="ps-activity-ring-breakdown"><div><span><i class="activity-dot resting"></i>Resting</span><strong id="psRingDayResting">—</strong></div><div><span><i class="activity-dot walking"></i>Walking</span><strong id="psRingDayWalking">—</strong></div><div><span><i class="activity-dot running"></i>Running</span><strong id="psRingDayRunning">—</strong></div></div>
+            </article>
+
+            <!-- WEEKLY ACTIVITY -->
+            <article class="app-card history-panel active ps-activity-ring-card" id="history-activity">
+                <div class="ps-activity-card-heading"><span class="ps-activity-card-icon"><i class="bi bi-bar-chart"></i></span><div><h3>Weekly Activity</h3><p id="psWeeklyDates">Selected week</p></div></div>
+                <div class="ps-activity-ring-area"><div class="ps-activity-ring ps-weekly-ring" id="psWeeklyRing" style="--ring-progress:0%;"><div><strong id="psWeeklyActiveTime">—</strong><span>total active time</span></div></div></div>
+                <div class="ps-activity-range"><small>Usual weekly range</small><strong id="psWeeklyUsualRange">Not established</strong></div>
+                <div class="ps-activity-ring-breakdown"><div><span><i class="activity-dot resting"></i>Resting</span><strong id="psWeekResting">—</strong></div><div><span><i class="activity-dot walking"></i>Walking</span><strong id="psWeekWalking">—</strong></div><div><span><i class="activity-dot running"></i>Running</span><strong id="psWeekRunning">—</strong></div></div>
+            </article>
+
+        </div>
+
+        <!-- ACTIVITY PATTERN -->
+        <article class="app-card ps-activity-pattern-card">
+            <div class="ps-activity-card-heading"><span class="ps-activity-card-icon"><i class="bi bi-activity"></i></span><div><h3>Activity Pattern</h3><strong class="ps-pattern-status" id="psActivityPatternStatus">Baseline not established</strong><p id="psActivityPatternDescription">Activity patterns will be compared with your pet's established baseline.</p></div></div>
+
+            <div class="ps-pattern-stats">
+                <div class="ps-pattern-metric"><span><i class="activity-dot resting"></i>Resting</span><div><small>Selected day</small><strong id="psPatternRestingToday">—</strong></div><div><small>Usual range</small><strong id="psPatternRestingRange">Not established</strong></div><span class="ps-pattern-trend" id="psPatternRestingTrend">—</span></div>
+                <div class="ps-pattern-metric"><span><i class="activity-dot walking"></i>Walking</span><div><small>Selected day</small><strong id="psPatternWalkingToday">—</strong></div><div><small>Usual range</small><strong id="psPatternWalkingRange">Not established</strong></div><span class="ps-pattern-trend" id="psPatternWalkingTrend">—</span></div>
+                <div class="ps-pattern-metric"><span><i class="activity-dot running"></i>Running</span><div><small>Selected day</small><strong id="psPatternRunningToday">—</strong></div><div><small>Usual range</small><strong id="psPatternRunningRange">Not established</strong></div><span class="ps-pattern-trend" id="psPatternRunningTrend">—</span></div>
+                <div class="ps-pattern-metric"><span><i class="activity-dot walking"></i>Active Time</span><div><small>Selected day</small><strong id="psPatternActiveToday">—</strong></div><div><small>Usual range</small><strong id="psPatternActiveRange">Not established</strong></div><span class="ps-pattern-trend" id="psPatternActiveTrend">—</span></div>
+            </div>
+
+           <p class="ps-activity-disclaimer"><i class="bi bi-info-circle"></i>Non-diagnostic activity-pattern observation. This does not indicate or confirm a medical condition.</p>
+</article>
+</div>
+</section>
+
+
+                <section class="dashboard-section" id="pet-route-history">
+                <div class="section-toolbar compact"><div><span class="section-kicker">Location History</span><h1>Pet Route History</h1><p>View your pet's recorded routes and location history.</p></div></div>
+                <div class="calendar-card" id="routeCalendarCard"><div class="calendar-card-head"><div class="calendar-card-heading"><div class="calendar-card-icon"><i class="bi bi-calendar3"></i></div><div><span class="calendar-card-label">Select Date</span><p class="ps-activity-subtitle">View your pet's recorded routes for a specific day.</p><div class="calendar-card-title" id="routeCalendarTitle">Select a date</div></div></div></div><div class="calendar-days" id="routeCalendarDays"></div></div>
+                <div class="history-block" id="routeHistoryBlock"><div class="history-panel active" id="history-location"><div class="row g-4"><div class="col-xl-8"><article class="app-card"><div class="card-topline"><div><h3>Recorded route</h3><p id="recordedRouteDateText">Recorded path for today</p></div><span class="soft-badge neutral" id="recordedRouteDateBadge"><i class="bi bi-calendar3"></i> Today</span></div><div class="route-map" id="recordedRouteMap" role="application" aria-label="Map showing the selected pet's recorded route"></div></article></div><div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Trip summary</h3><p id="tripSummaryDateText">Today’s movement</p></div></div><div class="trip-stats"><div><span>Distance traveled</span><strong>—</strong></div><div><span>Time outside</span><strong>—</strong></div><div><span>Locations visited</span><strong>—</strong></div></div><div class="timeline" id="recordedRouteStops"><p class="text-muted small mb-0">No recorded route points available yet.</p></div>
+
+                </div>
+            </section>
+                              
                 <section class="dashboard-section" id="pet-management">
                     <div class="section-toolbar compact"><div><span class="section-kicker">Pet profiles</span><h1>Pet Management</h1><p>Manage your pet profiles, collar details, and safe-zone settings.</p></div></div>
                     <div class="section-content-actions"><button class="btn btn-brand" id="addPetBtn" type="button"><i class="bi bi-plus-lg"></i> Add new pet</button></div>
@@ -128,10 +163,75 @@
                 </section>
 
                 <section class="dashboard-section" id="notifications">
-                    <div class="section-toolbar compact"><div><span class="section-kicker">Alert center</span><h1>Notifications</h1><p>Check important alerts and updates from your pet’s collar.</p></div></div>
-                    <div class="section-content-actions"><button class="btn btn-soft" id="markAllReadBtn" type="button"><i class="bi bi-check2-all"></i> Mark all as read</button></div>
-                    <article class="app-card notifications-card"><div class="notification-toolbar"><div class="filter-tabs" role="group" aria-label="Notification filters"><button class="active" type="button" data-notification-filter="all">All <span>5</span></button><button type="button" data-notification-filter="unread">Unread <span id="unreadFilterCount">3</span></button><button type="button" data-notification-filter="location">Location</button><button type="button" data-notification-filter="device">Device</button></div></div><div class="notification-list" id="notificationList"></div></article>
-                </section>
+    <div class="section-toolbar compact"><div><span class="section-kicker">Alert center</span><h1>Notifications</h1><p>Real-time alerts and updates from your pets.</p></div></div>
+
+    <div class="notifications-shell">
+        <aside class="notifications-sidebar">
+            <article class="app-card notifications-pets-card">
+                <div class="notifications-pets-header">
+                    <div class="notifications-pets-title">
+                        <h3>Your Pets</h3>
+                        <span class="soft-badge info" id="notificationsPetCount">0</span>
+                    </div>
+                    <button class="notifications-search-btn" type="button" aria-label="Search pets">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+
+                <div class="notifications-pet-list" id="notificationsPetList">
+                    <div class="notifications-empty">No pets available.</div>
+                </div>
+            </article>
+        </aside>
+
+        <div class="notifications-main">
+            <article class="app-card notifications-detail-card">
+                <div class="notifications-detail-header">
+                    <div class="notifications-detail-pet">
+                        <div class="notifications-detail-avatar" id="notificationsSelectedPetAvatar">P</div>
+                        <div class="notifications-detail-meta">
+                            <h3 id="notificationsSelectedPetName">Select a pet</h3>
+                            <p id="notificationsSelectedPetInfo">Choose a pet to view notifications.</p>
+                        </div>
+                    </div>
+
+                    <div class="notifications-detail-actions">
+                        <span class="soft-badge info" id="notificationsUnreadBadge"><i class="bi bi-envelope"></i> 0 Unread</span>
+                        <button class="btn btn-soft" id="markAllReadBtn" type="button"><i class="bi bi-check2-all"></i> Mark all as read</button>
+                    </div>
+                </div>
+
+<div class="notifications-filter-row" role="group" aria-label="Notification filters">
+    <button class="active" type="button" data-notification-filter="geofence">
+        <i class="bi bi-geo-alt-fill"></i>
+        Geofence <span id="notifCountGeofence">0</span>
+    </button>
+
+    <button type="button" data-notification-filter="location">
+        <i class="bi bi-pin-map-fill"></i>
+        Location <span id="notifCountLocation">0</span>
+    </button>
+
+    <button type="button" data-notification-filter="activity">
+        <i class="bi bi-activity"></i>
+        Activity <span id="notifCountActivity">0</span>
+    </button>
+
+    <button type="button" data-notification-filter="collar">
+        <i class="bi bi-battery-half"></i>
+        Collar <span id="notifCountCollar">0</span>
+    </button>
+</div>
+
+                <div class="notification-list notifications-thread-list" id="notificationList">
+                    <div class="notifications-empty-state">
+                        Select a pet to view notifications.
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
 
                 <section class="dashboard-section" id="settings">
                     <div class="section-toolbar compact"><div><span class="section-kicker">Preferences</span><h1>Settings</h1><p>Manage your account, security, and notification preferences.</p></div></div>
@@ -173,8 +273,579 @@
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3"><div class="toast app-toast" id="appToast" role="status" aria-live="polite" aria-atomic="true"><div class="toast-body"><i class="bi bi-check-circle-fill"></i><span id="toastMessage">Changes saved.</span><button type="button" class="btn-close ms-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div></div>
 
-    <div class="modal fade" id="addPetModal" tabindex="-1" aria-labelledby="addPetModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><div><span class="modal-icon"><i class="bi bi-plus-lg"></i></span><h2 class="modal-title" id="addPetModalLabel">Add a new pet</h2><p>Register a pet profile, define a safe zone, and pair a PawSense collar.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><form id="addPetForm"><div class="modal-body add-pet-modal-body"><div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-camera"></i></span><div><h3>Pet photo</h3><p>Add a photo or use the pet's first initial.</p></div></div><div class="add-pet-photo-row"><div class="add-pet-photo-preview" id="newPetPhotoPreview"><span id="newPetInitial">P</span><img id="newPetPhotoImage" src="" alt="Pet photo preview" hidden></div><div class="add-pet-photo-actions"><input type="file" id="newPetPhoto" accept="image/png,image/jpeg" class="d-none"><label for="newPetPhoto" class="btn btn-soft"><i class="bi bi-camera"></i> Upload photo</label><small>PNG or JPG. Maximum 2 MB.</small></div><div class="add-pet-photo-actions"></div></div><div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-person-vcard"></i></span><div><h3>Pet information</h3><p>Enter the basic information for this pet.</p></div></div><div class="row g-3"><div class="col-12"><label class="form-label" for="newPetName">Pet name</label><input class="form-control" id="newPetName" type="text" placeholder="e.g. Milo" required><div class="form-text">Pet names cannot be changed after registration.</div></div><div class="col-md-6"><label class="form-label" for="newPetType">Pet type</label><select class="form-select" id="newPetType" required><option value="Dog">Dog</option><option value="Cat">Cat</option></select></div><div class="col-md-6"><label class="form-label" for="newPetGender">Gender</label><select class="form-select" id="newPetGender" required><option value="Male">Male</option><option value="Female">Female</option></select></div><div class="col-12"><label class="form-label" for="newPetBreed">Breed</label><input class="form-control" id="newPetBreed" type="text" placeholder="e.g. Beagle" required></div></div></div><div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-geo-alt"></i></span><div><h3>Safe zone</h3><p>Select the center location of the pet's allowed area.</p></div></div><div class="add-pet-map-wrap"><div class="add-pet-map" id="newSafeZoneMap"><div class="add-location-empty" id="newSafeZoneEmpty"><button type="button" class="btn btn-soft" id="addSafeZoneLocationBtn"><i class="bi bi-plus-lg"></i> Add location</button><span>Select the center of the safe zone on the map.</span></div></div></div><div class="row g-3 mt-1"><div class="col-md-5"><label class="form-label" for="newSafeZoneLabel">Location label</label><input class="form-control" id="newSafeZoneLabel" type="text" placeholder="e.g. Home" required></div><div class="col-md-7"><label class="form-label">Selected location</label><div class="selected-safe-zone-location" id="selectedSafeZoneLocation"><i class="bi bi-geo-alt-fill"></i><span>No location selected</span></div></div></div></div><div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-bounding-box-circles"></i></span><div><h3>Geofence</h3><p>Set the allowed distance around the selected safe-zone center.</p></div></div><label class="form-label" for="newGeofenceRadius">Geofence radius: <strong><span id="newGeofenceRadiusValue">100</span> m</strong></label><input class="form-range" id="newGeofenceRadius" type="range" min="50" max="1000" step="50" value="100"><div class="range-labels"><span>50 m</span><span>1000 m</span></div></div><div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-router"></i></span><div><h3>PawSense collar</h3><p>Enter the credentials included with the physical collar.</p></div></div><div class="row g-3"><div class="col-md-7"><label class="form-label" for="newDeviceId">Device ID</label><input class="form-control" id="newDeviceId" type="text" placeholder="PAWSENSE-A1B2C3D4E5F6" autocomplete="off" required></div><div class="col-md-5"><label class="form-label" for="newPairingCode">Pairing code</label><input class="form-control" id="newPairingCode" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="000000" autocomplete="off" required></div></div><div class="pairing-help"><i class="bi bi-info-circle"></i><span>The Device ID and Pairing Code are supplied with the PawSense collar. The pairing code is not created by the user.</span></div></div></div><div class="modal-footer"><button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-brand" id="submitAddPetBtn"><i class="bi bi-plus-lg"></i> Add pet</button></div></form></div></div></div>
-    <div class="modal fade" id="geofenceModal" tabindex="-1" aria-labelledby="geofenceModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-header"><div><span class="modal-icon"><i class="bi bi-shield-check"></i></span><h2 class="modal-title" id="geofenceModalLabel">Edit geofence</h2><p>Adjust the safe-zone radius for the selected pet.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="geofence-editor"><div class="geofence-preview"><div class="geofence-radius"><i class="bi bi-house-door-fill"></i></div></div><div class="geofence-controls"><label class="form-label" for="geofenceRadius">Safe-zone radius <strong><span id="radiusValue">300</span> m</strong></label><input class="form-range" id="geofenceRadius" type="range" min="100" max="1000" value="300" step="50"><div class="range-labels"><span>100 m</span><span>1 km</span></div><label class="form-label mt-4" for="geofenceName">Zone name</label><input class="form-control" id="geofenceName" value="Home safe zone"></div></div></div><div class="modal-footer"><button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-brand" id="saveGeofenceBtn" data-bs-dismiss="modal"><i class="bi bi-check2"></i> Save geofence</button></div></div></div></div>
+    
+
+<div class="modal fade" id="addPetModal" tabindex="-1" aria-labelledby="addPetModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable"><div class="modal-content">
+<div class="modal-header"><div><span class="modal-icon"><i class="bi bi-plus-lg"></i></span><h2 class="modal-title" id="addPetModalLabel">Add a new pet</h2><p>Register a pet profile, define a safe zone, and pair a PawSense collar.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+<form id="addPetForm">
+<div class="modal-body add-pet-modal-body">
+<div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-camera"></i></span><div><h3>Pet photo</h3><p>Add a photo or use the pet's first initial.</p></div></div><div class="add-pet-photo-row"><div class="add-pet-photo-preview" id="newPetPhotoPreview"><span id="newPetInitial">P</span><img id="newPetPhotoImage" src="" alt="Pet photo preview" hidden></div><div class="add-pet-photo-actions"><input type="file" id="newPetPhoto" accept="image/png,image/jpeg" class="d-none"><label for="newPetPhoto" class="btn btn-soft"><i class="bi bi-camera"></i> Upload photo</label><small>PNG or JPG. Maximum 2 MB.</small></div><div class="add-pet-photo-actions"></div></div></div>
+<div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-person-vcard"></i></span><div><h3>Pet information</h3><p>Enter the basic information for this pet.</p></div></div><div class="row g-3"><div class="col-12"><label class="form-label" for="newPetName">Pet name</label><input class="form-control" id="newPetName" type="text" placeholder="e.g. Milo" required><div class="form-text">Pet names cannot be changed after registration.</div></div><div class="col-md-6"><label class="form-label" for="newPetType">Pet type</label><select class="form-select" id="newPetType" required><option value="Dog">Dog</option><option value="Cat">Cat</option></select></div><div class="col-md-6"><label class="form-label" for="newPetGender">Gender</label><select class="form-select" id="newPetGender" required><option value="Male">Male</option><option value="Female">Female</option></select></div><div class="col-12"><label class="form-label" for="newPetBreed">Breed</label><input class="form-control" id="newPetBreed" type="text" placeholder="e.g. Beagle" required></div></div></div>
+<div class="add-pet-section">
+<div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-geo-alt"></i></span><div><h3>Safe zone</h3><p>Search for an address and confirm its location on the map.</p></div></div>
+<button type="button" class="btn btn-soft mb-3" id="openSafeZoneAddressBtn"><i class="bi bi-plus-lg"></i> Add address</button>
+<div class="safe-zone-address-search" id="safeZoneAddressSearchPanel" hidden><label class="form-label" for="safeZoneAddressSearch">Search address</label><div class="safe-zone-search-field"><input type="search" class="form-control" id="safeZoneAddressSearch" placeholder="Street name, building, house no., barangay or city..." autocomplete="off"></div><div class="safe-zone-address-suggestions" id="safeZoneAddressSuggestions" role="listbox" aria-label="Address suggestions" hidden></div><p class="form-text" id="safeZoneAddressStatus" role="status" aria-live="polite">Search for an address to locate it on the map.</p></div>
+<div class="add-pet-map-wrap"><div class="add-pet-map" id="newSafeZoneMap"><div class="add-location-empty" id="newSafeZoneEmpty"><span>Search and select an address above to display its location on the map.</span></div></div></div>
+
+>
+
+<div class="row g-3 mt-1">
+
+<div class="col-12"><label class="form-label">Selected address</label><div class="selected-safe-zone-location"><i class="bi bi-geo-alt-fill"></i><span id="selectedSafeZoneAddressText">No address selected</span></div></div>
+
+<div class="col-12"><label class="form-label">Map pin coordinates</label><div class="selected-safe-zone-location" id="selectedSafeZoneLocation"><i class="bi bi-pin-map"></i><span>No location selected</span></div></div>
+
+<div class="col-12"><button type="button" class="btn btn-brand" id="confirmSafeZoneAddressBtn" disabled><i class="bi bi-check-circle"></i> Confirm address</button><p class="form-text mt-2" id="safeZoneConfirmationStatus" role="status" aria-live="polite">Select an address from the suggestions and confirm its location on the map.</p></div>
+
+</div>
+
+</div>
+
+
+<div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-bounding-box-circles"></i></span><div><h3>Geofence</h3><p>Set the allowed distance around the selected safe-zone center.</p></div></div><label class="form-label" for="newGeofenceRadius">Geofence radius: <strong><span id="newGeofenceRadiusValue">100</span> m</strong></label><input class="form-range" id="newGeofenceRadius" type="range" min="50" max="1000" step="50" value="100"><div class="range-labels"><span>50 m</span><span>1000 m</span></div></div>
+
+<!-- ============================================
+     PAWSENSE COLLAR
+     ============================================ -->
+
+<div class="add-pet-section"><div class="add-pet-section-heading"><span class="add-pet-section-icon"><i class="bi bi-router"></i></span><div><h3>PawSense collar</h3><p>Enter the credentials included with the physical collar.</p></div></div><div class="row g-3"><div class="col-md-7"><label class="form-label" for="newDeviceId">Device ID</label><input class="form-control" id="newDeviceId" type="text" placeholder="PAWSENSE-A1B2C3D4E5F6" autocomplete="off" required></div><div class="col-md-5"><label class="form-label" for="newPairingCode">Pairing code</label><input class="form-control" id="newPairingCode" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="000000" autocomplete="off" required></div></div><div class="pairing-help"><i class="bi bi-info-circle"></i><span>The Device ID and Pairing Code are supplied with the PawSense collar. The pairing code is not created by the user.</span></div></div>
+
+</div>
+
+<div class="modal-footer"><button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-brand" id="submitAddPetBtn"><i class="bi bi-plus-lg"></i> Add pet</button></div>
+
+</form>
+</div></div></div>
+
+   
+<!-- ==========================================
+     GEOFENCE MODAL - EXISTING
+     ========================================== -->
+
+<div class="modal fade" id="geofenceModal" tabindex="-1"
+     aria-labelledby="geofenceModalLabel" aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <span class="modal-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </span>
+
+                    <h2 class="modal-title" id="geofenceModalLabel">
+                        Edit geofence
+                    </h2>
+
+                    <p>Adjust the safe-zone radius for the selected pet.</p>
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close">
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="geofence-editor">
+
+                    <div class="geofence-preview">
+                        <div class="geofence-radius">
+                            <i class="bi bi-house-door-fill"></i>
+                        </div>
+                    </div>
+
+                    <div class="geofence-controls">
+
+                        <label class="form-label" for="geofenceRadius">
+                            Safe-zone radius
+                            <strong>
+                                <span id="radiusValue">300</span> m
+                            </strong>
+                        </label>
+
+                        <input
+                            class="form-range"
+                            id="geofenceRadius"
+                            type="range"
+                            min="100"
+                            max="1000"
+                            value="300"
+                            step="50">
+
+                        <div class="range-labels">
+                            <span>100 m</span>
+                            <span>1 km</span>
+                        </div>
+
+                        <label class="form-label mt-4" for="geofenceName">
+                            Zone name
+                        </label>
+
+                        <input
+                            class="form-control"
+                            id="geofenceName"
+                            value="Home safe zone">
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-soft"
+                    data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-brand"
+                    id="saveGeofenceBtn"
+                    data-bs-dismiss="modal">
+                    <i class="bi bi-check2"></i>
+                    Save geofence
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ==========================================
+     MODAL 1 - PAWSENSE RENEW SUBSCRIPTION
+     ========================================== -->
+
+<div
+    class="modal fade pawsense-renewal-modal"
+    id="pawsenseRenewalModal"
+    tabindex="-1"
+    aria-labelledby="pawsenseRenewalTitle"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- HEADER -->
+            <div class="pawsense-renewal-header">
+
+                <button
+                    type="button"
+                    class="pawsense-renewal-icon-button"
+                    data-bs-dismiss="modal"
+                    aria-label="Back">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+
+                <div class="pawsense-renewal-brand">
+                    <img
+                        src="../assets/images/pawsenselogo.png"
+                        alt="PawSense Logo"
+                        class="pawsense-renewal-logo">
+                    <strong>Paw<span>Sense</span></strong>
+                </div>
+
+                <button
+                    type="button"
+                    class="pawsense-renewal-icon-button"
+                    data-bs-dismiss="modal"
+                    aria-label="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+
+            </div>
+
+            <!-- BODY -->
+            <div class="modal-body pawsense-renewal-body">
+
+                <div class="pawsense-renewal-symbol" aria-hidden="true">
+                    <i class="bi bi-database pawsense-renewal-database-icon"></i>
+                    <i class="bi bi-arrow-clockwise pawsense-renewal-refresh-icon"></i>
+                </div>
+
+                <div class="pawsense-renewal-eyebrow">
+                    DATA SUBSCRIPTION
+                </div>
+
+                <h2 id="pawsenseRenewalTitle">
+                    Renew <span>Subscription</span>
+                </h2>
+
+                <p class="pawsense-renewal-description">
+                    Continue live tracking, activity monitoring,
+                    notifications, and location history
+                    for your pet.
+                </p>
+
+                <!-- BENEFITS -->
+                <div class="pawsense-renewal-benefits">
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Real-time live tracking</span>
+                    </div>
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Activity and battery updates</span>
+                    </div>
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Safe zone and location alerts</span>
+                    </div>
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>30-day monitoring access</span>
+                    </div>
+
+                </div>
+
+                <!-- PRICE -->
+                <div class="pawsense-renewal-price">
+                    <strong>₱199</strong>
+                    <span>for 30 days</span>
+                    <small>Sample price - subject to confirmation</small>
+                </div>
+
+                <!-- OPEN QR PAYMENT MODAL -->
+                <button
+                    type="button"
+                    id="confirmPawsenseRenewal"
+                    class="pawsense-renewal-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#pawsenseQrPaymentModal">
+
+                    <i class="bi bi-arrow-repeat"></i>
+                    Renew Now
+                </button>
+
+                <button
+                    type="button"
+                    class="pawsense-renewal-cancel"
+                    data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <p class="pawsense-renewal-footer">
+                    <i class="bi bi-shield-check"></i>
+                    Renewal requires payment confirmation.
+                </p>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- ==========================================
+     MODAL 2 - PAWSENSE QR PAYMENT
+     SEPARATE MODAL - NOT NESTED
+     ========================================== -->
+
+<div
+    class="modal fade pawsense-renewal-modal"
+    id="pawsenseQrPaymentModal"
+    tabindex="-1"
+    aria-labelledby="pawsenseQrPaymentTitle"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- HEADER -->
+            <div class="pawsense-renewal-header">
+
+                <!-- BACK TO RENEWAL MODAL -->
+                <button
+              
+    type="button"
+    class="pawsense-renewal-icon-button"
+    data-bs-toggle="modal"
+    data-bs-target="#pawsenseRenewalModal"
+    aria-label="Back">
+    <i class="bi bi-arrow-left"></i>
+</button>
+                </button>
+
+                <div class="pawsense-renewal-brand">
+                    <img
+                        src="../assets/images/pawsenselogo.png"
+                        alt="PawSense Logo"
+                        class="pawsense-renewal-logo">
+
+                    <strong>Paw<span>Sense</span></strong>
+                </div>
+
+                <button
+                    type="button"
+                    class="pawsense-renewal-icon-button"
+                    data-bs-dismiss="modal"
+                    aria-label="Close">
+
+                    <i class="bi bi-x-lg"></i>
+                </button>
+
+            </div>
+
+            <!-- BODY -->
+            <div class="modal-body pawsense-renewal-body">
+
+                <!-- QR ICON -->
+                <div class="pawsense-payment-symbol">
+                    <i class="bi bi-qr-code"></i>
+                </div>
+
+                <div class="pawsense-renewal-eyebrow">
+                    SUBSCRIPTION PAYMENT
+                </div>
+
+                <h2 id="pawsenseQrPaymentTitle">
+                    Pay with <span>QR</span>
+                </h2>
+
+                <p class="pawsense-renewal-description">
+                    Scan the payment QR code using GCash
+                    or a QR Ph-supported banking app
+                    to renew your PawSense subscription.
+                </p>
+
+                <!-- QR CODE PLACEHOLDER -->
+                <div
+                    class="pawsense-payment-qr"
+                    id="pawsensePaymentQrArea">
+
+                    <i class="bi bi-qr-code"></i>
+
+                    <span>
+                        Your secure payment QR code
+                        will appear here.
+                    </span>
+
+                </div>
+
+                <!-- PAYMENT SUMMARY -->
+                <div class="pawsense-payment-summary">
+
+                    <div>
+                        <span>
+                            <i class="bi bi-credit-card"></i>
+                            Amount to Pay
+                        </span>
+
+                        <strong id="pawsensePaymentAmount">
+                            ₱199.00
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>
+                            <i class="bi bi-calendar3"></i>
+                            Subscription Period
+                        </span>
+
+                        <strong>30 Days</strong>
+                    </div>
+
+                </div>
+
+                <!-- PAYMENT NOTICE -->
+                <div class="pawsense-payment-notice">
+
+                    <i class="bi bi-info-circle-fill"></i>
+
+                    <span>
+                        Your subscription will be renewed
+                        only after successful payment
+                        verification.
+                    </span>
+
+                </div>
+
+                <!-- PAYMENT STATUS -->
+                <button
+                    type="button"
+                    id="checkPawsensePaymentBtn"
+                    class="pawsense-renewal-primary"
+                    disabled>
+
+                    <i class="bi bi-arrow-repeat"></i>
+                    Check Payment Status
+                </button>
+
+                <!-- CANCEL -->
+                <button
+                    type="button"
+                    class="pawsense-renewal-cancel"
+                    data-bs-dismiss="modal">
+
+                    Cancel
+                </button>
+
+                <!-- FOOTER -->
+                <p class="pawsense-renewal-footer">
+                    <i class="bi bi-shield-check"></i>
+                    Secure payment verification required.
+                </p>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+            <!-- MODAL HEADER -->
+
+            <div class="pawsense-renewal-header">
+
+                <button
+                    type="button"
+                    class="pawsense-renewal-icon-button"
+                    data-bs-dismiss="modal"
+                    aria-label="Back">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+
+               
+<div class="pawsense-renewal-brand">
+    <img
+        src="../assets/images/pawsenselogo.png"
+        alt="PawSense Logo"
+        class="pawsense-renewal-logo"
+    >
+    <strong>Paw<span>Sense</span></strong>
+</div>
+
+
+                <button
+                    type="button"
+                    class="pawsense-renewal-icon-button"
+                    data-bs-dismiss="modal"
+                    aria-label="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+
+            </div>
+
+
+            <!-- MODAL BODY -->
+
+            <div class="modal-body pawsense-renewal-body">
+
+                <!-- SUBSCRIPTION ICON -->
+
+                
+<div class="pawsense-renewal-symbol" aria-hidden="true">
+    <i class="bi bi-database pawsense-renewal-database-icon"></i>
+    <i class="bi bi-arrow-clockwise pawsense-renewal-refresh-icon"></i>
+</div>
+
+
+                <!-- TITLE -->
+
+                <div class="pawsense-renewal-eyebrow">
+                    DATA SUBSCRIPTION
+                </div>
+
+                <h2 id="pawsenseRenewalTitle">
+                    Renew <span>Subscription</span>
+                </h2>
+
+                <p class="pawsense-renewal-description">
+                    Continue live tracking, activity monitoring,
+                    notifications, and location history
+                    for your pet.
+                </p>
+
+
+                <!-- SUBSCRIPTION BENEFITS -->
+
+                <div class="pawsense-renewal-benefits">
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Real-time live tracking</span>
+                    </div>
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Activity and battery updates</span>
+                    </div>
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Safe zone and location alerts</span>
+                    </div>
+
+                    <div>
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>30-day monitoring access</span>
+                    </div>
+
+                </div>
+
+
+                <!-- SUBSCRIPTION PRICE -->
+
+                <div class="pawsense-renewal-price">
+                    <strong>₱199</strong>
+                    <span>for 30 days</span>
+                    <small>Sample price - subject to confirmation</small>
+                </div>
+
+
+                <!-- RENEW NOW BUTTON -->
+
+                <button
+        type="button"
+    id="confirmPawsenseRenewal"
+    class="pawsense-renewal-primary"
+    data-bs-toggle="modal"
+    data-bs-target="#pawsenseQrPaymentModal"
+>
+    <i class="bi bi-arrow-repeat"></i>
+    Renew Now
+</button>
+
+
+                </button>
+
+
+                <!-- CANCEL BUTTON -->
+
+                <button
+                    type="button"
+                    class="pawsense-renewal-cancel"
+                    data-bs-dismiss="modal">
+
+                    Cancel
+
+                </button>
+
+
+                <!-- FOOTER -->
+
+                <p class="pawsense-renewal-footer">
+                    <i class="bi bi-shield-check"></i>
+                    Renewal requires payment confirmation.
+                </p>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="../js/pages/dashboard-logout.js"></script>
     <script type="module" src="../js/dashboard.js"></script>

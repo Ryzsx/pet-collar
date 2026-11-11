@@ -709,6 +709,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .tracking-status-card header { align-items: center; display: flex; justify-content: space-between; }
 .tracking-status-card header span { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .75px; text-transform: uppercase; }
 .tracking-status-card header > i { color: var(--green); font-size: 16px; }
+
 .pet-location-details { display: grid; gap: 14px; margin-top: 17px; }
 .pet-location-details span, .pet-location-details strong { display: block; }
 .pet-location-details span { color: var(--muted); font-size: 11px; line-height: 1.4; margin-bottom: 5px; }
@@ -867,8 +868,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .activity-chart-empty > i { color: var(--green); font-size: 28px; }
 .activity-chart-empty > strong { color: var(--text); font-size: 13px; }
 .activity-chart-empty > span { font-size: 11px; max-width: 320px; }
-.activity-donut { display: flex; justify-content: center; padding: 10px 0 18px; }.donut { align-items: center; background: conic-gradient(var(--green) 0 68%, var(--green-light) 68% 100%); border-radius: 50%; display: flex; height: 138px; justify-content: center; width: 138px; }.donut > div { align-items: center; background: white; border-radius: 50%; display: flex; flex-direction: column; height: 96px; justify-content: center; width: 96px; }.donut strong { font-family: "Inter",sans-serif; font-size: 22px; }.donut span { color: var(--muted); font-size: 9px; }
-.activity-breakdown { border-top: 1px solid var(--border); }.activity-breakdown div { display: flex; font-size: 10px; justify-content: space-between; padding: 9px 2px; }.activity-dot { border-radius: 50%; display: inline-block; height: 7px; margin-right: 5px; width: 7px; }.activity-dot.resting { background: var(--green-light); border: 1px solid var(--green); }.activity-dot.walking { background: var(--green); }.activity-dot.running { background: var(--orange); }
+.activity-dot { border-radius: 50%; display: inline-block; height: 7px; margin-right: 5px; width: 7px; }
+.activity-dot.resting { background: var(--green-light); border: 1px solid var(--green); }
+.activity-dot.walking { background: var(--green); }
+.activity-dot.running { background: var(--orange); }
 
 .limit-note { background: var(--orange-light); border: 1px solid #f5dfbd; border-radius: 10px; color: #82551a; font-size: 10px; margin-bottom: 18px; padding: 9px 12px; }
 .pet-list-card #petCapacity { display: inline-block; margin-top: 10px; white-space: normal; }
@@ -906,12 +909,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .history-block .section-content-actions { justify-content: flex-end; width: 100%; }
 .history-filters { align-items: flex-end; display: flex; flex-direction: column; gap: 10px; justify-content: flex-start; margin-left: auto; }
 .history-filters .form-select { margin-left: 0; min-width: 160px; }
-.activity-records-toolbar { align-items: flex-end; background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(237,248,245,.88)); border: 1px solid rgba(29,150,143,.12); border-radius: 18px; box-shadow: 0 10px 28px rgba(18,59,60,.06); display: flex; gap: 24px; justify-content: space-between; margin-bottom: 20px; padding: 20px 22px; }
-.activity-records-heading { min-width: 0; }
-.activity-records-heading h2 { color: var(--dark); font-family: "Inter",sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -.35px; margin: 0; }
-.activity-records-heading p { color: var(--text); font-size: 11px; line-height: 1.5; margin: 5px 0 0; }
-.activity-records-controls { align-items: flex-end; display: flex; flex: 0 0 auto; gap: 12px; }
-.activity-records-controls .history-type-tabs { margin-bottom: 0; }
 .history-range-control { display: grid; gap: 5px; }
 .history-range-control > span { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; }
 .history-range-control .form-select { border-color: var(--border); border-radius: 10px; color: var(--dark); font-size: 10px; min-height: 34px; min-width: 135px; padding-bottom: 6px; padding-top: 6px; }
@@ -930,8 +927,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .recorded-pet-pin-tip svg { fill: currentColor; height: 11px; width: 11px; }
 .trip-stats { display: grid; gap: 8px; grid-template-columns: repeat(3,1fr); }.trip-stats div { background: var(--cream); border-radius: 10px; padding: 10px; }.trip-stats span, .trip-stats strong { display: block; }.trip-stats span { color: var(--muted); font-size: 8px; }.trip-stats strong { font-size: 12px; margin-top: 3px; }.timeline { border-top: 1px solid var(--border); margin-top: 17px; padding-top: 13px; }.timeline > div { display: flex; gap: 10px; padding: 7px 0; }.timeline i { background: var(--green); border: 3px solid var(--green-light); border-radius: 50%; flex: 0 0 10px; height: 10px; margin-top: 3px; }.timeline span strong, .timeline span small { display: block; }.timeline span strong { font-size: 10px; }.timeline span small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .mini-history-chart { background: repeating-linear-gradient(to bottom, transparent 0, transparent 39px, #eff0ea 40px); height: 180px; margin-top: 20px; }.mini-history-chart svg { height: 170px; overflow: visible; width: 100%; }.mini-history-chart path { fill: none; stroke-linecap: round; stroke-width: 3; }.green-chart path { stroke: var(--green); }.orange-chart path { stroke: var(--orange); }
-.bar-chart { align-items: flex-end; border-bottom: 1px solid var(--border); display: flex; gap: 4%; height: 260px; justify-content: space-around; padding: 20px 25px 24px; }.bar-chart > div { display: flex; height: 100%; position: relative; width: 7%; }.bar-chart span, .bar-chart i, .bar-chart b { bottom: 0; position: absolute; width: 100%; }.bar-chart span { background: var(--green-light); height: var(--rest); }.bar-chart i { background: var(--green); height: var(--walk); }.bar-chart b { background: var(--orange); height: var(--run); }.bar-chart small { bottom: -19px; color: var(--muted); font-size: 8px; left: 50%; position: absolute; transform: translateX(-50%); }.activity-total-row { display: flex; gap: 35px; justify-content: center; padding-top: 20px; }.activity-total-row > div { align-items: center; display: flex; }.activity-total-row span { color: var(--muted); font-size: 9px; }.activity-total-row strong { color: var(--dark); display: block; font-size: 12px; margin-top: 2px; }
-    
+
 .settings-layout { align-items: start; display: grid; gap: 20px; grid-template-columns: 260px 1fr; }.settings-nav { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 10px; }.settings-nav button { align-items: center; background: transparent; border: 0; border-radius: 11px; color: var(--text); display: flex; gap: 11px; padding: 11px; text-align: left; width: 100%; }.settings-nav button > i { align-items: center; background: var(--cream-dark); border-radius: 9px; display: flex; flex: 0 0 34px; height: 34px; justify-content: center; }.settings-nav button span, .settings-nav button small { display: block; }.settings-nav button span { font-size: 10px; font-weight: 700; }.settings-nav button small { color: var(--muted); font-size: 8px; font-weight: 400; margin-top: 2px; }.settings-nav button:hover, .settings-nav button.active { background: var(--mint); color: var(--green-dark); }.settings-nav button.active > i { background: var(--green); color: #fff; }
 .settings-panel { display: none; }.settings-panel.active { display: block; animation: sectionIn .25s ease; }.settings-panel-heading { border-bottom: 1px solid var(--border); margin: -2px 0 20px; padding-bottom: 15px; }.profile-photo-row { align-items: center; display: flex; gap: 14px; margin-bottom: 25px; }.profile-photo { font-size: 24px; height: 72px; width: 72px; }.profile-photo-row > div:last-child > strong, .profile-photo-row > div:last-child > span { display: block; }.profile-photo-row strong { font-size: 11px; }.profile-photo-row span { color: var(--muted); font-size: 8px; margin: 2px 0 7px; }.settings-form { max-width: 760px; }.settings-form.narrow { max-width: 500px; }.form-label { font-size: 10px; font-weight: 700; }.form-text { color: var(--muted); font-size: 8px; }.form-actions { border-top: 1px solid var(--border); margin-top: 22px; padding-top: 17px; }.password-field { position: relative; }.password-field + .form-label, .password-strength + .form-label { margin-top: 15px; }.password-field button { background: transparent; border: 0; color: var(--muted); height: 100%; position: absolute; right: 4px; top: 0; width: 35px; }.password-strength { display: grid; gap: 4px; grid-template-columns: repeat(4,1fr); margin-top: 8px; }.password-strength span { background: var(--cream-dark); border-radius: 4px; height: 4px; }.password-strength span:first-child { background: var(--orange); }.password-strength small { color: var(--muted); font-size: 8px; grid-column: 1/-1; margin-top: 2px; }
 .preference-list label { align-items: center; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; gap: 12px; padding: 13px 2px; }.preference-list label:last-child { border-bottom: 0; }.preference-icon { align-items: center; border-radius: 10px; display: flex; flex: 0 0 38px; font-size: 15px; height: 38px; justify-content: center; }.preference-list label > span:nth-child(2) { flex: 1; }.preference-list strong, .preference-list small { display: block; }.preference-list strong { font-size: 10px; }.preference-list small { color: var(--muted); font-size: 8px; margin-top: 2px; }.form-check-input { cursor: pointer; }.form-check-input:checked { background-color: var(--green); border-color: var(--green); }
@@ -1161,4 +1157,1897 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     }
 
     .sidebar-nav { margin-left: 12px; margin-right: 12px; }
+}
+
+/* ============================================
+   PET ACTIVITY - NEW DASHBOARD LAYOUT
+   ============================================ */
+
+#health-activity .ps-activity-layout {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+}
+
+#health-activity .ps-activity-dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: stretch;
+}
+
+#health-activity .ps-activity-dashboard-grid > article {
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#health-activity .ps-activity-pattern-card {
+    width: 100%;
+    margin-top: 18px;
+}
+
+/* RESPONSIVE LAYOUT */
+
+@media (max-width: 1100px) {
+    #health-activity .ps-activity-dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #health-activity .ps-activity-timeline-card {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 700px) {
+    #health-activity .ps-activity-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #health-activity .ps-activity-timeline-card {
+        grid-column: auto;
+    }
+}
+
+
+/* ============================================
+   PET ACTIVITY - CARD STYLING
+   ============================================ */
+
+/* MAIN ACTIVITY CARDS */
+
+#health-activity .ps-activity-timeline-card,
+#health-activity .ps-activity-ring-card,
+#health-activity .ps-activity-pattern-card {
+    background: #ffffff;
+    border: 1px solid #e1ebea;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 6px 22px rgba(15, 65, 63, 0.05);
+    transition: box-shadow 0.2s ease;
+}
+
+/* CARD HOVER EFFECT */
+
+#health-activity .ps-activity-timeline-card:hover,
+#health-activity .ps-activity-ring-card:hover,
+#health-activity .ps-activity-pattern-card:hover {
+    box-shadow: 0 10px 28px rgba(15, 65, 63, 0.08);
+}
+
+/* CARD HEADER */
+
+#health-activity .ps-activity-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    min-width: 0;
+}
+
+#health-activity .ps-activity-card-heading > div {
+    flex: 1;
+    min-width: 0;
+}
+
+/* HEADER ICON */
+
+#health-activity .ps-activity-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 13px;
+    background: #e9f7f4;
+    color: #169c94;
+    font-size: 20px;
+}
+
+/* CARD TITLE */
+
+#health-activity .ps-activity-card-heading h3 {
+    margin: 0;
+    color: #123b3c;
+    font-family: "Inter", sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+/* CARD DESCRIPTION */
+
+#health-activity .ps-activity-card-heading p {
+    margin: 5px 0 0;
+    color: #788c8c;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* DAILY AND WEEKLY CARD STRUCTURE */
+
+#health-activity .ps-activity-ring-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* RESPONSIVE CARD PADDING */
+
+@media (max-width: 700px) {
+    #health-activity .ps-activity-timeline-card,
+    #health-activity .ps-activity-ring-card,
+    #health-activity .ps-activity-pattern-card {
+        padding: 17px;
+    }
+
+    #health-activity .ps-activity-card-heading h3 {
+        font-size: 16px;
+    }
+}
+
+/* ============================================
+   PET ACTIVITY - TIMELINE GRAPH
+   ============================================ */
+
+/* TIMELINE CARD STRUCTURE */
+
+#health-activity .ps-activity-timeline-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* GRAPH AND ACTIVITY LABELS */
+
+#health-activity .ps-activity-timeline-body {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 12px;
+    align-items: stretch;
+    width: 100%;
+}
+
+/* RESTING, WALKING, RUNNING LABELS */
+
+#health-activity .ps-activity-timeline-rows {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 12px;
+    min-height: 230px;
+    color: #617879;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* TIMELINE GRAPH AREA */
+
+#health-activity .ps-activity-timeline-graph {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    min-height: 230px;
+    border: 1px solid #e2ecea;
+    border-radius: 12px;
+    background-color: #f9fcfb;
+    background-image:
+        linear-gradient(
+            to bottom,
+            transparent 32.8%,
+            #e2ecea 33%,
+            transparent 33.2%,
+            transparent 65.8%,
+            #e2ecea 66%,
+            transparent 66.2%
+        ),
+        repeating-linear-gradient(
+            to right,
+            transparent 0,
+            transparent calc(25% - 1px),
+            #e2ecea calc(25% - 1px),
+            #e2ecea 25%
+        );
+    overflow: hidden;
+}
+
+/* TIME LABELS BELOW GRAPH */
+
+#health-activity .ps-activity-hours {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 12px 0 20px 82px;
+    color: #788c8c;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* RESPONSIVE TIMELINE */
+
+@media (max-width: 700px) {
+    #health-activity .ps-activity-timeline-body {
+        grid-template-columns: 55px minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    #health-activity .ps-activity-timeline-rows {
+        font-size: 10px;
+    }
+
+    #health-activity .ps-activity-timeline-graph,
+    #health-activity .ps-activity-timeline-rows {
+        min-height: 200px;
+    }
+
+    #health-activity .ps-activity-hours {
+        margin-left: 63px;
+        font-size: 9px;
+    }
+}
+
+/* ============================================
+   PET ACTIVITY - TIMELINE SUMMARY CARDS
+   ============================================ */
+
+/* SUMMARY CONTAINER */
+
+#health-activity .ps-activity-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* INDIVIDUAL SUMMARY CARDS */
+
+#health-activity .ps-activity-stats > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 16px;
+    background: #f8fbfa;
+    border: 1px solid #e3eceb;
+    border-radius: 13px;
+}
+
+/* ACTIVITY LABEL */
+
+#health-activity .ps-activity-stats > div > span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #617879;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ACTIVITY DURATION */
+
+#health-activity .ps-activity-stats > div > strong {
+    color: #153f40;
+    font-family: "Inter", sans-serif;
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+/* RESTING CARD */
+
+#health-activity .ps-activity-stats > div:nth-child(1) {
+    background: #f0f6fc;
+    border-color: #dce9f5;
+}
+
+/* WALKING CARD */
+
+#health-activity .ps-activity-stats > div:nth-child(2) {
+    background: #edf9f6;
+    border-color: #d5eee8;
+}
+
+/* RUNNING CARD */
+
+#health-activity .ps-activity-stats > div:nth-child(3) {
+    background: #fff8ed;
+    border-color: #f6e7cf;
+}
+
+/* RESPONSIVE SUMMARY CARDS */
+
+@media (max-width: 700px) {
+    #health-activity .ps-activity-stats {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    #health-activity .ps-activity-stats > div {
+        padding: 14px;
+    }
+
+    #health-activity .ps-activity-stats > div > strong {
+        font-size: 19px;
+    }
+}
+
+/* ============================================
+   PET ACTIVITY - TODAY'S ACTIVITY DONUT CHART
+   ============================================ */
+
+/* DAILY DONUT CHART */
+
+#health-activity #psDailyRing {
+    --ring-progress: 0%;
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 175px;
+    height: 175px;
+    max-width: 100%;
+    aspect-ratio: 1;
+
+    margin: 10px auto 20px;
+
+    border-radius: 50%;
+
+    background: conic-gradient(
+        #169f96 0%,
+        #169f96 var(--ring-progress),
+        #e1eeeb var(--ring-progress),
+        #e1eeeb 100%
+    );
+}
+
+/* INNER WHITE CIRCLE */
+
+#health-activity #psDailyRing::before {
+    content: "";
+    position: absolute;
+    inset: 17px;
+    border-radius: 50%;
+    background: #ffffff;
+}
+
+/* CONTENT INSIDE THE RING */
+
+#health-activity #psDailyRing > * {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+}
+
+/* DAILY ACTIVE TIME */
+
+#health-activity #psDailyActiveTime {
+    color: #123b3c;
+    font-family: "Inter", sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+/* DAILY USUAL RANGE */
+
+#health-activity #psDailyUsualRange {
+    color: #788c8c;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* RESPONSIVE DONUT CHART */
+
+@media (max-width: 700px) {
+    #health-activity #psDailyRing {
+        width: 155px;
+        height: 155px;
+    }
+
+    #health-activity #psDailyActiveTime {
+        font-size: 20px;
+    }
+}
+
+/* ============================================
+   PET ACTIVITY - ACTIVITY BREAKDOWN
+   ============================================ */
+
+/* BREAKDOWN CONTAINER */
+
+#health-activity .ps-activity-ring-breakdown {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 18px;
+    border-top: 1px solid #e3eceb;
+    padding-top: 10px;
+}
+
+/* BREAKDOWN ROW */
+
+#health-activity .ps-activity-ring-breakdown > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 4px;
+}
+
+/* ACTIVITY NAME */
+
+#health-activity .ps-activity-ring-breakdown > div > span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #617879;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ACTIVITY VALUE */
+
+#health-activity .ps-activity-ring-breakdown > div > strong {
+    color: #153f40;
+    font-family: "Inter", sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: right;
+}
+
+/* ACTIVITY COLOR INDICATORS */
+
+#health-activity .ps-activity-ring-breakdown .activity-dot {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    margin-right: 0;
+    border-radius: 50%;
+}
+
+#health-activity .ps-activity-ring-breakdown .activity-dot.resting {
+    background: #6899cb;
+    border: none;
+}
+
+#health-activity .ps-activity-ring-breakdown .activity-dot.walking {
+    background: #169f96;
+}
+
+#health-activity .ps-activity-ring-breakdown .activity-dot.running {
+    background: #e5aa4f;
+}
+
+/* USUAL ACTIVE-TIME RANGE */
+
+#health-activity .ps-activity-range {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 12px;
+    background: #f8fbfa;
+    border: 1px solid #e3eceb;
+    border-radius: 12px;
+    text-align: center;
+}
+
+#health-activity .ps-activity-range small {
+    color: #788c8c;
+    font-size: 11px;
+}
+
+#health-activity .ps-activity-range strong {
+    color: #153f40;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* ============================================
+   PET ACTIVITY - WEEKLY ACTIVITY DONUT CHART
+   ============================================ */
+
+/* WEEKLY DONUT CHART */
+
+#health-activity #psWeeklyRing {
+    --ring-progress: 0%;
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 175px;
+    height: 175px;
+    max-width: 100%;
+    aspect-ratio: 1;
+
+    margin: 10px auto 20px;
+
+    border-radius: 50%;
+
+    background: conic-gradient(
+        #e278a9 0%,
+        #e278a9 var(--ring-progress),
+        #e1eeeb var(--ring-progress),
+        #e1eeeb 100%
+    );
+}
+
+/* INNER WHITE CIRCLE */
+
+#health-activity #psWeeklyRing::before {
+    content: "";
+    position: absolute;
+    inset: 17px;
+    border-radius: 50%;
+    background: #ffffff;
+}
+
+/* CONTENT INSIDE THE RING */
+
+#health-activity #psWeeklyRing > * {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+}
+
+/* WEEKLY ACTIVE TIME */
+
+#health-activity #psWeeklyActiveTime {
+    color: #123b3c;
+    font-family: "Inter", sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+/* WEEKLY USUAL RANGE */
+
+#health-activity #psWeeklyUsualRange {
+    color: #788c8c;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* WEEKLY DATE RANGE */
+
+#health-activity #psWeeklyDates {
+    color: #788c8c;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* RESPONSIVE WEEKLY DONUT */
+
+@media (max-width: 700px) {
+    #health-activity #psWeeklyRing {
+        width: 155px;
+        height: 155px;
+    }
+
+    #health-activity #psWeeklyActiveTime {
+        font-size: 20px;
+    }
+}
+
+/* ============================================
+   PET ACTIVITY - ACTIVITY PATTERN
+   ============================================ */
+
+/* PATTERN SECTION */
+
+#health-activity .ps-activity-pattern-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* BASELINE STATUS */
+
+#health-activity #psActivityPatternStatus {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 7px 12px;
+    background: #edf8f5;
+    border: 1px solid #d5eee8;
+    border-radius: 20px;
+    color: #157f78;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* PATTERN DESCRIPTION */
+
+#health-activity #psActivityPatternDescription {
+    color: #788c8c;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* FOUR ACTIVITY COMPARISON CARDS */
+
+#health-activity .ps-pattern-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+}
+
+/* INDIVIDUAL PATTERN CARD */
+
+#health-activity .ps-pattern-stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 18px;
+    background: #f8fbfa;
+    border: 1px solid #e3eceb;
+    border-radius: 14px;
+}
+
+/* ACTIVITY VALUES */
+
+#health-activity #psPatternRestingToday,
+#health-activity #psPatternWalkingToday,
+#health-activity #psPatternRunningToday,
+#health-activity #psPatternActiveToday {
+    color: #153f40;
+    font-family: "Inter", sans-serif;
+    font-size: 23px;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+/* USUAL BASELINE RANGE */
+
+#health-activity #psPatternRestingRange,
+#health-activity #psPatternWalkingRange,
+#health-activity #psPatternRunningRange,
+#health-activity #psPatternActiveRange {
+    color: #788c8c;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* ACTIVITY TREND */
+
+#health-activity #psPatternRestingTrend,
+#health-activity #psPatternWalkingTrend,
+#health-activity #psPatternRunningTrend,
+#health-activity #psPatternActiveTrend {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #617879;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* CARD COLORS */
+
+#health-activity .ps-pattern-stats > div:nth-child(1) {
+    background: #f0f6fc;
+    border-color: #dce9f5;
+}
+
+#health-activity .ps-pattern-stats > div:nth-child(2) {
+    background: #edf9f6;
+    border-color: #d5eee8;
+}
+
+#health-activity .ps-pattern-stats > div:nth-child(3) {
+    background: #fff8ed;
+    border-color: #f6e7cf;
+}
+
+#health-activity .ps-pattern-stats > div:nth-child(4) {
+    background: #f8f2fa;
+    border-color: #eedff2;
+}
+
+/* RESPONSIVE LAYOUT */
+
+@media (max-width: 1100px) {
+    #health-activity .ps-pattern-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    #health-activity .ps-pattern-stats {
+        grid-template-columns: 1fr;
+    }
+
+    #health-activity .ps-pattern-stats > div {
+        padding: 15px;
+    }
+
+    #health-activity #psPatternRestingToday,
+    #health-activity #psPatternWalkingToday,
+    #health-activity #psPatternRunningToday,
+    #health-activity #psPatternActiveToday {
+        font-size: 20px;
+    }
+}
+
+/* ============================================
+   PAWSENSE - NEW NOTIFICATIONS UI
+   ============================================ */
+
+/* MAIN TWO-COLUMN LAYOUT */
+
+#notifications .notifications-shell {
+    display: grid;
+    grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 20px;
+    width: 100%;
+}
+
+#notifications .notifications-sidebar,
+#notifications .notifications-main {
+    min-width: 0;
+}
+
+/* MAIN PANELS */
+
+#notifications .notifications-pets-card,
+#notifications .notifications-detail-card {
+    background: #ffffff;
+    border: 1px solid #e0ebe8;
+    border-radius: 20px;
+    box-shadow: 0 8px 28px rgba(15, 65, 63, 0.05);
+    overflow: hidden;
+    min-height: 600px;
+}
+
+#notifications .notifications-pets-card {
+    padding: 20px 12px;
+}
+
+#notifications .notifications-detail-card {
+    padding: 0;
+}
+
+/* ============================================
+   LEFT PANEL - YOUR PETS
+   ============================================ */
+
+#notifications .notifications-pets-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 10px 18px;
+}
+
+#notifications .notifications-pets-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#notifications .notifications-pets-title h3 {
+    margin: 0;
+    color: #123b3c;
+    font-size: 19px;
+    font-weight: 800;
+}
+
+#notifications #notificationsPetCount {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+#notifications .notifications-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: #ffffff;
+    border: 1px solid #dce8e5;
+    border-radius: 11px;
+    color: #168c84;
+    cursor: pointer;
+}
+
+#notifications .notifications-search-btn:hover {
+    background: #edf8f5;
+}
+
+/* PET PROFILE LIST */
+
+#notifications .notifications-pet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* PET PROFILE ITEM - FOR DYNAMIC JAVASCRIPT */
+
+#notifications .notifications-pet-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 82px;
+    padding: 12px;
+    background: #ffffff;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s ease;
+}
+
+#notifications .notifications-pet-item:hover {
+    background: #f2faf8;
+}
+
+#notifications .notifications-pet-item.active {
+    background: #e4f5f1;
+    border-color: #d0eae4;
+}
+
+#notifications .notifications-pet-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 4px;
+    background: #169f96;
+    border-radius: 4px;
+}
+
+/* PET AVATAR */
+
+#notifications .notifications-pet-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 52px;
+    width: 52px;
+    height: 52px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: #dcf1ef;
+    color: #0f4c4e;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+#notifications .notifications-pet-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* PET DETAILS */
+
+#notifications .notifications-pet-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+#notifications .notifications-pet-copy strong {
+    display: block;
+    color: #153f40;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+#notifications .notifications-pet-copy small {
+    display: block;
+    color: #738987;
+    font-size: 11px;
+    margin-top: 5px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+#notifications .notifications-pet-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 23px;
+    height: 23px;
+    padding: 0 6px;
+    border-radius: 50px;
+    background: #169f96;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+/* ============================================
+   RIGHT PANEL - SELECTED PET
+   ============================================ */
+
+#notifications .notifications-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 22px;
+    border-bottom: 1px solid #e5eeeb;
+}
+
+#notifications .notifications-detail-pet {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+#notifications .notifications-detail-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 58px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #dcf1ef;
+    color: #0f4c4e;
+    font-size: 22px;
+    font-weight: 800;
+    overflow: hidden;
+}
+
+#notifications .notifications-detail-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#notifications .notifications-detail-meta {
+    min-width: 0;
+}
+
+#notifications .notifications-detail-meta h3 {
+    color: #153f40;
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0;
+}
+
+#notifications .notifications-detail-meta p {
+    color: #738987;
+    font-size: 12px;
+    margin: 5px 0 0;
+}
+
+/* UNREAD AND ACTION BUTTONS */
+
+#notifications .notifications-detail-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#notifications #notificationsUnreadBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #e4f5f1;
+    color: #127e77;
+    border-radius: 12px;
+    padding: 11px 13px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+#notifications #markAllReadBtn {
+    min-height: 38px;
+    font-size: 11px;
+}
+
+/* ============================================
+   NOTIFICATION CATEGORY FILTERS
+   ============================================ */
+
+#notifications .notifications-filter-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5eeeb;
+}
+
+#notifications .notifications-filter-row button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 1px solid #dce8e5;
+    border-radius: 50px;
+    background: #ffffff;
+    color: #506a69;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+#notifications .notifications-filter-row button:hover {
+    background: #edf8f5;
+}
+
+#notifications .notifications-filter-row button.active {
+    background: #169f96;
+    border-color: #169f96;
+    color: #ffffff;
+}
+
+#notifications .notifications-filter-row button span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 50px;
+    background: #edf5f3;
+    color: #52716e;
+    font-size: 10px;
+}
+
+#notifications .notifications-filter-row button.active span {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* ============================================
+   NOTIFICATION MESSAGE CARDS
+   ============================================ */
+
+#notifications .notifications-thread-list {
+    padding: 20px;
+}
+
+#notifications .notifications-thread-list .notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 10px;
+    padding: 16px;
+    background: #ffffff;
+    border: 1px solid #e0ebe8;
+    border-radius: 14px;
+    min-width: 0;
+}
+
+#notifications .notifications-thread-list .notification-item.unread {
+    background: #eaf8f5;
+    border-color: #d5eee8;
+}
+
+#notifications .notifications-thread-list .notification-item.unread::before {
+    background: #169f96;
+    border-radius: 4px;
+}
+
+#notifications .notifications-thread-list .notification-type-icon {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 19px;
+}
+
+#notifications .notifications-thread-list .notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+#notifications .notifications-thread-list .notification-content strong {
+    color: #153f40;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+#notifications .notifications-thread-list .notification-content p {
+    color: #617879;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 5px 0;
+}
+
+#notifications .notifications-thread-list .notification-content small,
+#notifications .notifications-thread-list .notification-time {
+    color: #839795;
+    font-size: 11px;
+}
+
+#notifications .notifications-thread-list .notification-time {
+    flex-shrink: 0;
+    text-align: right;
+}
+
+/* EMPTY STATES */
+
+#notifications .notifications-empty,
+#notifications .notifications-empty-state {
+    padding: 36px 18px;
+    text-align: center;
+    color: #788c8c;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* ============================================
+   RESPONSIVE NOTIFICATIONS LAYOUT
+   ============================================ */
+
+@media (max-width: 1150px) {
+    #notifications .notifications-shell {
+        grid-template-columns: 270px minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    #notifications .notifications-detail-header {
+        padding: 18px;
+    }
+}
+
+@media (max-width: 850px) {
+    #notifications .notifications-shell {
+        grid-template-columns: 1fr;
+    }
+
+    #notifications .notifications-pets-card,
+    #notifications .notifications-detail-card {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    #notifications .notifications-pets-card {
+        padding: 15px 10px;
+    }
+
+    #notifications .notifications-detail-header {
+        padding: 16px;
+    }
+
+    #notifications .notifications-detail-meta h3 {
+        font-size: 17px;
+    }
+
+    #notifications .notifications-filter-row {
+        padding: 12px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    #notifications .notifications-filter-row button {
+        flex-shrink: 0;
+    }
+
+    #notifications .notifications-thread-list {
+        padding: 12px;
+    }
+
+    #notifications .notifications-thread-list .notification-item {
+        flex-wrap: wrap;
+        padding: 13px;
+    }
+
+    #notifications .notifications-thread-list .notification-time {
+        width: 100%;
+        text-align: left;
+        padding-left: 58px;
+    }
+}
+
+/* ============================================
+   PAWSENSE - GLOBAL BUTTON SMOOTH EFFECTS
+   ============================================ */
+
+button:not(:disabled) {
+    transition:
+        background-color 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.18s ease;
+}
+
+/* Smooth hover */
+button:not(:disabled):not([class*="gm-"]):hover {
+    transform: translateY(-1px);
+}
+
+/* Smooth click / press */
+button:not(:disabled):not([class*="gm-"]):active {
+    transform: scale(0.97);
+}
+
+/* Keyboard focus */
+button:focus-visible {
+    outline: 2px solid #169f96;
+    outline-offset: 3px;
+}
+
+/* Notifications category buttons */
+#notifications .notifications-filter-row button:hover {
+    box-shadow: 0 4px 12px rgba(22, 159, 150, 0.12);
+}
+
+#notifications .notifications-filter-row button.active {
+    box-shadow: 0 3px 10px rgba(22, 159, 150, 0.16);
+}
+
+/* Notifications pet selection */
+#notifications .notifications-pet-item {
+    transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.2s ease;
+}
+
+#notifications .notifications-pet-item.active {
+    box-shadow: 0 3px 12px rgba(22, 159, 150, 0.08);
+}
+
+/* Respect reduced motion settings */
+@media (prefers-reduced-motion: reduce) {
+    button,
+    #notifications .notifications-pet-item {
+        transition: none !important;
+    }
+}
+
+
+/* ============================================
+   PAWSENSE - EXPIRED SUBSCRIPTION DESIGN
+   ============================================ */
+
+/* Blur other monitoring cards when subscription expires */
+
+#live-tracking:has(#livePrimaryStatusRow > div:nth-child(2) .status-dot.danger)
+#livePrimaryStatusRow > div:not(:nth-child(2)) .tracking-status-card,
+
+#live-tracking:has(#livePrimaryStatusRow > div:nth-child(2) .status-dot.danger)
+#liveSecondaryStatusRow .tracking-status-card {
+    filter: blur(1px) !important;
+    opacity: 0.55 !important;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* Keep Data Subscription clear and highlighted */
+
+#live-tracking:has(#livePrimaryStatusRow > div:nth-child(2) .status-dot.danger)
+#livePrimaryStatusRow > div:nth-child(2) .tracking-status-card {
+    filter: none !important;
+    opacity: 1 !important;
+    outline: 2px solid #159b8e;
+    outline-offset: -2px;
+    box-shadow: 0 5px 18px rgba(21, 155, 142, 0.15);
+}
+
+/* ==========================================
+   PAWSENSE EXPIRED SUBSCRIPTION BANNER
+   ========================================== */
+
+#pawsenseExpiredBanner {
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 0 18px auto;
+    padding: 11px 20px;
+    background: #fbe2e5;
+    color: #8b202a;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+#pawsenseExpiredBanner .bi {
+    color: #dc666d;
+    font-size: 19px;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   PAWSENSE - RENEW SUBSCRIPTION BUTTON
+   ============================================ */
+
+.subscription-renew-action {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.subscription-renew-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border: 1px solid #139c90;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #087f76;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.subscription-renew-button:hover {
+    background: #139c90;
+    color: #ffffff;
+}
+
+.subscription-renew-button i {
+    font-size: 14px;
+}
+
+/* ============================================
+   PAWSENSE - SUBSCRIPTION RENEWAL MODAL
+   ============================================ */
+
+.pawsense-renewal-modal .modal-dialog {
+    max-width: 550px;
+}
+
+.pawsense-renewal-modal .modal-content {
+    background: linear-gradient(145deg, #084344, #137d76);
+    color: #ffffff;
+    border: 1px solid rgba(159, 255, 234, 0.3);
+    border-radius: 24px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+/* HEADER */
+
+.pawsense-renewal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 28px 8px;
+}
+
+.pawsense-renewal-icon-button {
+    border: none;
+    background: transparent;
+    color: #ffffff;
+    font-size: 21px;
+    cursor: pointer;
+}
+
+.pawsense-renewal-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #ffffff;
+    font-size: 21px;
+    font-weight: 700;
+}
+
+.pawsense-renewal-brand > span > span {
+    color: #6aefda;
+}
+
+/* BODY */
+
+.pawsense-renewal-body {
+    padding: 22px 38px 30px;
+    text-align: center;
+}
+
+
+/* ============================================
+   PAWSENSE RENEWAL - DATABASE REFRESH ICON
+   ============================================ */
+
+.pawsense-renewal-symbol {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 12px;
+    background: #e8fff9;
+    color: #087f7c;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Main database icon */
+
+.pawsense-renewal-database-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+/* Small renewal arrow */
+
+.pawsense-renewal-refresh-icon {
+    position: absolute;
+    right: 9px;
+    bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 21px;
+    height: 21px;
+    background: #e8fff9;
+    border-radius: 50%;
+    color: #087f7c;
+    font-size: 18px;
+    line-height: 1;
+}
+
+
+.pawsense-renewal-eyebrow {
+    color: #8ffff0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+}
+
+.pawsense-renewal-body h2 {
+    color: #ffffff;
+    font-size: 29px;
+    font-weight: 750;
+    margin-bottom: 12px;
+}
+
+.pawsense-renewal-body h2 span {
+    color: #80f3df;
+}
+
+.pawsense-renewal-description {
+    color: #e4f5f2;
+    font-size: 13px;
+    line-height: 1.7;
+    margin-bottom: 24px;
+}
+
+/* BENEFITS */
+
+.pawsense-renewal-benefits {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(145, 255, 235, 0.35);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.07);
+    text-align: left;
+}
+
+.pawsense-renewal-benefits > div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.pawsense-renewal-benefits i {
+    color: #7bf3d7;
+    font-size: 17px;
+}
+
+/* PRICE */
+
+.pawsense-renewal-price {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 22px;
+}
+
+.pawsense-renewal-price strong {
+    color: #ffffff;
+    font-size: 38px;
+    line-height: 1.1;
+}
+
+.pawsense-renewal-price span {
+    color: #c7f0e8;
+    font-size: 14px;
+}
+
+.pawsense-renewal-price small {
+    color: #bbdbd6;
+    font-size: 10px;
+}
+
+/* BUTTONS */
+
+.pawsense-renewal-primary {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #1eafa3, #31c8ae);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.pawsense-renewal-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.pawsense-renewal-cancel {
+    display: block;
+    margin: 16px auto 0;
+    border: none;
+    background: transparent;
+    color: #e0f4f0;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.pawsense-renewal-footer {
+    margin: 24px 0 0;
+    color: #c8e3df;
+    font-size: 11px;
+}
+
+/* MOBILE */
+
+@media (max-width: 576px) {
+    .pawsense-renewal-modal .modal-dialog {
+        margin: 12px;
+    }
+
+    .pawsense-renewal-body {
+        padding: 18px 22px 24px;
+    }
+
+    .pawsense-renewal-body h2 {
+        font-size: 24px;
+    }
+}
+
+/* ==========================================
+   PAWSENSE RENEWAL MODAL - OFFICIAL LOGO
+   ========================================== */
+
+.pawsense-renewal-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.pawsense-renewal-logo {
+    width: 46px;
+    height: 46px;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: none;
+}
+
+.pawsense-renewal-brand strong {
+    font-size: 21px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.pawsense-renewal-brand strong span {
+    color: #6aefda;
+}
+
+/* ============================================
+   PAWSENSE RENEWAL MODAL - COMPACT DESIGN
+   ============================================ */
+
+.pawsense-renewal-modal .modal-dialog {
+    max-width: 480px;
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.pawsense-renewal-modal .modal-content {
+    overflow: hidden;
+}
+
+/* HEADER */
+
+.pawsense-renewal-header {
+    padding: 14px 24px 0;
+}
+
+/* BODY */
+
+.pawsense-renewal-body {
+    padding: 10px 30px 18px;
+}
+
+/* CENTER ICON */
+
+.pawsense-renewal-symbol {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 10px;
+    font-size: 28px;
+}
+
+/* SUBSCRIPTION LABEL */
+
+.pawsense-renewal-eyebrow {
+    margin-bottom: 5px;
+    font-size: 10px;
+}
+
+/* TITLE */
+
+.pawsense-renewal-body h2 {
+    font-size: 26px;
+    line-height: 1.2;
+    margin-bottom: 8px;
+}
+
+/* DESCRIPTION */
+
+.pawsense-renewal-description {
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+/* BENEFITS */
+
+.pawsense-renewal-benefits {
+    gap: 9px;
+    padding: 14px 18px;
+    margin-bottom: 15px;
+}
+
+.pawsense-renewal-benefits > div {
+    gap: 10px;
+    font-size: 12px;
+}
+
+.pawsense-renewal-benefits i {
+    font-size: 16px;
+}
+
+/* PRICE */
+
+.pawsense-renewal-price {
+    gap: 2px;
+    margin-bottom: 14px;
+}
+
+.pawsense-renewal-price strong {
+    font-size: 32px;
+}
+
+.pawsense-renewal-price span {
+    font-size: 12px;
+}
+
+.pawsense-renewal-price small {
+    font-size: 10px;
+}
+
+/* RENEW BUTTON */
+
+.pawsense-renewal-primary {
+    padding: 11px 14px;
+    font-size: 14px;
+}
+
+/* CANCEL BUTTON */
+
+.pawsense-renewal-cancel {
+    margin: 10px auto 0;
+    font-size: 12px;
+}
+
+/* FOOTER */
+
+.pawsense-renewal-footer {
+    margin: 13px 0 0;
+    font-size: 10px;
+}
+
+/* MOBILE ADJUSTMENT */
+
+@media (max-width: 576px) {
+    .pawsense-renewal-modal .modal-dialog {
+        margin: 10px;
+    }
+
+    .pawsense-renewal-modal .pawsense-renewal-body {
+        padding: 10px 20px 16px;
+    }
+
+    .pawsense-renewal-modal .pawsense-renewal-body h2 {
+        font-size: 23px;
+    }
+}
+
+/* SHORT SCREENS - PREVENT CONTENT FROM BEING CUT OFF */
+
+@media (max-height: 620px) {
+    .pawsense-renewal-modal .modal-content {
+        max-height: calc(100dvh - 20px);
+        overflow-y: auto;
+    }
+}
+
+/* ==========================================
+   PAWSENSE - QR PAYMENT MODAL
+   ========================================== */
+
+.pawsense-payment-symbol {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #e8fff9;
+    color: #087f7c;
+    font-size: 28px;
+}
+
+/* QR CODE */
+
+.pawsense-payment-qr {
+    width: 190px;
+    min-height: 190px;
+    margin: 0 auto 16px;
+    padding: 16px;
+    background: #ffffff;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #58716f;
+    text-align: center;
+}
+
+.pawsense-payment-qr > i {
+    color: #159b8e;
+    font-size: 65px;
+}
+
+.pawsense-payment-qr > span {
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* PAYMENT SUMMARY */
+
+.pawsense-payment-summary {
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    border: 1px solid rgba(145, 255, 235, 0.35);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.pawsense-payment-summary > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.pawsense-payment-summary > div:last-child {
+    margin-bottom: 0;
+}
+
+.pawsense-payment-summary > div > span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pawsense-payment-summary strong {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* PAYMENT NOTICE */
+
+.pawsense-payment-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 13px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    background: rgba(181, 255, 237, 0.13);
+    color: #d1fff3;
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.pawsense-payment-notice i {
+    color: #8fffe2;
+    flex-shrink: 0;
+    font-size: 16px;
+}
+/* ============================================
+   PAWSENSE - REMOVE MODAL BACK ARROWS
+   ============================================ */
+
+#pawsenseRenewalModal .pawsense-renewal-header button[aria-label="Back"],
+#pawsenseQrPaymentModal .pawsense-renewal-header button[aria-label="Back"],
+#pawsenseRenewalModal .pawsense-renewal-header button:has(.bi-arrow-left),
+#pawsenseQrPaymentModal .pawsense-renewal-header button:has(.bi-arrow-left) {
+    display: none !important;
+}
+
+/* ============================================
+   PAWSENSE - REMOVE LOGO BORDER
+   DASHBOARD AND MODALS
+   ============================================ */
+
+img[src*="pawsense-logo.png"] {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
 }

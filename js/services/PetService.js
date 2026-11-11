@@ -6,7 +6,23 @@ import {
 
 async function savePet(data, uid) {
     try {
-        const ref = await addDoc(collection(db, 'pets'), { ...data, userId: uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+       
+const activatedAt = new Date();
+const expiresAt = new Date(
+    activatedAt.getTime() + (30 * 24 * 60 * 60 * 1000)
+);
+
+const ref = await addDoc(collection(db, 'pets'), {
+    ...data,
+    userId: uid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+
+    subscription: {
+        activatedAt: activatedAt,
+        expiresAt: expiresAt
+    }
+});
         return { success: true, id: ref.id };
     } catch (e) {
         return { success: false, error: e.code, message: e.message };

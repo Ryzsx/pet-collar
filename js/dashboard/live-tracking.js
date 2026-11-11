@@ -285,6 +285,70 @@ function toTrackingPet(rawPet, index) {
 
     return {
         ...rawPet,
+     subscription: (() => {
+    const subscriptionKey = Object.keys(rawPet).find(
+        key => key.trim().toLowerCase() === 'subscription'
+    );
+
+    const source = subscriptionKey
+        ? rawPet[subscriptionKey]
+        : null;
+
+    console.log(
+        '[PawSense Subscription Check]',
+        rawPet.name,
+        subscriptionKey,
+        source
+    );
+
+    if (!source || typeof source !== 'object') {
+        return null;
+    }
+
+        const toDate = value => {
+            if (!value) return null;
+
+            const date = typeof value.toDate === 'function'
+                ? value.toDate()
+                : new Date(value);
+
+            return Number.isNaN(date.getTime())
+                ? null
+                : date;
+        };
+
+        const activatedAt = toDate(source.activatedAt);
+        const expiresAt = toDate(source.expiresAt);
+
+        const status = expiresAt
+            ? expiresAt.getTime() <= Date.now()
+                ? 'expired'
+                : 'active'
+            : 'not-activated';
+
+        return {
+            ...source,
+
+            activated:
+                formatFirestoreTime(source.activatedAt) ||
+                'Not recorded',
+
+            expires:
+                formatFirestoreTime(source.expiresAt) ||
+                'Not recorded',
+
+            status:
+                activatedAt && expiresAt
+                    ? status
+                    : 'not-activated',
+
+            validity:
+                activatedAt && expiresAt
+                    ? '30 Days Validity'
+                    : 'Not activated'
+        };
+    })(),
+
 
         id:
             rawPet.id ||
@@ -560,31 +624,63 @@ function renderSelectedLivePet() {
         `;
 
         primaryRow.innerHTML = `
-            <div class="col-12 col-md-6 col-xl-4">
-                <article class="tracking-status-card">
-                    <header><span>Collar Connection</span><i class="bi bi-router"></i></header>
-                    <div class="status-card-value"><i class="status-dot"></i><strong class="muted">Not paired</strong></div>
-                    <div class="status-card-details">
-                        <span><i class="bi bi-wifi-off"></i>No collar connection</span>
-                        <span><i class="bi bi-arrow-repeat"></i>No sync recorded</span>
-                    </div>
-                </article>
-            </div>
-            <div class="col-12 col-md-6 col-xl-4">
-                <article class="tracking-status-card pet-location-card">
-                    <header><span>Pet's Location</span><i class="bi bi-geo-alt"></i></header>
-                    <div class="status-card-value"><i class="bi bi-geo-alt value-icon"></i><strong class="muted">Unavailable</strong></div>
-                    <div class="status-card-details"><span><i class="bi bi-clock"></i>No location received yet</span></div>
-                </article>
-            </div>
-            <div class="col-12 col-md-6 col-xl-4">
-                <article class="tracking-status-card">
-                    <header><span>Current Activity</span><i class="bi bi-activity"></i></header>
-                    <div class="status-card-value"><i class="bi bi-dash-circle value-icon"></i><strong class="muted">No data</strong></div>
-                    <div class="status-card-details"><span><i class="bi bi-clock"></i>No activity received yet</span></div>
-                </article>
-            </div>
-        `;
+
+<div class="col-12 col-md-6 col-xl-4">
+    <article class="tracking-status-card">
+        <header><span>Collar Connection</span><i class="bi bi-router"></i></header>
+        <div class="status-card-value">
+            <i class="status-dot"></i>
+            <strong class="muted">Not paired</strong>
+        </div>
+        <div class="status-card-details">
+            <span><i class="bi bi-wifi-off"></i>No collar connection</span>
+            <span><i class="bi bi-arrow-repeat"></i>No sync recorded</span>
+        </div>
+    </article>
+</div>
+
+<div class="col-12 col-md-6 col-xl-4">
+   <article class="tracking-status-card data-subscription-card">
+    <header><span>Data Subscription</span><i class="bi bi-sim"></i></header>
+        <div class="status-card-value">
+            <i class="status-dot"></i>
+            <strong class="muted">Not Activated</strong>
+        </div>
+        <div class="status-card-details">
+            <span><i class="bi bi-calendar3"></i>Activated: Not recorded</span>
+            <span><i class="bi bi-calendar-x"></i>Expires: Not recorded</span>
+            <span><i class="bi bi-check2-circle"></i>Not activated</span>
+        </div>
+    </article>
+</div>
+
+<div class="col-12 col-md-6 col-xl-4">
+    <article class="tracking-status-card">
+        <header><span>Current Activity</span><i class="bi bi-activity"></i></header>
+        <div class="status-card-value">
+            <i class="bi bi-dash-circle value-icon"></i>
+            <strong class="muted">No data</strong>
+        </div>
+        <div class="status-card-details">
+            <span><i class="bi bi-clock"></i>No activity received yet</span>
+        </div>
+    </article>
+</div>
+
+<div class="col-12 col-md-6 col-xl-4">
+    <article class="tracking-status-card pet-location-card">
+        <header><span>Pet's Location</span><i class="bi bi-geo-alt"></i></header>
+        <div class="status-card-value">
+            <i class="bi bi-geo-alt value-icon"></i>
+            <strong class="muted">Unavailable</strong>
+        </div>
+        <div class="status-card-details">
+            <span><i class="bi bi-clock"></i>No location received yet</span>
+        </div>
+    </article>
+</div>
+`;
+
 
         secondaryRow.innerHTML = `
             <div class="col-12 col-md-6">
@@ -606,29 +702,55 @@ function renderSelectedLivePet() {
         return;
     }
 
-    const subscriptionExpired = String(pet.subscription?.status || '').toLowerCase() === 'expired';
-    if (subscriptionExpired) {
-        trackingMessage.hidden = false;
-        trackingMessage.className = 'tracking-message danger';
-        trackingMessage.innerHTML = `<i class="bi bi-calendar-x"></i><span>${escapeHtml(pet.name)}’s data subscription has expired. Renew the subscription to restore live monitoring.</span>`;
-        primaryRow.innerHTML = `
-            <div class="col-12 col-lg-6">
-                <article class="tracking-status-card subscription-expired-card">
-                    <header><span>Data Subscription</span><i class="bi bi-sim"></i></header>
-                    <div class="status-card-value"><i class="status-dot danger"></i><strong class="danger">Expired</strong></div>
-                    <div class="status-card-details">
-                        <span><i class="bi bi-calendar3"></i>Activated: ${escapeHtml(pet.subscription.activated || 'Not recorded')}</span>
-                        <span><i class="bi bi-calendar-x"></i>Expired: ${escapeHtml(pet.subscription.expires || 'Not recorded')}</span>
-                        <span><i class="bi bi-x-circle"></i>${escapeHtml(pet.subscription.validity || 'Subscription inactive')}</span>
-                    </div>
-                </article>
-            </div>
+
+    const subscriptionExpired =
+        String(pet.subscription?.status || '').toLowerCase() === 'expired';
+
+    // ==========================================
+    // PAWSENSE - SUBSCRIPTION EXPIRED BANNER
+    // ==========================================
+
+    let expiredBanner = document.getElementById(
+        'pawsenseExpiredBanner'
+    );
+
+    if (!expiredBanner && primaryRow.parentElement) {
+        expiredBanner = document.createElement('div');
+
+        expiredBanner.id = 'pawsenseExpiredBanner';
+
+        expiredBanner.innerHTML = `
+            <i class="bi bi-exclamation-circle-fill"
+               aria-hidden="true"></i>
+            <span>
+                Subscription expired — showing last known data.
+            </span>
         `;
-        secondaryRow.innerHTML = '';
-        return;
+
+        primaryRow.parentElement.insertBefore(
+            expiredBanner,
+            primaryRow
+        );
     }
 
-    // EXISTING PET CODE CONTINUES BELOW
+    if (expiredBanner) {
+        expiredBanner.style.display =
+            subscriptionExpired ? 'flex' : 'none';
+    }
+ 
+
+    
+
+    if (subscriptionExpired) {
+        trackingMessage.hidden = false;
+        trackingMessage.className = 'tracking-message subscription-expiry-pill';
+
+        trackingMessage.innerHTML = `
+            <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+            <span>Subscription expired — showing last known data.</span>
+        `;
+    }
+
 
     const internetAvailable = hasCollarInternet(pet);
     const trackingState = getLivePetState(pet);
@@ -651,11 +773,36 @@ function renderSelectedLivePet() {
         ? `${activityAvailable ? 'Updated' : 'Last recorded'} ${pet.activity.updated}`
         : hasActivityRecord ? 'Timestamp not recorded' : 'No activity received yet';
     const activityIcon = {
-        Resting: 'bi-moon-stars',
-        Walking: 'bi-person-walking',
-        Running: 'bi-lightning-charge'
-    }[activityValue] || 'bi-dash-circle';
-    const statusMessage = getTrackingMessage(pet);
+    resting: '../assets/images/activity-resting.svg',
+    walking: '../assets/images/activity-walking.svg',
+    running: '../assets/images/activity-running.svg'
+}[String(activityValue).trim().toLowerCase()] || null;
+
+
+   const statusMessage = getTrackingMessage(pet);
+
+// EXISTING TRACKING MESSAGE LOGIC
+trackingMessage.hidden = !statusMessage;
+
+trackingMessage.className =
+    `tracking-message ${internetAvailable ? 'warning' : 'danger'}`;
+
+trackingMessage.innerHTML = statusMessage || '';
+
+// ==========================================
+// EXPIRED SUBSCRIPTION BANNER - FINAL OVERRIDE
+// ==========================================
+if (subscriptionExpired) {
+    trackingMessage.hidden = false;
+
+    trackingMessage.className =
+        'tracking-message subscription-expiry-pill';
+
+    trackingMessage.innerHTML = `
+        <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+        <span>Subscription expired — showing last known data.</span>
+    `;
+}
 
     trackingMessage.hidden = !statusMessage;
     trackingMessage.className = `tracking-message ${internetAvailable ? 'warning' : 'danger'}`;
@@ -664,35 +811,100 @@ function renderSelectedLivePet() {
         : '';
 
     primaryRow.innerHTML = `
-        <div class="col-12 col-md-6 col-xl-4">
-            <article class="tracking-status-card">
-                <header><span>Collar Connection</span><i class="bi bi-router"></i></header>
-                <div class="status-card-value"><i class="status-dot ${internetAvailable ? 'good' : 'danger'}"></i><strong class="${internetAvailable ? 'good' : 'danger'}">${internetAvailable ? 'Online' : 'Offline'}</strong></div>
-                <div class="status-card-details">
-                    
-                    <span><i class="bi bi-globe2"></i>${escapeHtml(CELLULAR_NETWORK_LABEL)}</span>
-                    <span><i class="bi bi-arrow-repeat"></i>Last Sync: ${escapeHtml(pet.lastSync)}</span>
-                </div>
-            </article>
+
+<div class="col-12 col-md-6 col-xl-4">
+    <article class="tracking-status-card">
+        <header>
+            <span>Collar Connection</span>
+            <i class="bi bi-router"></i>
+        </header>
+
+        <div class="status-card-value">
+            <i class="status-dot ${internetAvailable ? 'good' : 'danger'}"></i>
+            <strong class="${internetAvailable ? 'good' : 'danger'}">
+                ${internetAvailable ? 'Online' : 'Offline'}
+            </strong>
         </div>
-        <div class="col-12 col-md-6 col-xl-4">
-            <article class="tracking-status-card">
-                <header><span>Data Subscription</span><i class="bi bi-sim"></i></header>
-                <div class="status-card-value"><i class="status-dot good"></i><strong class="good">Active</strong></div>
-                <div class="status-card-details">
-                    <span><i class="bi bi-calendar3"></i>Activated: Sep 19, 2026</span>
-                    <span><i class="bi bi-calendar-x"></i>Expires: Oct 19, 2026</span>
-                    <span><i class="bi bi-check2-circle"></i>30 Days Validity</span>
-                </div>
-            </article>
+
+        <div class="status-card-details">
+            <span>
+                <i class="bi bi-globe2"></i>${escapeHtml(CELLULAR_NETWORK_LABEL)}
+            </span>
+            <span>
+                <i class="bi bi-arrow-repeat"></i>Last Sync: ${escapeHtml(pet.lastSync)}
+            </span>
         </div>
-        <div class="col-12 col-md-6 col-xl-4">
-            <article class="tracking-status-card">
-                <header><span>${activityHeading}</span><i class="bi bi-activity"></i></header>
-                <div class="status-card-value"><i class="bi ${activityIcon} value-icon activity"></i><strong class="${hasActivityRecord ? '' : 'muted'}">${escapeHtml(activityValue)}</strong></div>
-                <div class="status-card-details"><span><i class="bi bi-clock"></i>${escapeHtml(activityTimestamp)}</span></div>
-            </article>
+    </article>
+</div>
+
+<div class="col-12 col-md-6 col-xl-4">
+    <article class="tracking-status-card">
+        <header>
+            <span>Data Subscription</span>
+            <i class="bi bi-sim"></i>
+        </header>
+
+        <div class="status-card-value">
+            <i class="status-dot ${pet.subscription?.status === 'active' ? 'good' : pet.subscription?.status === 'expired' ? 'danger' : 'muted'}"></i>
+            <strong class="${pet.subscription?.status === 'active' ? 'good' : pet.subscription?.status === 'expired' ? 'danger' : 'muted'}">
+                ${pet.subscription?.status === 'active' ? 'Active' : pet.subscription?.status === 'expired' ? 'Expired' : 'Not Activated'}
+            </strong>
         </div>
+
+        <div class="status-card-details">
+            <span>
+                <i class="bi bi-calendar3"></i>Activated: ${escapeHtml(pet.subscription?.activated || 'Not recorded')}
+            </span>
+            <span>
+                <i class="bi bi-calendar-x"></i>Expires: ${escapeHtml(pet.subscription?.expires || 'Not recorded')}
+            </span>
+            
+            <span><i class="bi bi-check2-circle"></i>${escapeHtml(pet.subscription?.validity || 'Not activated')}</span>
+            </div>
+
+            ${subscriptionExpired ? `
+          <div class="subscription-renew-action">
+           <button
+            type="button"
+            id="renewSubscriptionBtn"
+            class="subscription-renew-button"
+        >
+            <i class="bi bi-arrow-clockwise"></i>
+            Renew Subscription
+        </button>
+    </div>
+` : ''}
+
+</article>
+
+        </div>
+    </article>
+</div>
+
+<div class="col-12 col-md-6 col-xl-4">
+    <article class="tracking-status-card">
+        <header>
+            <span>${activityHeading}</span>
+            <i class="bi bi-activity"></i>
+        </header>
+
+        <div class="status-card-value">
+            ${activityIcon
+                ? `<img src="${activityIcon}" class="value-icon activity" alt="" aria-hidden="true" style="width: 22px; height: 22px; object-fit: contain; transform: scaleX(-1);">`
+                : `<i class="bi bi-dash-circle value-icon activity"></i>`
+            }
+            <strong class="${hasActivityRecord ? '' : 'muted'}">
+                ${escapeHtml(activityValue)}
+            </strong>
+        </div>
+
+        <div class="status-card-details">
+            <span>
+                <i class="bi bi-clock"></i>${escapeHtml(activityTimestamp)}
+            </span>
+        </div>
+    </article>
+</div>
     `;
 
     secondaryRow.innerHTML = `
@@ -729,29 +941,66 @@ function syncLiveMapMarkers() {
     if (!liveTrackingMap || !window.google?.maps?.Marker) return;
 
     const currentIds = new Set(liveTrackingPets.map(pet => pet.id));
+
     livePetMarkers.forEach((marker, petId) => {
         if (currentIds.has(petId)) return;
+
         setPetMarkerMap(marker, null);
         livePetMarkers.delete(petId);
     });
 
     liveTrackingPets.forEach(pet => {
-        const displayedCoordinates = getDisplayedCoordinates(pet);
-        if (!Array.isArray(displayedCoordinates) || displayedCoordinates.length < 2) return;
+
+        // ============================================
+        // GPS LOCATION OR SAFE ZONE FALLBACK
+        // ============================================
+
+        const gpsCoordinates = getDisplayedCoordinates(pet);
+        const safeZoneCoordinates = normalizeCoordinates(
+            pet.safeZone?.center
+        );
+
+        const displayedCoordinates =
+            Array.isArray(gpsCoordinates) && gpsCoordinates.length >= 2
+                ? gpsCoordinates
+                : safeZoneCoordinates;
+
+        const existingMarker = livePetMarkers.get(pet.id);
+
+        // No valid location or Safe Zone center available
+        if (!Array.isArray(displayedCoordinates) || displayedCoordinates.length < 2) {
+            if (existingMarker) {
+                setPetMarkerMap(existingMarker, null);
+            }
+            return;
+        }
 
         const position = toGoogleCoordinates(displayedCoordinates);
-        const existingMarker = livePetMarkers.get(pet.id);
+
+        // ============================================
+        // UPDATE EXISTING PET MARKER
+        // ============================================
+
         if (existingMarker) {
             setPetMarkerPosition(existingMarker, position);
             setPetMarkerMap(existingMarker, liveTrackingMap);
             return;
         }
 
+        // ============================================
+        // CREATE NEW PET MARKER
+        // ============================================
+
         const marker = createLivePetMarker(pet, position);
-        marker.addListener('click', () => selectLiveTrackingPet(pet.id));
+
+        marker.addListener('click', () => {
+            selectLiveTrackingPet(pet.id);
+        });
+
         livePetMarkers.set(pet.id, marker);
     });
 }
+
 
 function fitAllLivePetsOnMap() {
     if (!liveTrackingMap || !window.google?.maps?.LatLngBounds) return;
@@ -819,17 +1068,24 @@ function startSelectedPetRealtimeListener() {
                 if (index === -1) {
                     return;
                 }
+const realtimePet = {
+    id: snapshot.id,
+    ...snapshot.data()
+};
 
-                const realtimePet = {
-                    id: snapshot.id,
-                    ...snapshot.data()
-                };
 
-                liveTrackingPets[index] =
-                    toTrackingPet(
-                        realtimePet,
-                        index
-                    );
+console.log(
+    '[LIVE SNAPSHOT SUBSCRIPTION]',
+    snapshot.ref.path,
+    realtimePet.name,
+    realtimePet.subscription
+);
+
+liveTrackingPets[index] =
+    toTrackingPet(
+        realtimePet,
+        index
+    );
 
                 console.log(
                     'REAL-TIME PET UPDATE:',

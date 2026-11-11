@@ -775,15 +775,41 @@ public class DeviceController : ControllerBase
                         // Update Device
                         // ----------------------------------------------
 
-                        Dictionary<string, object> deviceUpdates =
-                            new()
-                            {
-                                { "paired", true },
-                                { "pairedPetId", petId },
-                                { "pairedUserId", userId },
-                                { "pairedAt", FieldValue.ServerTimestamp }
-                            };
+Dictionary<string, object> deviceUpdates =
+    new()
+    {
+        { "paired", true },
+        { "pairedPetId", petId },
+        { "pairedUserId", userId },
+        { "pairedAt", FieldValue.ServerTimestamp }
+    };
 
+// ============================================
+// ACTIVATE 30-DAY SUBSCRIPTION ON FIRST PAIRING
+// ============================================
+
+// Preserve existing subscription dates.
+// Unpairing and re-pairing must not restart validity.
+
+if (!deviceSnapshot.ContainsField("subscription"))
+{
+    DateTime activatedAtUtc = DateTime.UtcNow;
+    DateTime expiresAtUtc = activatedAtUtc.AddDays(30);
+
+    deviceUpdates["subscription"] =
+        new Dictionary<string, object>
+        {
+            {
+                "activatedAt",
+                Timestamp.FromDateTime(activatedAtUtc)
+            },
+            {
+                "expiresAt",
+                Timestamp.FromDateTime(expiresAtUtc)
+            }
+        };
+}
+    
 
                         transaction.Update(
                             deviceRef,

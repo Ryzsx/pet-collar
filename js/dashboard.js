@@ -17,7 +17,8 @@ if ('scrollRestoration' in history) {
 
 const pageMeta = {
     'live-tracking': ['Live Tracking', 'Track your pet’s current location, safe-zone status, and live collar information.'],
-    'health-activity': ['Activity Monitoring', 'View your pet’s activity history and wellness information.'],
+    'health-activity': ['Pet Activity', 'View your pet’s activity history and wellness information.'],
+    'pet-route-history': ['Pet Route History', 'View your pet’s recorded routes, previous locations, and trip information.'],
     'pet-management': ['Pet Management', 'Manage your pet profiles, collar details, and safe-zone settings.'],
     notifications: ['Notifications', 'Check important alerts and updates from your pet’s collar.'],
     settings: ['Settings', 'Manage your account, security, and notification preferences.']
@@ -142,9 +143,11 @@ function initializePageHeaders() {
     });
 }
 
+
 function showSection(sectionId) {
-    const visibleSectionId = sectionId === 'history' ? 'health-activity' : sectionId;
-    if (!pageMeta[visibleSectionId]) return;
+    const visibleSectionId = sectionId === 'history' ? 'pet-route-history' : sectionId;
+    if (!pageMeta[visibleSectionId] && visibleSectionId !== 'pet-route-history') return;
+
     $$('.dashboard-section').forEach(section => section.classList.toggle('active', section.id === visibleSectionId));
     $$('.sidebar-nav [data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === visibleSectionId));
 
@@ -154,15 +157,15 @@ function showSection(sectionId) {
 
     history.replaceState(null, '', `#${sectionId}`);
     if (visibleSectionId === 'notifications') acknowledgeNotificationBadge();
+
     $('.dashboard-main')?.scrollTo({ top: 0, behavior: 'instant' });
     closeSidebar();
-    if (sectionId === 'history') {
-        $('.history-block')?.scrollIntoView({ block: 'start', behavior: 'instant' });
-    }
+
     if (visibleSectionId === 'live-tracking' && hasLiveMap()) {
         setTimeout(refreshLiveMapLayout, 50);
     }
 }
+
 
 function attachStaticEvents() {
     $$('.sidebar-nav [data-section]').forEach(button => button.addEventListener('click', () => showSection(button.dataset.section)));
