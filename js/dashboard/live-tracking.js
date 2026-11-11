@@ -938,6 +938,12 @@ if (subscriptionExpired) {
 }
 
 function syncLiveMapMarkers() {
+
+    // TEMPORARY: Disable Google Maps markers
+    // while the Maps API is unavailable.
+    // Keep pet loading and monitoring independent.
+    return;
+
     if (!liveTrackingMap || !window.google?.maps?.Marker) return;
 
     const currentIds = new Set(liveTrackingPets.map(pet => pet.id));
