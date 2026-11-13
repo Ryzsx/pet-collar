@@ -32,19 +32,27 @@
                 <button class="nav-link" type="button" data-section="notifications" title="Notifications"><i class="bi bi-bell"></i><span>Notifications</span><span class="nav-count" id="notificationCount">4</span></button>
                 <button class="nav-link" type="button" data-section="settings" title="Settings"><i class="bi bi-gear"></i><span>Settings</span></button>
             </nav>
-            <div class="sidebar-footer">
-                <div class="sidebar-user">
-                    <span class="user-avatar" id="userAvatar">U</span>
-                    <div class="user-copy"><strong id="userName">User</strong><span id="userEmail">user@email.com</span></div>
-                    <button class="sidebar-account-logout" type="button" data-logout-action title="Logout" aria-label="Log out"><i class="bi bi-box-arrow-right"></i></button>
-                </div>
-            </div>
+    <div class="sidebar-footer">
+    <div class="sidebar-user">
+        <span class="user-avatar" id="userAvatar">U</span>
+        <div class="user-copy"><strong id="userName">User</strong><span id="userEmail">user@email.com</span></div>
+        <button class="sidebar-account-logout" type="button" data-logout-action title="Logout" aria-label="Log out"><i class="bi bi-box-arrow-right"></i></button>
+    </div>
+
+    <div class="sidebar-profile-menu" id="sidebarProfileMenu" hidden>
+        <button type="button" class="sidebar-profile-logout" data-logout-action>
+            <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+            <span>Log Out</span>
+        </button>
+    </div>
+</div>
+        </aside>
         </aside>
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
         <main class="dashboard-main">
             <header class="topbar page-topbar">
-                <button class="mobile-brand-toggle d-lg-none" id="mobileLogoToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" title="Open navigation"><span class="brand-mark light-surface-brand-mark"><img class="brand-logo-icon" src="../assets/images/pawsenselogo.png" alt=""></span></button>
+                <button class="mobile-brand-toggle d-lg-none" id="mobileLogoToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" title="Open navigation"><span class="brand-mark light-surface-brand-mark"><img class="brand-logo-icon" <img src="../assets/images/pawsense-logo.png" alt="PawSense"></span></button>
                 <div class="page-header-content" id="pageHeaderContent"></div>
             </header>
 
@@ -149,6 +157,11 @@
 
                 <section class="dashboard-section" id="pet-route-history">
                 <div class="section-toolbar compact"><div><span class="section-kicker">Location History</span><h1>Pet Route History</h1><p>View your pet's recorded routes and location history.</p></div></div>
+                <!-- PET ROUTE HISTORY - PET SELECTOR -->
+                <div class="monitoring-pet-control">
+                    <div class="live-pet-icon-list" id="routePetSelector" role="group" aria-label="Choose a pet to view route history"></div>
+                </div>
+
                 <div class="calendar-card" id="routeCalendarCard"><div class="calendar-card-head"><div class="calendar-card-heading"><div class="calendar-card-icon"><i class="bi bi-calendar3"></i></div><div><span class="calendar-card-label">Select Date</span><p class="ps-activity-subtitle">View your pet's recorded routes for a specific day.</p><div class="calendar-card-title" id="routeCalendarTitle">Select a date</div></div></div></div><div class="calendar-days" id="routeCalendarDays"></div></div>
                 <div class="history-block" id="routeHistoryBlock"><div class="history-panel active" id="history-location"><div class="row g-4"><div class="col-xl-8"><article class="app-card"><div class="card-topline"><div><h3>Recorded route</h3><p id="recordedRouteDateText">Recorded path for today</p></div><span class="soft-badge neutral" id="recordedRouteDateBadge"><i class="bi bi-calendar3"></i> Today</span></div><div class="route-map" id="recordedRouteMap" role="application" aria-label="Map showing the selected pet's recorded route"></div></article></div><div class="col-xl-4"><article class="app-card h-100"><div class="card-topline"><div><h3>Trip summary</h3><p id="tripSummaryDateText">Today’s movement</p></div></div><div class="trip-stats"><div><span>Distance traveled</span><strong>—</strong></div><div><span>Time outside</span><strong>—</strong></div><div><span>Locations visited</span><strong>—</strong></div></div><div class="timeline" id="recordedRouteStops"><p class="text-muted small mb-0">No recorded route points available yet.</p></div>
 
@@ -840,7 +853,9 @@
                     Renewal requires payment confirmation.
                 </p>
 
-            </div>
+            </div><div class="sidebar-footer">
+
+              </div>
 
         </div>
     </div>
@@ -850,4 +865,4 @@
     <script type="module" src="../js/pages/dashboard-logout.js"></script>
     <script type="module" src="../js/dashboard.js"></script>
 </body>
-</html>
+</html> 

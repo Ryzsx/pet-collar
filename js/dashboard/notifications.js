@@ -1,72 +1,125 @@
-
-
-const notifications = [
-    {
-        id: 'demo-001',
-        pet: 'Milo',
-        category: 'geofence',
-        icon: 'bi-geo-alt-fill',
-        title: ' Geofence Alert',
-        message: 'Milo has exited the designated Home Safe Zone.',
-        time: 'Today, 10:18 AM',
-        unread: true
-    },
-    {
-        id: 'demo-002',
-        pet: 'Milo',
-        category: 'location',
-        icon: 'bi-pin-map-fill',
-        title: ' Location Update',
-        message: 'A new GPS location has been recorded for Milo.',
-        time: 'Today, 9:56 AM',
-        unread: true
-    },
-    {
-        id: 'demo-003',
-        pet: 'Milo',
-        category: 'activity',
-        icon: 'bi-activity',
-        title: ' Unusual Activity Pattern',
-        message: 'Milo\'s recent activity shows a deviation from the established activity baseline.',
-        time: 'Today, 9:38 AM',
-        unread: true
-    },
-    {
-        id: 'demo-004',
-        pet: 'Milo',
-        category: 'collar',
-        icon: 'bi-battery-half',
-        title: 'Low Battery Alert',
-        message: 'Milo\'s collar battery has dropped to 18%. Please charge the device.',
-        time: 'Today, 9:22 AM',
-        unread: true
-    },
-    {
-        id: 'demo-005',
-        pet: 'Milo',
-        category: 'collar',
-        icon: 'bi-wifi-off',
-        title: ' Collar Offline',
-        message: 'Milo\'s collar has stopped sending heartbeat updates and is currently offline.',
-        time: 'Today, 8:31 AM',
-        unread: true
-    },
-    {
-        id: 'demo-006',
-        pet: 'Milo',
-        category: 'collar',
-        icon: 'bi-wifi',
-        title: ' Collar Online',
-        message: 'Milo\'s collar connection has been restored successfully.',
-        time: 'Yesterday, 6:54 PM',
-        unread: false
-    }
-];
+let notifications = [];
+let selectedNotificationPetId = null;
 
 import { $, $$, escapeHtml, showToast } from './dom.js';
+import {
+    auth,
+    db,
+    collection,
+    doc,
+    query,
+    orderBy,
+    onSnapshot,
+    onAuthStateChanged,
+    writeBatch,
+    serverTimestamp
+} from '../firebase-init.js';   
 
-let currentNotificationFilter = 'geofence';
+let currentNotificationFilter = 'all';
 let notificationBadgeAcknowledged = false;
+
+let unsubscribeNotificationAuth = null;
+let unsubscribeNotificationData = null;
+
+function formatNotificationTime(timestamp) {
+    const date = timestamp?.toDate?.();
+
+    if (!date) return 'Time unavailable';
+
+    return new Intl.DateTimeFormat('en-PH', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: 'Asia/Manila'
+    }).format(date);
+}
+
+function startNotificationListener() {
+    if (unsubscribeNotificationAuth) return;
+
+    unsubscribeNotificationAuth = onAuthStateChanged(
+        auth,
+        user => {
+            // Remove listener from the previous account.
+            if (unsubscribeNotificationData) {
+                unsubscribeNotificationData();
+                unsubscribeNotificationData = null;
+            }
+
+            notifications = [];
+            notificationBadgeAcknowledged = false;
+            renderNotifications();
+
+            if (!user || !user.emailVerified) return;
+
+            const notificationsRef = collection(
+                db,
+                'users',
+                user.uid,
+                'notifications'
+            );
+
+            const notificationsQuery = query(
+                notificationsRef,
+                orderBy('createdAt', 'desc')
+            );
+
+            unsubscribeNotificationData = onSnapshot(
+                notificationsQuery,
+                snapshot => {
+                    const previousUnreadIds = new Set(
+                        notifications
+                            .filter(item => item.unread)
+                            .map(item => item.id)
+                    );
+
+                    const hadNotifications = notifications.length > 0;
+
+                    notifications = snapshot.docs.map(document => {
+                        const data = document.data();
+
+                        return {
+                            id: document.id,
+                            petId: String(data.petId || ''),
+                            pet: data.petName || 'Pet',
+                            category: data.category || 'collar',
+                            title: data.title || 'Notification',
+                            message: data.message || '',
+                            time: formatNotificationTime(
+                                data.eventAt || data.createdAt
+                            ),
+                            unread: data.isRead === false
+                        };
+                    });
+
+                    // Show the badge again when a new unread
+                    // notification arrives while the page is open.
+                    if (
+                        hadNotifications &&
+                        notifications.some(item =>
+                            item.unread &&
+                            !previousUnreadIds.has(item.id)
+                        )
+                    ) {
+                        notificationBadgeAcknowledged = false;
+                    }
+
+                    renderNotifications();
+                },
+                error => {
+                console.error('Notification Firestore Error:', {
+                    code: error.code,
+                    message: error.message
+                });
+
+                showToast(
+                    'Unable to load notifications.',
+                    'bi-exclamation-circle-fill'
+                );
+            }
+            );
+        }
+    );
+}
 
 function acknowledgeNotificationBadge() {
     notificationBadgeAcknowledged = true;
@@ -74,6 +127,13 @@ function acknowledgeNotificationBadge() {
     if (badge) badge.style.display = 'none';
 }
 
+function setSelectedNotificationPetId(petId) {
+    selectedNotificationPetId = petId
+        ? String(petId)
+        : null;
+
+    renderNotifications();
+}
 
 function renderNotifications() {
     const container = $('#notificationList');
@@ -83,10 +143,33 @@ function renderNotifications() {
     // FILTER NOTIFICATIONS BY SELECTED CATEGORY
     // ============================================
 
-    const filteredNotifications = notifications.filter(item =>
-        currentNotificationFilter === 'all' ||
-        item.category === currentNotificationFilter
-    );
+    const notificationsForPet = notifications.filter(
+    item => item.petId === selectedNotificationPetId
+);
+
+    const filteredNotifications = notificationsForPet.filter(item => {
+    const category = item.category;
+
+    if (currentNotificationFilter === 'all') {
+        return true;
+    }
+
+    if (currentNotificationFilter === 'unread') {
+        return item.unread;
+    }
+
+    if (currentNotificationFilter === 'location') {
+        return category === 'location' ||
+               category === 'geofence';
+    }
+
+    if (currentNotificationFilter === 'device') {
+        return category === 'device' ||
+               category === 'collar';
+    }
+
+    return category === currentNotificationFilter;
+});
 
     // ============================================
     // RENDER SELECTED CATEGORY ONLY
@@ -120,12 +203,25 @@ function renderNotifications() {
  
 
     const categoryCounts = {
-        notifCountAll: notifications.length,
-        notifCountGeofence: notifications.filter(item => item.category === 'geofence').length,
-        notifCountLocation: notifications.filter(item => item.category === 'location').length,
-        notifCountActivity: notifications.filter(item => item.category === 'activity').length,
-        notifCountCollar: notifications.filter(item => item.category === 'collar').length
-    };
+    notifCountAll: notificationsForPet.length,
+
+    notifCountGeofence: notificationsForPet.filter(
+        item => item.category === 'geofence'
+    ).length,
+
+    notifCountLocation: notificationsForPet.filter(
+        item => item.category === 'location'
+    ).length,
+
+    notifCountActivity: notificationsForPet.filter(
+        item => item.category === 'activity'
+    ).length,
+
+    notifCountCollar: notificationsForPet.filter(
+        item => item.category === 'collar' ||
+                item.category === 'device'
+    ).length
+};
 
     Object.entries(categoryCounts).forEach(([id, count]) => {
         const element = document.getElementById(id);
@@ -133,7 +229,13 @@ function renderNotifications() {
     });
 
 
-    const unread = notifications.filter(item => item.unread).length;
+    const unread = notificationsForPet.filter(item => item.unread).length;
+    const totalUnread = notifications.filter(item => item.unread).length;
+    const unreadFilterCount = $('#unreadFilterCount');
+
+    if (unreadFilterCount) {
+        unreadFilterCount.textContent = unread;
+    }
 
     const notificationCount = $('#notificationCount');
 
@@ -155,24 +257,99 @@ function renderNotifications() {
 
 
 function attachNotificationEvents() {
-    $$('#notifications .notifications-filter-row [data-notification-filter]').forEach(button => {
-        button.addEventListener('click', () => {
-            currentNotificationFilter = button.dataset.notificationFilter;
+    startNotificationListener();
 
-            $$('#notifications .notifications-filter-row [data-notification-filter]').forEach(item => {
-                item.classList.toggle('active', item === button);
+        const activeFilter = document.querySelector(
+        '#notifications [data-notification-filter].active'
+    );
+
+    if (activeFilter) {
+        currentNotificationFilter =
+            activeFilter.dataset.notificationFilter;
+    }
+    
+    $$('#notifications [data-notification-filter]').forEach(button => {
+    button.addEventListener('click', () => {
+        currentNotificationFilter = button.dataset.notificationFilter;
+
+        $$('#notifications [data-notification-filter]').forEach(item => {
+            item.classList.toggle('active', item === button);
+        });
+
+        renderNotifications();
+    });
+});
+
+    $('#markAllReadBtn')?.addEventListener('click', async event => {
+    const user = auth.currentUser;
+    const button = event.currentTarget;
+
+    if (!user) {
+        showToast('Please sign in again.');
+        return;
+    }
+
+    const unreadNotifications = notifications.filter(
+    item => item.unread &&
+            item.petId === selectedNotificationPetId
+    );  
+
+    if (unreadNotifications.length === 0) {
+        showToast('No unread notifications.');
+        return;
+    }
+
+    button.disabled = true;
+
+    try {
+        // Process in batches to avoid oversized writes.
+        for (let i = 0; i < unreadNotifications.length; i += 400) {
+            const batch = writeBatch(db);
+
+            const group = unreadNotifications.slice(i, i + 400);
+
+            group.forEach(item => {
+                const notificationRef = doc(
+                    db,
+                    'users',
+                    user.uid,
+                    'notifications',
+                    item.id
+                );
+
+                batch.update(notificationRef, {
+                    isRead: true,
+                    readAt: serverTimestamp()
+                });
             });
 
-            renderNotifications();
-        });
-    });
+            await batch.commit();
+        }
 
-    $('#markAllReadBtn')?.addEventListener('click', () => {
-        notifications.forEach(item => { item.unread = false; });
-        renderNotifications();
-        showToast('All notifications marked as read.');
-    });
+        showToast(
+            'All notifications marked as read.',
+            'bi-check-circle-fill'
+        );
+
+        // onSnapshot automatically refreshes the list.
+
+    } catch (error) {
+        console.error('Failed to mark notifications as read:', error);
+
+        showToast(
+            'Failed to update notifications. Please try again.',
+            'bi-exclamation-circle-fill'
+        );
+
+    } finally {
+        button.disabled = false;
+    }
+});
 }
 
-
-export { acknowledgeNotificationBadge, renderNotifications, attachNotificationEvents };
+export {
+    acknowledgeNotificationBadge,
+    renderNotifications,
+    attachNotificationEvents,
+    setSelectedNotificationPetId
+};

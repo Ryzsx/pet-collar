@@ -55,3 +55,67 @@ confirmLogoutButton?.addEventListener('click', async () => {
         window.alert('Could not log out. Please check your connection and try again.');
     }
 });
+// ============================================
+// PAWSENSE - SIDEBAR PROFILE DROPDOWN
+// ============================================
+
+const sidebarProfile = document.querySelector(
+    '.sidebar-footer .sidebar-user'
+);
+
+const sidebarProfileMenu = document.getElementById(
+    'sidebarProfileMenu'
+);
+
+if (sidebarProfile && sidebarProfileMenu) {
+
+    sidebarProfile.setAttribute('role', 'button');
+    sidebarProfile.setAttribute('tabindex', '0');
+    sidebarProfile.setAttribute('aria-controls', 'sidebarProfileMenu');
+    sidebarProfile.setAttribute('aria-expanded', 'false');
+
+    function toggleProfileMenu(open) {
+        sidebarProfileMenu.hidden = !open;
+        sidebarProfile.setAttribute(
+            'aria-expanded',
+            String(open)
+        );
+    }
+
+    // Click the profile to open or close the menu.
+    sidebarProfile.addEventListener('click', event => {
+
+        if (event.target.closest('[data-logout-action]')) {
+            return;
+        }
+
+        toggleProfileMenu(sidebarProfileMenu.hidden);
+    });
+
+    // Keyboard support.
+    sidebarProfile.addEventListener('keydown', event => {
+
+        if (event.target !== sidebarProfile) return;
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleProfileMenu(sidebarProfileMenu.hidden);
+        }
+    });
+
+    // Close when clicking outside the profile.
+    document.addEventListener('click', event => {
+
+        if (!event.target.closest('.sidebar-footer')) {
+            toggleProfileMenu(false);
+        }
+    });
+
+    // Close using Escape.
+    document.addEventListener('keydown', event => {
+
+        if (event.key === 'Escape') {
+            toggleProfileMenu(false);
+        }
+    });
+}

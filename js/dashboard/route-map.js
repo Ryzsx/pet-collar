@@ -1,10 +1,248 @@
-import { $ } from './dom.js';
+import { $, escapeHtml } from './dom.js';
 import { getDisplayedCoordinates } from './pet-status.js';
+import { db } from '../core/firebase-config.js';
+
+import {
+    collection,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    Timestamp
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+// ==================================================
+// FIRESTORE GPS ROUTE HISTORY READER
+// ==================================================
+const gpsHistoryCache = new Map();
+export function watchRecordedGpsHistory(petId, date, onUpdate) {
+
+    if (!petId || !date) {
+        return () => {};
+    }
+
+    const selectedDate = new Date(date);
+
+    if (Number.isNaN(selectedDate.getTime())) {
+        return () => {};
+    }
+
+    const dateKey = [
+        selectedDate.getFullYear(),
+        String(selectedDate.getMonth() + 1).padStart(2, '0'),
+        String(selectedDate.getDate()).padStart(2, '0')
+    ].join('-');
+
+    const dayStart = new Date(
+        `${dateKey}T00:00:00+08:00`
+    );
+
+    const dayEnd = new Date(
+        dayStart.getTime() + 86400000
+    );
+
+    const gpsQuery = query(
+        collection(db, 'pets', petId, 'gpsHistory'),
+        where('recordedAt', '>=', Timestamp.fromDate(dayStart)),
+        where('recordedAt', '<', Timestamp.fromDate(dayEnd)),
+        orderBy('recordedAt', 'asc')
+    );
+
+    return onSnapshot(
+        gpsQuery,
+        snapshot => {
+
+           const records = snapshot.docs
+    .map(document => {
+
+        const data = document.data();
+
+        const lat = data.latitude;
+        const lng = data.longitude;
+
+        const recordedDate =
+            data.recordedAt?.toDate?.();
+
+        if (
+            typeof lat !== 'number' ||
+            typeof lng !== 'number' ||
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng) ||
+            lat < -90 ||
+            lat > 90 ||
+            lng < -180 ||
+            lng > 180 ||
+            !(recordedDate instanceof Date) ||
+            Number.isNaN(recordedDate.getTime())
+        ) {
+            return null;
+        }
+
+        return {
+            id: document.id,
+            lat,
+            lng,
+            time: recordedDate.toLocaleTimeString(
+                'en-GB',
+                {
+                    timeZone: 'Asia/Manila',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }
+            ),
+            recordedAt: recordedDate,
+            source: data.source || '',
+            isTestData: data.isTestData === true
+        };
+
+    })
+    .filter(Boolean);
+
+gpsHistoryCache.set(
+    `${petId}|${dateKey}`,
+    records
+);
+
+            onUpdate(records, null);
+
+        },
+        error => {
+
+            console.error(
+                'GPS HISTORY LOAD FAILED:',
+                error
+            );
+
+            gpsHistoryCache.delete(
+                `${petId}|${dateKey}`
+            );
+
+            onUpdate(null, error);
+        }
+    );
+}
+
 
 let recordedRouteMap = null;
 let routePolyline = null;
 let routeMarkers = [];
 let latestRenderId = 0;
+// ============================================
+// ROUTE HISTORY - REVERSE GEOCODING
+// ============================================
+
+// Copy the existing Geoapify key from live-tracking.js.
+const ROUTE_GEOAPIFY_API_KEY = 'e25eb522791c4a93956e0505de4ad1e6';
+
+const routeAddressCache = new Map();
+
+async function getRoutePointAddress(point) {
+    const key = `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
+
+    if (routeAddressCache.has(key)) {
+        return routeAddressCache.get(key);
+    }
+
+    const request = (async () => {
+        const params = new URLSearchParams({
+            lat: String(point.lat),
+            lon: String(point.lng),
+            format: 'json',
+            lang: 'en',
+            apiKey: ROUTE_GEOAPIFY_API_KEY
+        });
+
+        const response = await fetch(
+            `https://api.geoapify.com/v1/geocode/reverse?${params}`
+        );
+
+        if (!response.ok) {
+            throw new Error(`Geoapify HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const result = data.results?.[0];
+
+        return result?.formatted ||
+            [result?.street, result?.city, result?.state]
+                .filter(Boolean)
+                .join(', ') ||
+            null;
+    })().catch(error => {
+        console.warn('Route address lookup failed:', error);
+        routeAddressCache.delete(key);
+        return null;
+    });
+
+    routeAddressCache.set(key, request);
+
+    return request;
+}
+
+// ============================================
+// UPDATE RECORDED LOCATION LABELS
+// ============================================
+
+async function updateRecordedRouteAddresses(points, pet, date, renderId) {
+    const addresses = await Promise.all(
+        points.map(point => getRoutePointAddress(point))
+    );
+
+    // Ignore results from an older map render.
+    if (renderId !== latestRenderId) return;
+
+    const routeMap = $('#recordedRouteMap');
+
+    if (!routeMap || routeMap.style.display === 'none') {
+        return;
+    }
+
+    // Prevent Milo's previous lookup from changing Chichi's display.
+    const selectedPetId = document.querySelector(
+        '#routePetSelector [data-avatar-pet-id].active'
+    )?.dataset.avatarPetId;
+
+    if (selectedPetId !== pet?.id) return;
+
+    const selectedDateKey = document.querySelector(
+        '#routeCalendarDays [data-route-date].is-selected'
+    )?.dataset.routeDate;
+
+    const dateKey = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+    ].join('-');
+
+    if (selectedDateKey !== dateKey) return;
+
+    const stopItems = document.querySelectorAll(
+        '#recordedRouteStops > div'
+    );
+
+    if (stopItems.length !== points.length) return;
+
+    stopItems.forEach((item, index) => {
+        const detail = item.querySelector('small');
+        const address = addresses[index];
+
+        if (!detail || !address) return;
+
+        const rawTime = points[index].time || '';
+        const [hours, minutes] = rawTime.split(':').map(Number);
+
+        const timeLabel = Number.isFinite(hours) &&
+            Number.isFinite(minutes)
+            ? `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}`
+            : 'Time unavailable';
+
+        detail.textContent = `${timeLabel} · ${address}`;
+
+        detail.title =
+            `GPS: ${points[index].lat.toFixed(6)}, ` +
+            `${points[index].lng.toFixed(6)}`;
+    });
+}
 
 function validCoordinates(value) {
     return Array.isArray(value)
@@ -29,38 +267,138 @@ function waitForGoogleMaps(timeout = 12000) {
     });
 }
 
-function dateSeed(date) {
-    return [...new Date(date).toISOString().slice(0, 10)]
-        .reduce((total, character) => total + character.charCodeAt(0), 0);
-}
+// ============================================
+// PAWSENSE ROUTE HISTORY - DEMO GPS DATA
+// ============================================
+
+// Disable simulated GPS routes.
+// Actual route history will come from Firestore.
+const ROUTE_DEMO_ENABLED = false;
+
+// Simulated GPS points for Milo only.
+// Format: [Time, Latitude, Longitude]
+// Coordinates are illustrative, not verified GPS readings.
+
+const MILO_DEMO_ROUTES = {
+
+    '2026-11-07': [
+        ['08:00', 13.9435, 121.1605],
+        ['08:10', 13.9439, 121.1611],
+        ['08:20', 13.9444, 121.1619],
+        ['08:30', 13.9448, 121.1627]
+    ],
+
+    '2026-11-08': [
+        ['08:30', 13.9448, 121.1627],
+        ['08:40', 13.9442, 121.1621],
+        ['08:50', 13.9436, 121.1615],
+        ['09:00', 13.9431, 121.1609]
+    ],
+
+    '2026-11-09': [
+        ['07:30', 13.9431, 121.1609],
+        ['07:40', 13.9437, 121.1604],
+        ['07:50', 13.9443, 121.1600],
+        ['08:00', 13.9450, 121.1596]
+    ],
+
+    '2026-11-10': [
+        ['09:00', 13.9450, 121.1596],
+        ['09:10', 13.9455, 121.1603],
+        ['09:20', 13.9459, 121.1611],
+        ['09:30', 13.9463, 121.1618]
+    ],
+
+    '2026-11-11': [
+        ['08:15', 13.9463, 121.1618],
+        ['08:25', 13.9458, 121.1624],
+        ['08:35', 13.9451, 121.1629],
+        ['08:45', 13.9445, 121.1633]
+    ],
+
+    '2026-11-12': [
+        ['07:45', 13.9445, 121.1633],
+        ['07:55', 13.9440, 121.1626],
+        ['08:05', 13.9435, 121.1618],
+        ['08:15', 13.9430, 121.1610]
+    ]
+};
+
+// ============================================
+// GET RECORDED GPS POINTS
+// ============================================
 
 function getRecordedPoints(pet, date) {
-    const key = new Date(date).toISOString().slice(0, 10);
-    const stored = pet?.locationHistory?.[key] || pet?.recordedRoutes?.[key];
-    if (Array.isArray(stored)) {
-        const points = stored
-            .map(item => Array.isArray(item) ? item : item?.coordinates)
-            .filter(validCoordinates)
-            .map(([lat, lng]) => ({ lat: Number(lat), lng: Number(lng) }));
-        if (points.length) return points;
+
+    if (!pet) return [];
+
+    const selectedDate = new Date(date);
+
+    if (Number.isNaN(selectedDate.getTime())) {
+        return [];
     }
 
-    const displayed = getDisplayedCoordinates(pet);
-    const safeCenter = pet?.safeZone?.center;
-    const base = validCoordinates(displayed)
-        ? displayed
-        : validCoordinates(safeCenter) ? safeCenter : [12.8797, 121.7740];
-    const seed = dateSeed(date);
-    const direction = seed % 2 ? 1 : -1;
-    const spread = 0.00045 + (seed % 4) * 0.00008;
-    const end = { lat: Number(base[0]), lng: Number(base[1]) };
+    const key = [
+        selectedDate.getFullYear(),
+        String(selectedDate.getMonth() + 1).padStart(2, '0'),
+        String(selectedDate.getDate()).padStart(2, '0')
+    ].join('-');
 
-    return [
-        { lat: end.lat - spread * 1.45, lng: end.lng - spread * direction },
-        { lat: end.lat - spread * .85, lng: end.lng - spread * .55 * direction },
-        { lat: end.lat - spread * .35, lng: end.lng + spread * .25 * direction },
-        end
-    ];
+    // ============================================
+    // DEMO MODE - MILO ONLY
+    // ============================================
+
+    if (ROUTE_DEMO_ENABLED) {
+
+        const isMilo =
+            pet.name?.trim().toLowerCase() === 'milo';
+
+        // Chichi and other pets have no demo route.
+        if (!isMilo) return [];
+
+        const demoPoints = MILO_DEMO_ROUTES[key] || [];
+
+        return demoPoints.map(([time, lat, lng]) => ({
+            lat,
+            lng,
+            time,
+            source: 'manual_test',
+            isTestData: true
+        }));
+    }
+    // ============================================
+    // FIRESTORE GPS HISTORY DATA
+    // ============================================
+
+    const firestoreKey = `${pet.id}|${key}`;
+
+    if (gpsHistoryCache.has(firestoreKey)) {
+        return gpsHistoryCache.get(firestoreKey);
+    }
+
+    // ============================================
+    // NORMAL STORED ROUTE DATA
+    // ============================================
+
+    const stored =
+        pet?.locationHistory?.[key] ||
+        pet?.recordedRoutes?.[key];
+
+    if (!Array.isArray(stored)) {
+        return [];
+    }
+
+    return stored
+        .map(item =>
+            Array.isArray(item)
+                ? item
+                : item?.coordinates
+        )
+        .filter(validCoordinates)
+        .map(([lat, lng]) => ({
+            lat: Number(lat),
+            lng: Number(lng)
+        }));
 }
 
 function distanceInKilometers(start, end) {
@@ -83,29 +421,94 @@ function formatDuration(minutes) {
 
 function getRecordedRouteSummary(pet, date) {
     const points = getRecordedPoints(pet, date);
+
+    if (!points.length) {
+        return null;
+    }
+
+    // Calculate distance between recorded GPS points.
     const distance = points.slice(1).reduce(
-        (total, point, index) => total + distanceInKilometers(points[index], point),
+        (total, point, index) =>
+            total + distanceInKilometers(points[index], point),
         0
     );
-    const durationMinutes = Math.max(0, (points.length - 1) * 35);
-    const startTime = '7:15 AM';
-    const middleTime = durationMinutes >= 70 ? '8:25 AM' : '7:50 AM';
-    const endMinutes = 7 * 60 + 15 + durationMinutes;
-    const endDate = new Date(2000, 0, 1, Math.floor(endMinutes / 60), endMinutes % 60);
-    const endTime = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    // Convert demo HH:mm timestamps into minutes.
+    function timeToMinutes(time) {
+        if (!/^\d{2}:\d{2}$/.test(String(time))) {
+            return null;
+        }
+
+        const [hours, minutes] = time.split(':').map(Number);
+
+        if (hours > 23 || minutes > 59) return null;
+
+        return hours * 60 + minutes;
+    }
+
+    function formatPointTime(time) {
+        const minutes = timeToMinutes(time);
+
+        if (minutes === null) {
+            return 'Time unavailable';
+        }
+
+        return new Date(
+            2000,
+            0,
+            1,
+            Math.floor(minutes / 60),
+            minutes % 60
+        ).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+
+    // Duration from first to last recorded point.
+    const firstTime = timeToMinutes(points[0].time);
+    const lastTime = timeToMinutes(points.at(-1).time);
+
+    const durationMinutes =
+        firstTime !== null &&
+        lastTime !== null &&
+        lastTime >= firstTime
+            ? lastTime - firstTime
+            : null;
+
+    // Generate a location entry for EACH GPS point.
+    const stops = points.map((point, index) => {
+        let name = `GPS Point ${index + 1}`;
+
+        if (index === 0) {
+            name = 'Starting Point';
+        } else if (index === points.length - 1) {
+            name = 'Last Recorded Point';
+        }
+
+        return {
+            name,
+            detail:
+                `${formatPointTime(point.time)} · ` +
+                `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`
+        };
+    });
 
     return {
-        distance: distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`,
-        duration: formatDuration(durationMinutes),
-        locations: `${points.length} ${points.length === 1 ? 'place' : 'places'}`,
-        stops: [
-            { name: pet?.locationName || 'Last recorded location', detail: `${endTime} · Last recorded point` },
-            { name: 'Recorded movement', detail: `${middleTime} · Activity route` },
-            { name: pet?.safeZone?.name || 'Safe zone', detail: `${startTime} · Start point` }
-        ]
+        distance: distance < 1
+            ? `${Math.round(distance * 1000)} m`
+            : `${distance.toFixed(2)} km`,
+
+        duration: durationMinutes === null
+            ? '—'
+            : formatDuration(durationMinutes),
+
+        locations: `${points.length} points`,
+
+        stops
     };
 }
-
 function clearRouteLayers() {
     routePolyline?.setMap(null);
     routePolyline = null;
@@ -154,8 +557,16 @@ function createStartMarker(position, pet) {
 
 async function renderRecordedRouteMap(pet, date, unavailable = false) {
     const container = $('#recordedRouteMap');
-    if (!container || !pet) return;
+    if (!container) return;
+
     const renderId = ++latestRenderId;
+    const selectedPoints = getRecordedPoints(pet, date);
+
+    // No records: remove previous route and markers.
+    if (!pet || selectedPoints.length === 0) {
+        clearRouteLayers();
+        return;
+    }
 
     try {
         await waitForGoogleMaps();
@@ -211,9 +622,25 @@ async function renderRecordedRouteMap(pet, date, unavailable = false) {
         }
 
         const bounds = new window.google.maps.LatLngBounds();
+
         points.forEach(point => bounds.extend(point));
+
         recordedRouteMap.fitBounds(bounds, 64);
-        window.setTimeout(() => window.google.maps.event.trigger(recordedRouteMap, 'resize'), 80);
+
+        window.setTimeout(
+            () => window.google.maps.event.trigger(recordedRouteMap, 'resize'),
+            80
+        );
+
+        // Convert GPS coordinates into readable addresses.
+        if (!unavailable && points.length > 0) {
+            void updateRecordedRouteAddresses(
+                points,
+                pet,
+                new Date(date),
+                renderId
+            );
+        }
     } catch (error) {
         container.innerHTML = '<div class="map-unavailable-state"><span><i class="bi bi-map"></i></span><div><strong>Recorded map unavailable</strong><p>The route map will appear when the map service reconnects.</p></div></div>';
     }

@@ -155,8 +155,17 @@ a {
 }
 .logo-mark img { display: block; height: 100%; object-fit: contain; transform: rotate(5deg); width: 100%; }
 .dashboard-preview-logo { height: 18px; object-fit: contain; width: 18px; }
-.nav-logo .logo-mark, .footer-logo .logo-mark {
+
+.nav-logo .logo-mark {
     background: var(--green);
+    border-color: transparent;
+    box-shadow: none;
+    -webkit-mask: url('../assets/images/pawsense-logo.png') center / 128% no-repeat;
+    mask: url('../assets/images/pawsense-logo.png') center / 128% no-repeat;
+}
+
+.footer-logo .logo-mark {
+    background: #ffffff;
     border-color: transparent;
     box-shadow: none;
     -webkit-mask: url('../assets/images/pawsense-logo.png') center / 128% no-repeat;
@@ -3157,20 +3166,12 @@ body {
 }
 
 .footer-container {
-
     max-width: 1240px;
-
     margin: auto;
-
     display: grid;
-
-    grid-template-columns:
-        1fr 1.3fr;
-
-    gap: 80px;
-
+    grid-template-columns: 1fr 1.3fr;
+    gap: 40px;
 }
-
 .footer-logo {
 
     display: inline-flex;
@@ -3198,24 +3199,19 @@ body {
 }
 
 .footer-links {
-
-    display: grid;
-
-    grid-template-columns:
-        repeat(3, 1fr);
-
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
     gap: 30px;
-
 }
 
 .footer-links h4 {
-
-    color: white;
-
-    font-size: 12px;
-
-    margin-bottom: 15px;
-
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.2px;
+    margin-bottom: 14px;
 }
 
 .footer-links a {

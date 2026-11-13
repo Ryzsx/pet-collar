@@ -91,11 +91,53 @@ async function signInWithIdentifier(identifier, password) {
         }
     }
 
-    if (result.success && !result.user.emailVerified) {
-        return { success: false, error: 'auth/account-pending', user: result.user };
-    }
+            if (result.success && !result.user.emailVerified) {
+            return { success: false, error: 'auth/account-pending', user: result.user };
+        }
 
-    return result;
+        // Initialize missing notification preferences for existing users
+        if (result.success) {
+            try {
+                const userRef = doc(db, 'users', result.user.uid);
+
+                await runTransaction(db, async (transaction) => {
+                    const userSnapshot = await transaction.get(userRef);
+
+                    if (!userSnapshot.exists()) return;
+
+                    const existingPreferences =
+                        userSnapshot.data().notificationPreferences || {};
+
+                    const defaultPreferences = {
+                        geofenceAlerts: true,
+                        lowBatteryAlerts: true,
+                        collarOfflineAlerts: true,
+                        deviceDataAlerts: true,
+                        pushNotifications: false
+                    };
+
+                    const updates = {};
+
+                    Object.entries(defaultPreferences).forEach(([key, value]) => {
+                        if (typeof existingPreferences[key] !== 'boolean') {
+                            updates[`notificationPreferences.${key}`] = value;
+                        }
+                    });
+
+                    if (Object.keys(updates).length > 0) {
+                        transaction.update(userRef, {
+                            ...updates,
+                            updatedAt: serverTimestamp()
+                        });
+                    }
+                });
+
+            } catch (error) {
+                console.warn('Notification preferences initialization failed:', error);
+            }
+        }
+
+        return result;
 }
 
 
@@ -295,14 +337,25 @@ async function completeVerifiedRegistration(uid, registrationData) {
             }
 
             transaction.set(userRef, {
-                username,
-                usernameLower,
-                email,
-                emailVerified: true,
-                registrationStatus: 'active',
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            }, { merge: true });
+            username,
+            usernameLower,
+            email,
+            emailVerified: true,
+            registrationStatus: 'active',
+
+            ...(!userSnapshot.data()?.notificationPreferences ? {
+                notificationPreferences: {
+                    geofenceAlerts: true,
+                    lowBatteryAlerts: true,
+                    collarOfflineAlerts: true,
+                    deviceDataAlerts: true,
+                    pushNotifications: false
+                }
+            } : {}),
+
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        }, { merge: true });
             transaction.set(usernameRef, { uid, email });
         });
 

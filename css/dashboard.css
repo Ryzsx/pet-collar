@@ -151,9 +151,97 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .user-copy strong, .user-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user-copy strong { color: #fff; font-size: 11px; }
 .user-copy span { color: rgba(255,255,255,0.7); font-size: 8px; margin-top: 2px; }
-.sidebar-account-logout { align-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; color: #fff; cursor: pointer; display: inline-flex; flex: 0 0 36px; font-size: 17px; height: 36px; justify-content: center; transition: background .2s ease, border-color .2s ease, transform .2s ease; width: 36px; }
+.sidebar-account-logout { align-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; color: #fff; cursor: pointer;display: none; flex: 0 0 36px; font-size: 17px; height: 36px; justify-content: center; transition: background .2s ease, border-color .2s ease, transform .2s ease; width: 36px; }
 .sidebar-account-logout:hover { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.34); transform: translateX(2px); }
+/* ============================================
+   PAWSENSE - SIDEBAR PROFILE DROPDOWN
+============================================ */
 
+.sidebar-profile-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.sidebar-profile-dropdown > summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.sidebar-profile-dropdown > summary::-webkit-details-marker {
+    display: none;
+}
+
+.sidebar-profile-dropdown > summary:hover {
+    background: rgba(255,255,255,0.16);
+}
+
+.sidebar-profile-chevron {
+    color: #ffffff;
+    font-size: 13px;
+    transition: transform 0.2s ease;
+}
+
+.sidebar-profile-dropdown[open] .sidebar-profile-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-profile-menu {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    right: 0;
+    z-index: 1100;
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    padding: 7px;
+    background: #ffffff;
+    border: 1px solid #dce8e5;
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.16);
+}
+
+.sidebar-profile-menu button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+
+    padding: 11px 13px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+
+    color: #244849;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sidebar-profile-menu button i {
+    font-size: 17px;
+    color: #1d968f;
+}
+
+.sidebar-profile-menu button:hover {
+    background: #edf8f5;
+}
+
+#sidebarProfileMenuLogout {
+    color: #bc4646;
+}
+
+#sidebarProfileMenuLogout i {
+    color: #bc4646;
+}
+
+/* Keep the old logout trigger hidden */
+.sidebar-account-logout {
+    display: none;
+}
 /* ============================================
    PAWSENSE - LOGOUT CONFIRMATION MODAL
 ============================================ */
@@ -1757,7 +1845,66 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
         font-size: 20px;
     }
 }
+/* ============================================
+   DAILY & WEEKLY RING - CENTER TEXT FIX
+   ============================================ */
 
+#health-activity #psDailyRing > div,
+#health-activity #psWeeklyRing > div {
+    position: relative;
+    z-index: 2;
+
+    width: calc(100% - 48px);
+    max-width: 125px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+    padding: 0 2px;
+    text-align: center;
+}
+
+/* MAIN TIME VALUE */
+
+#health-activity #psDailyActiveTime,
+#health-activity #psWeeklyActiveTime {
+    display: block;
+    width: 100%;
+
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.4px;
+
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* DESCRIPTION BELOW TIME */
+
+#health-activity #psDailyRing > div > span,
+#health-activity #psWeeklyRing > div > span {
+    display: block;
+    width: 100%;
+
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+@media (max-width: 700px) {
+    #health-activity #psDailyActiveTime,
+    #health-activity #psWeeklyActiveTime {
+        font-size: 19px;
+    }
+}
 /* ============================================
    PET ACTIVITY - ACTIVITY PATTERN
    ============================================ */
@@ -1876,10 +2023,103 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #health-activity .ps-pattern-stats > div:nth-child(4) {
     background: #f8f2fa;
     border-color: #eedff2;
+}/* ============================================
+   ACTIVITY PATTERN - FINAL COMPACT UI
+   ============================================ */
+
+/* Four activity cards */
+#health-activity .ps-pattern-stats {
+    gap: 10px;
 }
 
-/* RESPONSIVE LAYOUT */
+#health-activity .ps-pattern-stats > .ps-pattern-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px 15px;
+    min-height: 0;
+}
 
+/* Activity name */
+#health-activity .ps-pattern-metric > span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px !important;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+/* Selected day and usual range containers */
+#health-activity .ps-pattern-metric > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 3px !important;
+    width: 100%;
+}
+
+/* Small labels */
+#health-activity .ps-pattern-metric > div > small {
+    display: block !important;
+    font-size: 10px !important;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+/* Main duration values */
+#health-activity #psPatternRestingToday,
+#health-activity #psPatternWalkingToday,
+#health-activity #psPatternRunningToday,
+#health-activity #psPatternActiveToday {
+    display: block !important;
+    font-size: 16px !important;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.2px;
+}
+
+/* Usual range values */
+#health-activity #psPatternRestingRange,
+#health-activity #psPatternWalkingRange,
+#health-activity #psPatternRunningRange,
+#health-activity #psPatternActiveRange {
+    display: block !important;
+    font-size: 11px !important;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+/* Trend status */
+#health-activity .ps-pattern-metric > .ps-pattern-trend {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 3px 7px;
+    font-size: 10px !important;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+/* Reduce section spacing */
+#health-activity .ps-activity-pattern-card {
+    gap: 9px;
+}
+
+#health-activity .ps-activity-pattern-card
+.ps-activity-card-heading {
+    margin-bottom: 0;
+}
+
+#health-activity .ps-activity-pattern-card
+.ps-activity-disclaimer {
+    margin-top: 2px;
+}
+
+/* Reduce disclaimer spacing */
+#health-activity .ps-activity-pattern-card
+.ps-activity-disclaimer {
+    margin-top: 2px;
+}
 @media (max-width: 1100px) {
     #health-activity .ps-pattern-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3050,4 +3290,376 @@ img[src*="pawsense-logo.png"] {
     background: transparent !important;
     padding: 0 !important;
     border-radius: 0 !important;
+}
+/* ============================================
+   PAWSENSE - PROFILE DROPDOWN
+   ============================================ */
+
+.sidebar-footer {
+    position: relative;
+}
+
+.sidebar-user {
+    cursor: pointer;
+}
+
+.sidebar-user:hover {
+    background: rgba(255,255,255,0.16);
+}
+
+#sidebarProfileMenu[hidden] {
+    display: none !important;
+}
+
+#sidebarProfileMenu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 12px;
+    right: 12px;
+    z-index: 1000;
+
+    padding: 2px;
+    background: #ffffff;
+    border: 1px solid #dce8e5;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+}
+
+.sidebar-profile-logout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    width: 100%;
+    padding: 11px 13px;
+
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+
+    color: #bd4545;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sidebar-profile-logout:hover {
+    background: #fff0f0;
+}
+
+.sidebar-profile-logout i {
+    font-size: 17px;
+}
+/* ============================================
+   PAWSENSE - COLLAPSED SIDEBAR DROPDOWN FIX
+   ============================================ */
+
+@media (min-width: 992px) {
+
+    /* Allow dropdown to extend outside sidebar */
+    .app-sidebar.collapsed {
+        overflow: visible;
+    }
+
+    .app-sidebar.collapsed .sidebar-footer {
+        position: relative;
+        overflow: visible;
+    }
+
+ /* Position dropdown beside collapsed sidebar */
+.app-sidebar.collapsed #sidebarProfileMenu {
+    position: absolute;
+
+    left: calc(100% + 5px);
+    right: auto;
+    bottom: 15px;
+
+    width: 130px;
+    min-width: 130px;
+
+    z-index: 1200;
+}
+    /* Keep logout text on one line */
+    .app-sidebar.collapsed .sidebar-profile-logout {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        white-space: nowrap;
+    }
+}
+
+/* ============================================
+   PAWSENSE - PREMIUM ROUTE TRIP SUMMARY
+   ============================================ */
+
+#pet-route-history .trip-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 22px;
+}
+
+#pet-route-history .trip-stats > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: 0;
+    min-height: 85px;
+    padding: 11px 14px;
+    border: 1px solid #e2f1ed;
+    border-radius: 13px;
+    background: linear-gradient(
+        145deg,
+        #f0faf8 0%,
+        #e0f3ef 100%
+    );
+    transition: background 0.2s ease;
+}
+#pet-route-history .trip-stats > div i,
+#pet-route-history .trip-stats > div svg {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    margin-bottom: 8px;
+    color: #118d83;
+    flex-shrink: 0;
+}
+
+#pet-route-history .trip-stats > div:hover {
+    background: #d8efea;
+}
+
+#pet-route-history .trip-stats span {
+    display: block;
+    margin-bottom: 6px;
+    color: #536c70;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+#pet-route-history .trip-stats strong {
+    display: block;
+    margin: 0;
+    color: #102b35;
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: -0.7px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+@media (max-width: 575px) {
+    #pet-route-history .trip-stats {
+        gap: 7px;
+    }
+
+    #pet-route-history .trip-stats > div {
+        min-height: 82px;
+        padding: 10px 9px;
+    }
+
+    #pet-route-history .trip-stats span {
+        font-size: 10px;
+    }
+
+    #pet-route-history .trip-stats strong {
+        font-size: 18px;
+    }
+
+    #pet-route-history .trip-stats > div i,
+    #pet-route-history .trip-stats > div svg {
+        font-size: 17px;
+        width: 17px;
+        height: 17px;
+        margin-bottom: 6px;
+    }
+}
+
+/* ==========================================
+   PAWSENSE - PREMIUM ROUTE GPS TIMELINE
+   ========================================== */
+
+#pet-route-history #recordedRouteStops {
+    position: relative;
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid #d6e8e3;
+}
+
+#pet-route-history #recordedRouteStops > div {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    min-width: 0;
+    margin: 0;
+    padding: 7px 5px 22px 53px;
+    border-bottom: 1px solid #e4eeeb;
+}
+
+/* Timeline markers */
+
+#pet-route-history #recordedRouteStops > div::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 12px;
+    width: 19px;
+    height: 19px;
+    background: #fff;
+    border: 3px solid #0b9387;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+/* Dotted vertical connector */
+
+#pet-route-history #recordedRouteStops > div::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    top: 35px;
+    bottom: -8px;
+    border-left: 2px dotted #73c9bd;
+    z-index: 1;
+}
+
+/* Starting and ending markers */
+
+#pet-route-history #recordedRouteStops > div:first-child::before,
+#pet-route-history #recordedRouteStops > div:last-child::before {
+    background: #0b9387;
+    box-shadow: 0 0 0 5px #e2f5f0;
+}
+
+#pet-route-history #recordedRouteStops > div:last-child::after {
+    display: none;
+}
+
+#pet-route-history #recordedRouteStops > div:last-child {
+    border-bottom: 0;
+    padding-bottom: 8px;
+}
+
+/* Hide older timeline dots */
+
+#pet-route-history #recordedRouteStops > div > i {
+    display: none;
+}
+
+/* Rounded point labels */
+
+#pet-route-history #recordedRouteStops strong {
+    display: inline-block;
+    width: fit-content;
+    padding: 6px 12px;
+    background: #e1f3ef;
+    color: #123b3b;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.3;
+}
+
+/* GPS timestamp and address */
+
+#pet-route-history #recordedRouteStops small,
+#pet-route-history #recordedRouteStops > div > span {
+    color: #344e55;
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+#pet-route-history #recordedRouteStops > div > span {
+    display: block;
+    width: 100%;
+}
+
+/* ==========================================
+   ROUTE HISTORY - TIMELINE ICONS
+   ========================================== */
+
+/* Starting and last point icon containers */
+
+#pet-route-history #recordedRouteStops > div:first-child::before,
+#pet-route-history #recordedRouteStops > div:last-child::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 6px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background-color: #0b9387;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 23px 23px;
+    box-shadow: 0 0 0 4px #e2f5f0;
+    z-index: 2;
+}
+
+/* Starting Point - Paw icon */
+
+#pet-route-history #recordedRouteStops > div:first-child::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='white'%3E%3Cellipse cx='5' cy='8' rx='2' ry='2.7'/%3E%3Cellipse cx='10' cy='5' rx='2' ry='2.7'/%3E%3Cellipse cx='16' cy='5.5' rx='2' ry='2.7'/%3E%3Cellipse cx='20' cy='9' rx='2' ry='2.7'/%3E%3Cpath d='M12 11c-3 0-4 2-6 4-2 1.5-2.5 3.5-.5 5 1.5 1.2 3.5.5 5-.2 1.2-.6 1.8-.6 3 0 1.5.7 3.5 1.4 5 .2 2-1.5 1.5-3.5-.5-5-2-2-3-4-6-4Z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Last Recorded Point - Location icon */
+
+#pet-route-history #recordedRouteStops > div:last-child::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='10' r='3' fill='white'/%3E%3C/svg%3E");
+}
+
+/* Intermediate GPS points */
+
+#pet-route-history #recordedRouteStops > div:not(:first-child):not(:last-child)::before {
+    background: #ffffff;
+    border: 3px solid #0b9387;
+    box-shadow: none;
+}
+
+/* Align dotted connector with icons */
+
+#pet-route-history #recordedRouteStops > div::after {
+    left: 19px;
+    border-left: 2px dotted #72c8bd;
+}
+
+/* ==========================================
+   PAWSENSE - ROUTE HISTORY EQUAL CARD HEIGHT
+   ========================================== */
+
+@media (min-width: 1200px) {
+
+    /* Keep both columns stretched equally */
+    #pet-route-history #history-location > .row {
+        align-items: stretch;
+    }
+
+    /* Recorded Route column */
+    #pet-route-history #history-location > .row > .col-xl-8 {
+        display: flex;
+    }
+
+    /* Recorded Route card */
+    #pet-route-history #history-location > .row > .col-xl-8 > .app-card {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Google Map fills remaining card space */
+    #pet-route-history #recordedRouteMap {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 480px;
+    }
+
 }

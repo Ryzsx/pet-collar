@@ -256,6 +256,34 @@ public class DeviceController : ControllerBase
                         DocumentSnapshot deviceSnapshot =
                             await transaction
                                 .GetSnapshotAsync(deviceRef);
+                        
+                        // Track whether a low battery alert is already active.
+                        bool previousLowBatteryAlert =
+                            deviceSnapshot.Exists &&
+                            deviceSnapshot.TryGetValue<bool>(
+                                "lowBatteryAlertActive",
+                                out bool alertActive
+                            ) &&
+                            alertActive;
+
+                        bool isLowBattery =
+                            hasBattery &&
+                            request.BatteryPercent!.Value < 20;
+
+                        // Only change the alert state when a battery reading arrives.
+                        if (hasBattery)
+                        {
+                            deviceUpdates["lowBatteryAlertActive"] = isLowBattery;
+                        }
+
+                        DocumentReference? notificationRef = null;
+                        Dictionary<string, object>? notificationData = null;
+
+                        DocumentReference? activityHistoryRef = null;
+                        Dictionary<string, object>? activityHistoryData = null;
+
+                        DocumentReference? previousActivityHistoryRef = null;
+                        Dictionary<string, object>? previousActivityUpdate = null;
 
                         bool isPaired =
                             deviceSnapshot.Exists &&
@@ -302,6 +330,199 @@ public class DeviceController : ControllerBase
                             {
                                 return "PAIRING_MISMATCH";
                             }
+
+                            // ============================================
+                            // RECORD CONFIRMED ACTIVITY CHANGE
+                            // ============================================
+
+                            bool activityChanged =
+                                hasActivity &&
+                                (!deviceSnapshot.TryGetValue<string>(
+                                    "activity",
+                                    out string? previousActivity
+                                ) ||
+                                !string.Equals(
+                                    previousActivity,
+                                    activity,
+                                    StringComparison.OrdinalIgnoreCase
+                                ));
+
+                            if (activityChanged)
+                            {
+                                DateTime changedAtUtc = DateTime.UtcNow;
+
+                                CollectionReference historyCollection = petRef
+                                    .Collection("activityHistory");
+
+                                DocumentSnapshot? previousHistory = null;
+
+                                // Find the currently active interval.
+                                if (petSnapshot.TryGetValue<string>(
+                                        "activeActivityHistoryId",
+                                        out string? activeId
+                                    ) &&
+                                    !string.IsNullOrWhiteSpace(activeId))
+                                {
+                                    previousHistory = await transaction.GetSnapshotAsync(
+                                        historyCollection.Document(activeId)
+                                    );
+                                }
+                                else
+                                {
+                                    // Compatibility with existing Phase 5A test records.
+                                    QuerySnapshot openIntervals =
+                                        await transaction.GetSnapshotAsync(
+                                            historyCollection.WhereEqualTo("endedAt", null)
+                                        );
+
+                                    previousHistory = openIntervals.Documents
+                                        .Where(d => d.TryGetValue<Timestamp>(
+                                            "startedAt", out _))
+                                        .OrderByDescending(d =>
+                                            d.GetValue<Timestamp>("startedAt").ToDateTime())
+                                        .FirstOrDefault();
+                                }
+
+                                // Close the previous interval only when it matches
+                                // the device's previously confirmed activity.
+                                if (previousHistory != null &&
+                                    previousHistory.Exists &&
+                                    previousHistory.TryGetValue<Timestamp>(
+                                        "startedAt", out Timestamp startedAt) &&
+                                    previousHistory.TryGetValue<string>(
+                                        "activity", out string? historyActivity) &&
+                                    deviceSnapshot.TryGetValue<string>(
+                                        "activity", out string? previousDeviceActivity) &&
+                                    string.Equals(
+                                        historyActivity,
+                                        previousDeviceActivity,
+                                        StringComparison.OrdinalIgnoreCase))
+                                {
+                                    DateTime startUtc = startedAt.ToDateTime();
+                                    DateTime endUtc = changedAtUtc;
+
+                                    bool wasOnline =
+                                        deviceSnapshot.TryGetValue<bool>(
+                                            "collarOnline", out bool previousOnline
+                                        ) && previousOnline;
+
+                                    // Do not count an unverified offline gap.
+                                    if (deviceSnapshot.TryGetValue<Timestamp>(
+                                            "lastSeen", out Timestamp lastSeen))
+                                    {
+                                        DateTime lastSeenUtc = lastSeen.ToDateTime();
+
+                                        if (!wasOnline ||
+                                            changedAtUtc - lastSeenUtc >
+                                                TimeSpan.FromSeconds(180))
+                                        {
+                                            if (lastSeenUtc < endUtc)
+                                                endUtc = lastSeenUtc;
+                                        }
+                                    }
+
+                                    if (endUtc < startUtc)
+                                        endUtc = startUtc;
+
+                                    long durationSeconds = Math.Max(
+                                        0L,
+                                        (long)Math.Floor((endUtc - startUtc).TotalSeconds)
+                                    );
+
+                                    previousActivityHistoryRef = previousHistory.Reference;
+
+                                    previousActivityUpdate = new Dictionary<string, object>
+                                    {
+                                        ["endedAt"] = Timestamp.FromDateTime(endUtc),
+                                        ["durationSeconds"] = durationSeconds,
+                                        ["endedReason"] = endUtc < changedAtUtc
+                                            ? "connection_gap"
+                                            : "activity_change"
+                                    };
+                                }
+
+                                // Start a new interval for the confirmed activity.
+                                activityHistoryRef = historyCollection.Document();
+
+                                activityHistoryData = new Dictionary<string, object>
+                                {
+                                    ["activity"] = displayedActivity,
+                                    ["startedAt"] = Timestamp.FromDateTime(changedAtUtc),
+                                    ["endedAt"] = null!,
+                                    ["durationSeconds"] = null!,
+                                    ["source"] = "api_telemetry",
+                                    ["createdAt"] = FieldValue.ServerTimestamp
+                                };
+
+                                // Remember the current interval for the next transition.
+                                petUpdates["activeActivityHistoryId"] =
+                                    activityHistoryRef.Id;
+                            }
+
+                            // ============================================
+                            // LOW BATTERY NOTIFICATION
+                            // ============================================
+
+                            if (isLowBattery &&
+                                !previousLowBatteryAlert &&
+                                petSnapshot.TryGetValue<string>(
+                                    "userId",
+                                    out string? userId
+                                ) &&
+                                !string.IsNullOrWhiteSpace(userId))
+                            {
+                                DocumentReference userRef = _firestore
+                                    .Collection("users")
+                                    .Document(userId);
+
+                                DocumentSnapshot userSnapshot =
+                                    await transaction.GetSnapshotAsync(userRef);
+
+                                bool alertsEnabled =
+                                    userSnapshot.Exists &&
+                                    userSnapshot.TryGetValue<bool>(
+                                        "notificationPreferences.lowBatteryAlerts",
+                                        out bool enabled
+                                    ) &&
+                                    enabled;
+
+                                if (alertsEnabled)
+                                {
+                                    string petName =
+                                        petSnapshot.TryGetValue<string>(
+                                            "name",
+                                            out string? name
+                                        ) &&
+                                        !string.IsNullOrWhiteSpace(name)
+                                            ? name
+                                            : "Your pet";
+
+                                    notificationRef = userRef
+                                        .Collection("notifications")
+                                        .Document();
+
+                                    notificationData = new Dictionary<string, object>
+                                    {
+                                        ["petId"] = petSnapshot.Id,
+                                        ["petName"] = petName,
+                                        ["deviceId"] = deviceId,
+
+                                        ["type"] = "low_battery",
+                                        ["category"] = "collar",
+
+                                        ["title"] = "Low Battery Alert",
+                                        ["message"] =
+                                            $"{petName}'s collar battery has dropped to " +
+                                            $"{request.BatteryPercent!.Value:0.#}%. " +
+                                            "Please charge the device.",
+
+                                        ["isRead"] = false,
+                                        ["eventAt"] = FieldValue.ServerTimestamp,
+                                        ["createdAt"] = FieldValue.ServerTimestamp,
+                                        ["readAt"] = null!
+                                    };
+                                }
+                            }
                         }
 
                         // All reads complete before writes.
@@ -321,6 +542,33 @@ public class DeviceController : ControllerBase
                             );
                         }
 
+                        // Save notification in the same Firestore transaction.
+                        if (notificationRef != null && notificationData != null)
+                        {
+                            transaction.Create(
+                                notificationRef,
+                                notificationData
+                            );
+                        }
+
+                        // Close the previously confirmed activity interval.
+                        if (previousActivityHistoryRef != null &&
+                            previousActivityUpdate != null)
+                        {
+                            transaction.Update(
+                                previousActivityHistoryRef,
+                                previousActivityUpdate
+                            );
+                        }
+
+                        // Save the new confirmed activity interval.
+                        if (activityHistoryRef != null && activityHistoryData != null)
+                        {
+                            transaction.Create(
+                                activityHistoryRef,
+                                activityHistoryData
+                            );
+                        }
                         return isPaired
                             ? "SYNCED"
                             : "DEVICE_ONLY";
@@ -432,7 +680,24 @@ public class DeviceController : ControllerBase
                             out bool paired
                         ) && paired;
 
+                    // Identify a real offline-to-online transition.
+                    bool wasOffline =
+                        device.TryGetValue<bool>(
+                            "collarOnline",
+                            out bool previousOnline
+                        ) && !previousOnline;
+
+                    // Prevent a first-ever heartbeat from being treated
+                    // as a reconnection.
+                    bool hasPreviousHeartbeat =
+                        device.TryGetValue<Timestamp>(
+                            "lastSeen",
+                            out _
+                        );
+
                     DocumentReference? petRef = null;
+                    DocumentReference? notificationRef = null;
+                    Dictionary<string, object>? notificationData = null;
 
                     if (isPaired)
                     {
@@ -469,6 +734,68 @@ public class DeviceController : ControllerBase
                         {
                             return "PAIRING_MISMATCH";
                         }
+
+                        // ============================================
+                        // COLLAR ONLINE NOTIFICATION
+                        // ============================================
+
+                        if (wasOffline && hasPreviousHeartbeat &&
+                            pet.TryGetValue<string>(
+                                "userId",
+                                out string? userId
+                            ) &&
+                            !string.IsNullOrWhiteSpace(userId))
+                        {
+                            DocumentReference userRef = _firestore
+                                .Collection("users")
+                                .Document(userId);
+
+                            DocumentSnapshot userSnapshot =
+                                await transaction.GetSnapshotAsync(userRef);
+
+                            bool alertsEnabled =
+                                userSnapshot.Exists &&
+                                userSnapshot.TryGetValue<bool>(
+                                    "notificationPreferences.collarOfflineAlerts",
+                                    out bool enabled
+                                ) &&
+                                enabled;
+
+                            if (alertsEnabled)
+                            {
+                                string petName =
+                                    pet.TryGetValue<string>(
+                                        "name",
+                                        out string? name
+                                    ) &&
+                                    !string.IsNullOrWhiteSpace(name)
+                                        ? name
+                                        : "Your pet";
+
+                                notificationRef = userRef
+                                    .Collection("notifications")
+                                    .Document();
+
+                                notificationData = new Dictionary<string, object>
+                                {
+                                    ["petId"] = pet.Id,
+                                    ["petName"] = petName,
+                                    ["deviceId"] = deviceId,
+
+                                    ["type"] = "collar_online",
+                                    ["category"] = "collar",
+
+                                    ["title"] = "Collar Online",
+                                    ["message"] =
+                                        $"{petName}'s collar connection has been restored.",
+
+                                    ["isRead"] = false,
+                                    ["eventAt"] = FieldValue.ServerTimestamp,
+                                    ["createdAt"] = FieldValue.ServerTimestamp,
+                                    ["readAt"] = null!
+                                };
+                            }
+                        }
                     }
 
                     // Update device connection status
@@ -491,6 +818,16 @@ public class DeviceController : ControllerBase
                                 { "collarOnline", true },
                                 { "lastSeen", FieldValue.ServerTimestamp }
                             }
+                        );
+                    }
+
+                    // Create notification only on an actual
+                    // offline-to-online transition.
+                    if (notificationRef != null && notificationData != null)
+                    {
+                        transaction.Create(
+                            notificationRef,
+                            notificationData
                         );
                     }
 

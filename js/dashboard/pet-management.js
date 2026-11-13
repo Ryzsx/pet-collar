@@ -1,15 +1,22 @@
 import { DATA_MODE } from '../core/data-mode.js';
+import { db } from '../core/firebase-config.js';
+
+import {
+    doc,
+    onSnapshot
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { petService } from '../services/PetService.js';
 import { uploadPetImage } from '../firebase-init.js';
 import { placeholderPhotos, demoPets } from './demo-data.js';
 import { $, escapeHtml, showToast } from './dom.js';
+import { setSelectedNotificationPetId } from './notifications.js';
 import {
     renderActivityPetSelector,
     getSelectedLivePetId,
     loadGoogleMaps,
     setLiveTrackingPets
 } from './live-tracking.js';
-import { updateActivityData } from './activity.js';
+import { updateActivityData, setActivityPets } from './activity.js';
 
 let pets =
     DATA_MODE === 'demo'
@@ -19,6 +26,9 @@ let pets =
 let selectedPetId =
     pets[0]?.id || null;
 let currentUser = null;
+let managementPetUnsubscribe = null;
+let managementPetListenerId = null;
+let managementPetListenerUid = null;
 let deletePetId = null;
 let petLimitWarningTimer = null;
 
@@ -54,8 +64,19 @@ function normalizedPet(rawPet, index) {
             ? Number(rawPet.battery)
             : fallback.battery ?? null,
         safe: rawPet.safeZoneStatus ? rawPet.safeZoneStatus !== 'outside' : true,
-        geofence: rawPet.geofenceName || rawPet.safeZone?.name || fallback.geofence || 'Home',
-        radius: Number(rawPet.geofenceRadius || rawPet.safeZone?.radius || fallback.radius || 100),
+        // Use the canonical Firestore Safe Zone values first.
+geofence:
+    rawPet.safeZone?.name ??
+    rawPet.geofenceName ??
+    fallback.geofence ??
+    'Home',
+
+radius: Number(
+    rawPet.safeZone?.radius ??
+    rawPet.geofenceRadius ??
+    fallback.radius ??
+    100
+),
         activityHistoryDemo: false,
         activityHistory: Array.isArray(rawPet.activityHistory) ? rawPet.activityHistory : []
     };
@@ -119,10 +140,124 @@ function openAddPetForm() {
     hidePetLimitWarning();
     window.bootstrap.Modal.getOrCreateInstance($('#addPetModal')).show();
 }
+// ============================================
+// PET MANAGEMENT - FIRESTORE REAL-TIME SYNC
+// ============================================
 
+function watchManagementSelectedPet() {
+
+    const petId = selectedPetId;
+    const userId = currentUser?.uid;
+
+    if (DATA_MODE === 'demo' || !petId || !userId) {
+        managementPetUnsubscribe?.();
+
+        managementPetUnsubscribe = null;
+        managementPetListenerId = null;
+        managementPetListenerUid = null;
+
+        return;
+    }
+
+    // Avoid duplicate listeners.
+    if (
+        managementPetUnsubscribe &&
+        managementPetListenerId === petId &&
+        managementPetListenerUid === userId
+    ) {
+        return;
+    }
+
+    // Stop listening to the previous pet.
+    managementPetUnsubscribe?.();
+
+    managementPetListenerId = petId;
+    managementPetListenerUid = userId;
+
+    managementPetUnsubscribe = onSnapshot(
+    doc(db, 'pets', petId),
+
+    snapshot => {
+
+        // Check whether Firestore changes reach the website.
+        console.log('[PET MANAGEMENT SNAPSHOT RECEIVED]', {
+            petId,
+            exists: snapshot.exists(),
+            selectedPetId,
+            firestoreRadius: snapshot.data()?.safeZone?.radius,
+            legacyRadius: snapshot.data()?.geofenceRadius,
+            firestoreUserId: snapshot.data()?.userId,
+            currentUserId: currentUser?.uid
+        });
+
+        if (
+            selectedPetId !== petId ||
+            currentUser?.uid !== userId ||
+            !snapshot.exists()
+        ) {
+            return;
+        }
+
+            const data = snapshot.data();
+
+            if (data.userId !== userId) return;
+
+            const index = pets.findIndex(
+                pet => pet.id === petId
+            );
+
+            if (index === -1) return;
+
+            // Get the latest Firestore data.
+            const updatedPet = normalizedPet(
+                {
+                    ...data,
+                    id: petId
+                },
+                index
+            );
+
+            // Canonical safe-zone values take priority.
+            updatedPet.radius = Number(
+                data.safeZone?.radius ??
+                data.geofenceRadius ??
+                100
+            );
+
+            updatedPet.geofence =
+                data.safeZone?.name ??
+                data.geofenceName ??
+                'Home';
+
+            // Update the selected pet in local data.
+            pets[index] = updatedPet;
+
+            // Refresh Pet Management card.
+            renderPetDetail();
+
+            console.log(
+                '[PET MANAGEMENT FIRESTORE UPDATED]',
+                {
+                    pet: updatedPet.name,
+                    radius: updatedPet.radius,
+                    name: updatedPet.geofence
+                }
+            );
+        },
+
+        error => {
+            console.error(
+                '[PET MANAGEMENT REALTIME ERROR]',
+                error
+            );
+        }
+    );
+}
 function renderPetDetail() {
     const container = $('#petDetail');
     if (!container) return;
+
+    watchManagementSelectedPet();
     const pet = pets.find(item => item.id === selectedPetId);
     if (!pet) {
         container.innerHTML = '<div class="text-center py-5 text-secondary"><i class="bi bi-person-hearts fs-2 d-block mb-2"></i>Select or add a pet to view details.</div>';
@@ -163,6 +298,7 @@ function renderAllPets() {
     }
 
     setLiveTrackingPets(pets);
+    setActivityPets(pets);
     renderPetSelectors();
     renderPetList();
     renderPetDetail();
@@ -188,6 +324,7 @@ function renderAllPets() {
             null;
 
         petList.dataset.selectedPetId = selectedPet?.id || '';
+        setSelectedNotificationPetId(selectedPet?.id || null);
 
         petList.innerHTML = pets.length
             ? pets.map(pet => {
@@ -799,7 +936,7 @@ async function initializeAddPetSafeZoneMap() {
         if (!addPetMap) {
 
             container.innerHTML = '';
-
+            
             addPetMap = new window.google.maps.Map(
                 container,
                 {
@@ -809,7 +946,11 @@ async function initializeAddPetSafeZoneMap() {
                     mapTypeControl: true,
                     streetViewControl: false,
                     fullscreenControl: false,
-                    zoomControl: true
+                    zoomControl: true,
+
+                    // Allow normal mouse-wheel zoom without Ctrl.
+                    gestureHandling: 'greedy',
+                    scrollwheel: true
                 }
             );
 
@@ -984,7 +1125,7 @@ function resetAddPetSafeZone() {
     }
 
 
-function attachPetManagementEvents() {
+function attachPetManagementEvents(){
 
     const deletePetModalElement =
     document.getElementById(
@@ -2053,53 +2194,186 @@ showToast(
 
 
     // ==================================================
-    // SAVE GEOFENCE PREVIEW
-    // ==================================================
+// LOAD SAVED GEOFENCE SETTINGS
+// ==================================================
 
-    $('#saveGeofenceBtn')
-        ?.addEventListener(
-            'click',
-            () => {
+$('#geofenceModal')?.addEventListener(
+    'show.bs.modal',
+    () => {
 
-                const pet =
-                    pets.find(
-                        item =>
-                            item.id ===
-                            selectedPetId
+        const pet = pets.find(
+            item => item.id === selectedPetId
+        );
+
+        if (!pet) return;
+
+        const radius = Number(
+            pet.safeZone?.radius ??
+            pet.geofenceRadius ??
+            pet.radius ??
+            100
+        );
+
+        const name =
+            pet.safeZone?.name ||
+            pet.geofenceName ||
+            pet.geofence ||
+            'Home';
+
+        $('#geofenceRadius').value = radius;
+        $('#radiusValue').textContent = radius;
+        $('#geofenceName').value = name;
+    }
+);
+
+
+// ==================================================
+// SAVE GEOFENCE TO FIRESTORE
+// ==================================================
+
+$('#saveGeofenceBtn')?.addEventListener(
+    'click',
+    async event => {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const button = event.currentTarget;
+
+        const pet = pets.find(
+            item => item.id === selectedPetId
+        );
+
+        if (!pet) {
+            showToast('Please select a pet.');
+            return;
+        }
+
+        const radius = Number(
+            $('#geofenceRadius').value
+        );
+
+        const name =
+            $('#geofenceName').value.trim() ||
+            'Home';
+
+        // Validate geofence radius.
+        if (
+            !Number.isInteger(radius) ||
+            radius < 100 ||
+            radius > 1000
+        ) {
+            showToast(
+                'Geofence radius must be between 100 and 1000 meters.'
+            );
+            return;
+        }
+
+        const updatedSafeZone = {
+            ...(pet.safeZone || {}),
+            name,
+            radius
+        };
+
+        button.disabled = true;
+
+        try {
+
+            // ============================================
+            // LIVE MODE - FIRESTORE UPDATE
+            // ============================================
+
+            if (DATA_MODE !== 'demo') {
+
+                if (
+                    !currentUser?.uid ||
+                    (pet.userId &&
+                     pet.userId !== currentUser.uid)
+                ) {
+                    throw new Error(
+                        'Unauthorized pet update.'
                     );
-
-
-                if (!pet) {
-                    return;
                 }
 
+                const result =
+                    await petService.updatePet(
+                        pet.id,
+                        {
+                            safeZone: updatedSafeZone,
 
-                pet.radius =
-                    Number(
-                        $('#geofenceRadius')
-                            .value
+                            // Keep legacy fields synchronized.
+                            geofenceName: name,
+                            geofenceRadius: radius
+                        }
                     );
 
-
-                pet.geofence =
-                    $('#geofenceName')
-                        .value
-                        .trim() ||
-                    'Safe zone';
-
-
-                renderPetDetail();
-
-
-                showToast(
-                    'Geofence preview updated.'
-                );
+                if (!result?.success) {
+                    throw new Error(
+                        result?.message ||
+                        result?.error ||
+                        'Firestore update failed.'
+                    );
+                }
             }
-        );
-}
+
+            // ============================================
+            // UPDATE LOCAL PET DATA AFTER SUCCESS
+            // ============================================
+
+            pet.safeZone = updatedSafeZone;
+            pet.geofenceName = name;
+            pet.geofenceRadius = radius;
+            pet.geofence = name;
+            pet.radius = radius;
+
+            // Refresh website components.
+            renderAllPets();
+
+            // Close modal after successful save.
+            window.bootstrap.Modal
+                .getInstance($('#geofenceModal'))
+                ?.hide();
+
+            showToast(
+                DATA_MODE === 'demo'
+                    ? 'Geofence preview updated.'
+                    : 'Geofence saved successfully.'
+            );
+
+            console.log(
+                '[PAWSENSE GEOFENCE SAVED]',
+                {
+                    petId: pet.id,
+                    petName: pet.name,
+                    radius,
+                    safeZone: updatedSafeZone,
+                    mode: DATA_MODE
+                }
+            );
+
+        } catch (error) {
+
+            console.error(
+                '[PAWSENSE GEOFENCE SAVE FAILED]',
+                error
+            );
+
+            showToast(
+                'Failed to save geofence. Please try again.'
+            );
+
+        } finally {
+
+            button.disabled = false;
+
+        }
+    }
+);
+};
 
 export {
     renderAllPets,
     loadUserPets,
     attachPetManagementEvents
 };
+

@@ -1,9 +1,10 @@
 
 import { $, $$, showToast } from './dom.js';
-import { auth, db, doc, runTransaction, serverTimestamp } from '../firebase-init.js';
+import { auth, db, doc, runTransaction, updateDoc, onSnapshot, serverTimestamp } from '../firebase-init.js';
 
 let currentUser = null;
 let usernameSaving = false;
+let unsubscribeSettingsPreferences = null;
 
 function setUserInterface(name, email) {
     const safeName = name || 'User';
@@ -33,6 +34,90 @@ function updateConnectionStatus() {
 
 function setSettingsUser(user) {
     currentUser = user;
+
+    // Stop the previous Firestore listener.
+    if (unsubscribeSettingsPreferences) {
+        unsubscribeSettingsPreferences();
+        unsubscribeSettingsPreferences = null;
+    }
+
+    const uid = user?.uid;
+
+    if (!uid) return;
+
+    const userRef = doc(db, 'users', uid);
+
+    unsubscribeSettingsPreferences = onSnapshot(
+        userRef,
+        snapshot => {
+        if (!snapshot.exists()) return;
+
+        const userData = snapshot.data();
+
+        // Synchronize username and email from Firestore.
+        const latestUsername = String(userData.username || '').trim();
+        const latestEmail = String(
+            userData.email || auth.currentUser?.email || ''
+        );
+
+        if (latestUsername) {
+            const usernameInput = $('#profileName');
+
+            // Preserve unsaved text while the user is editing.
+            const isEditing = usernameInput &&
+                document.activeElement === usernameInput;
+
+            const unsavedValue = isEditing
+                ? usernameInput.value
+                : null;
+
+            setUserInterface(latestUsername, latestEmail);
+
+            if (isEditing) {
+                usernameInput.value = unsavedValue;
+            }
+
+            localStorage.setItem('lastUserName', latestUsername);
+            localStorage.setItem('lastUserEmail', latestEmail);
+        }
+
+        // Synchronize notification preferences.
+        const preferences = userData.notificationPreferences;
+
+        if (!preferences) return;
+
+            const preferenceFields = {
+                'geofence alerts': 'geofenceAlerts',
+                'low battery alerts': 'lowBatteryAlerts',
+                'collar offline alerts': 'collarOfflineAlerts',
+                'device data alerts': 'deviceDataAlerts',
+                'push notifications': 'pushNotifications'
+            };
+
+            $$('#settings-preferences .preference-list label').forEach(label => {
+                const labelText = label.querySelector('strong')
+                    ?.textContent.trim().toLowerCase();
+
+                const fieldName = preferenceFields[labelText];
+
+                const checkbox = label.querySelector('input[type="checkbox"]');
+
+                if (
+                    fieldName &&
+                    checkbox &&
+                    typeof preferences[fieldName] === 'boolean'
+                ) {
+                    checkbox.checked = preferences[fieldName];
+                }
+            });
+        },
+        error => {
+            console.error(
+                'Failed to synchronize notification preferences:',
+                error
+            );
+        }
+    );
 }
 
 async function saveUsername(newUsername) {
@@ -211,8 +296,73 @@ function attachSettingsEvents() {
         showToast('Password form validated. Backend update is not enabled in this prototype.');
     });
 
-    $('#savePreferencesBtn')?.addEventListener('click', () => {
-        showToast('Notification preferences saved for this prototype.');
+        $('#savePreferencesBtn')?.addEventListener('click', async event => {
+        const user = auth.currentUser;
+        const saveButton = event.currentTarget;
+
+        if (!user || !user.emailVerified) {
+            showToast(
+                'Your session is unavailable. Please sign in again.',
+                'bi-exclamation-circle-fill'
+            );
+            return;
+        }
+
+        const preferenceFields = {
+            'geofence alerts': 'geofenceAlerts',
+            'low battery alerts': 'lowBatteryAlerts',
+            'collar offline alerts': 'collarOfflineAlerts',
+            'device data alerts': 'deviceDataAlerts',
+            'push notifications': 'pushNotifications'
+        };
+
+        const labels = Array.from(
+            $$('#settings-preferences .preference-list label')
+        );
+
+        const updates = {
+            updatedAt: serverTimestamp()
+        };
+
+        for (const [labelText, fieldName] of Object.entries(preferenceFields)) {
+            const label = labels.find(item =>
+                item.querySelector('strong')?.textContent.trim().toLowerCase() === labelText
+            );
+
+            const checkbox = label?.querySelector('input[type="checkbox"]');
+
+            if (!checkbox) {
+                showToast(
+                    `Missing notification setting: ${labelText}`,
+                    'bi-exclamation-circle-fill'
+                );
+                return;
+            }
+
+            updates[`notificationPreferences.${fieldName}`] = checkbox.checked;
+        }
+
+        saveButton.disabled = true;
+
+        try {
+            await updateDoc(doc(db, 'users', user.uid), updates);
+
+            showToast(
+                'Notification preferences saved successfully.',
+                'bi-check-circle-fill'
+            );
+
+        } catch (error) {
+            console.error('Failed to save notification preferences:', error);
+
+            showToast(
+                'Failed to save notification preferences. Please try again.',
+                'bi-exclamation-circle-fill'
+            );
+
+        } finally {
+            saveButton.disabled = false;
+        }
     });
 
     window.addEventListener('online', updateConnectionStatus);

@@ -4,8 +4,9 @@ import { db } from '../core/firebase-config.js';
 
 import {
     doc,
-    onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    onSnapshot,
+    updateDoc
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 import { liveTrackingPets as demoLiveTrackingPets } from './demo-data.js';
 import { $, escapeHtml, showToast } from './dom.js';
@@ -23,6 +24,7 @@ import { updateActivityData } from './activity.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDMI3xEi1DxPNlaM76B-sFigPOB3khJsGk';
 let googleMapsLoader = null;
+const LIVE_PET_FOCUS_ZOOM = 18;
 const CELLULAR_NETWORK_LABEL = 'Globe · 4G LTE';
 
 // ======================================================
@@ -102,6 +104,72 @@ function normalizeCoordinates(value) {
 const lastKnownAddressCache = new Map();
 const pendingAddressLookups = new Set();
 
+// ============================================
+// PAWSENSE - GEOFENCE STATUS CALCULATION
+// ============================================
+
+function calculateGeofenceStatus(pet) {
+
+    // Latest valid GPS coordinates from Firestore.
+    const position = normalizeCoordinates(
+        pet?.lastKnownCoordinates
+    );
+
+    // Fixed home safe-zone coordinates.
+    const center = normalizeCoordinates(
+        pet?.safeZone?.center
+    );
+
+    const radius = Number(pet?.safeZone?.radius);
+
+    // Cannot calculate without valid GPS and safe zone.
+    if (
+        !position ||
+        !center ||
+        !Number.isFinite(radius) ||
+        radius <= 0 ||
+        pet?.safeZone?.enabled === false
+    ) {
+        return null;
+    }
+
+    // Haversine formula: distance in meters.
+    const toRadians = degrees => degrees * Math.PI / 180;
+    const earthRadius = 6371000;
+
+    const lat1 = toRadians(position[0]);
+    const lat2 = toRadians(center[0]);
+
+    const latitudeDifference = toRadians(
+        center[0] - position[0]
+    );
+
+    const longitudeDifference = toRadians(
+        center[1] - position[1]
+    );
+
+    const a =
+        Math.sin(latitudeDifference / 2) ** 2 +
+        Math.cos(lat1) *
+        Math.cos(lat2) *
+        Math.sin(longitudeDifference / 2) ** 2;
+
+    const distance =
+        2 * earthRadius *
+        Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(Math.max(0, 1 - a))
+        );
+
+    return {
+        status: distance <= radius ? 'inside' : 'outside',
+        distanceMeters: distance,
+        radiusMeters: radius
+    };
+}
+
+// Prevent repeated writes for the same GPS position.
+const geofenceWriteAttempts = new Map();
 function getLastKnownPosition(pet) {
     return normalizeCoordinates(pet?.lastKnownCoordinates)
         ?? normalizeCoordinates(pet?.coordinates);
@@ -117,35 +185,63 @@ function getAddressCacheKey(coordinates) {
 
 const GEOAPIFY_API_KEY = "e25eb522791c4a93956e0505de4ad1e6";
 
+// ============================================
+// LIVE TRACKING - REAL-TIME GPS ADDRESS
+// ============================================
 
 async function resolveSelectedPetAddress() {
+
+    const petId = selectedLivePetId;
+
     const pet = liveTrackingPets.find(
-        item => item.id === selectedLivePetId
+        item => item.id === petId
     );
 
     if (!pet) return;
 
-    const coordinates = getLastKnownPosition(pet);
-    if (!coordinates) return;
+    // Use the same coordinates displayed on the map.
+    const coordinates =
+        normalizeCoordinates(getDisplayedCoordinates(pet)) ??
+        getLastKnownPosition(pet);
+
+    if (!coordinates) {
+        pet.locationName = 'No GPS location recorded';
+        renderSelectedLivePet();
+        return;
+    }
 
     const key = getAddressCacheKey(coordinates);
 
-    // Avoid duplicate address lookups
-    if (
-        lastKnownAddressCache.has(key) ||
-        pendingAddressLookups.has(key)
-    ) {
+    // ============================================
+    // USE CACHED ADDRESS IF AVAILABLE
+    // ============================================
+
+    const cachedAddress = lastKnownAddressCache.get(key);
+
+    if (cachedAddress) {
+        pet.locationName = cachedAddress;
+        renderSelectedLivePet();
+        return;
+    }
+
+    // Immediately remove the previous address.
+    pet.locationName = 'Locating updated address...';
+    renderSelectedLivePet();
+
+    // Avoid duplicate requests.
+    if (pendingAddressLookups.has(key)) {
         return;
     }
 
     pendingAddressLookups.add(key);
 
     try {
+
         const params = new URLSearchParams({
             lat: String(coordinates[0]),
             lon: String(coordinates[1]),
-            format: "json",
-            lang: "en",
+            format: 'json',
+            lang: 'en',
             apiKey: GEOAPIFY_API_KEY
         });
 
@@ -165,38 +261,89 @@ async function resolveSelectedPetAddress() {
         const address =
             result?.formatted ||
             [
+                result?.street,
                 result?.city,
                 result?.state,
                 result?.country
-            ].filter(Boolean).join(", ") ||
-            "Approximate address unavailable";
+            ].filter(Boolean).join(', ') ||
+            'Approximate address unavailable';
 
+        // Cache the address for these exact coordinates.
         lastKnownAddressCache.set(key, address);
 
-        liveTrackingPets.forEach(item => {
-            const currentKey = getAddressCacheKey(
-                getLastKnownPosition(item)
-            );
+        // ============================================
+        // PREVENT OUTDATED ADDRESS UPDATES
+        // ============================================
 
-            if (currentKey === key) {
-                item.locationName = address;
-            }
-        });
+        const currentPet = liveTrackingPets.find(
+            item => item.id === petId
+        );
+
+        const currentCoordinates = currentPet
+            ? normalizeCoordinates(
+                getDisplayedCoordinates(currentPet)
+            ) ?? getLastKnownPosition(currentPet)
+            : null;
+
+        const currentKey =
+            getAddressCacheKey(currentCoordinates);
+
+        // Ignore results for another pet or old GPS position.
+        if (
+            selectedLivePetId !== petId ||
+            !currentPet ||
+            currentKey !== key
+        ) {
+            return;
+        }
+
+        // Update the correct pet's location card.
+        currentPet.locationName = address;
 
         renderSelectedLivePet();
 
         console.log(
-            "PawSense approximate address:",
-            address
+            '[PAWSENSE GPS ADDRESS UPDATED]',
+            {
+                petName: currentPet.name,
+                coordinates,
+                address
+            }
         );
 
     } catch (error) {
+
         console.error(
-            "Geoapify address lookup failed:",
+            '[PAWSENSE GEOCODING FAILED]',
             error
         );
+
+        const currentPet = liveTrackingPets.find(
+            item => item.id === petId
+        );
+
+        const currentCoordinates = currentPet
+            ? normalizeCoordinates(
+                getDisplayedCoordinates(currentPet)
+            ) ?? getLastKnownPosition(currentPet)
+            : null;
+
+        if (
+            currentPet &&
+            selectedLivePetId === petId &&
+            getAddressCacheKey(currentCoordinates) === key
+        ) {
+            currentPet.locationName =
+                `${coordinates[0].toFixed(6)}, ` +
+                `${coordinates[1].toFixed(6)}`;
+
+            renderSelectedLivePet();
+        }
+
     } finally {
+
         pendingAddressLookups.delete(key);
+
     }
 }
 
@@ -399,23 +546,26 @@ function toTrackingPet(rawPet, index) {
 
 
         safeZone: {
-            name:
-                safeZone.name ||
-                rawPet.geofenceName ||
-                'Home',
+        name:
+            safeZone.name ||
+            rawPet.geofenceName ||
+            'Home',
 
-            center:
-                Array.isArray(safeZone.center)
-                    ? safeZone.center
-                    : null,
+        // Support different stored coordinate formats.
+        center:
+            normalizeCoordinates(safeZone.center) ??
+            normalizeCoordinates(safeZone.centerCoordinates) ??
+            normalizeCoordinates(rawPet.geofenceCenter) ??
+            null,
 
-            radius:
-                Number(
-                    safeZone.radius ??
-                    rawPet.geofenceRadius ??
-                    100
-                )
-        },
+        radius:
+            Number(
+                safeZone.radius ??
+                safeZone.radiusMeters ??
+                rawPet.geofenceRadius ??
+                100
+            )
+    },
 
         safeZoneStatus:
             rawPet.safeZoneStatus ?? null,
@@ -551,8 +701,54 @@ function renderLivePetSelector() {
     renderPetAvatarSelector('#livePetSelector', liveTrackingPets, selectedLivePetId, selectLiveTrackingPet, pet => getLivePetState(pet).key);
 }
 
+// ============================================
+// PET ROUTE HISTORY - PET SELECTION
+// ============================================
+
+let selectedRoutePetId = null;
+
+function renderRoutePetSelector() {
+
+    // Set the first available pet as default.
+    if (!liveTrackingPets.some(
+        pet => pet.id === selectedRoutePetId
+    )) {
+        selectedRoutePetId = liveTrackingPets[0]?.id || null;
+    }
+
+    renderPetAvatarSelector(
+        '#routePetSelector',
+        liveTrackingPets,
+        selectedRoutePetId,
+
+        petId => {
+            // Route History has its own selected pet.
+            selectedRoutePetId = petId;
+
+            // Update the active pet avatar.
+            renderRoutePetSelector();
+        },
+
+        pet => getLivePetState(pet).key
+    );
+}
+
+// ============================================
+// PET ACTIVITY SELECTOR
+// ============================================
+
 function renderActivityPetSelector() {
-    renderPetAvatarSelector('#activityPetSelector', liveTrackingPets, selectedLivePetId, selectLiveTrackingPet, pet => getLivePetState(pet).key);
+
+    renderPetAvatarSelector(
+        '#activityPetSelector',
+        liveTrackingPets,
+        selectedLivePetId,
+        selectLiveTrackingPet,
+        pet => getLivePetState(pet).key
+    );
+
+    // Also render the independent Route History selector.
+    renderRoutePetSelector();
 }
 
 function renderPetAvatarSelector(containerSelector, petList, selectedId, onSelect, getState) {
@@ -936,13 +1132,7 @@ if (subscriptionExpired) {
     `;
 
 }
-
 function syncLiveMapMarkers() {
-
-    // TEMPORARY: Disable Google Maps markers
-    // while the Maps API is unavailable.
-    // Keep pet loading and monitoring independent.
-    return;
 
     if (!liveTrackingMap || !window.google?.maps?.Marker) return;
 
@@ -958,28 +1148,37 @@ function syncLiveMapMarkers() {
     liveTrackingPets.forEach(pet => {
 
         // ============================================
-        // GPS LOCATION OR SAFE ZONE FALLBACK
+        // PET GPS LOCATION
         // ============================================
 
-        const gpsCoordinates = getDisplayedCoordinates(pet);
-        const safeZoneCoordinates = normalizeCoordinates(
-            pet.safeZone?.center
-        );
-
-        const displayedCoordinates =
-            Array.isArray(gpsCoordinates) && gpsCoordinates.length >= 2
-                ? gpsCoordinates
-                : safeZoneCoordinates;
+        const displayedCoordinates = getLastKnownPosition(pet);
 
         const existingMarker = livePetMarkers.get(pet.id);
 
-        // No valid location or Safe Zone center available
-        if (!Array.isArray(displayedCoordinates) || displayedCoordinates.length < 2) {
-            if (existingMarker) {
-                setPetMarkerMap(existingMarker, null);
-            }
-            return;
-        }
+        // No recorded GPS location available
+        if (!isValidCoordinatePair(displayedCoordinates)) {
+           if (existingMarker) {
+
+    // Update marker color based on collar connection.
+    const markerElement = existingMarker.content;
+
+    if (markerElement?.classList) {
+        markerElement.classList.toggle(
+            'offline',
+            pet.collarOnline !== true
+        );
+
+        markerElement.classList.toggle(
+            'online',
+            pet.collarOnline === true
+        );
+    }
+
+    setPetMarkerPosition(existingMarker, position);
+    setPetMarkerMap(existingMarker, liveTrackingMap);
+    return;
+           }
+}
 
         const position = toGoogleCoordinates(displayedCoordinates);
 
@@ -1025,100 +1224,195 @@ function fitAllLivePetsOnMap() {
 
 function startSelectedPetRealtimeListener() {
 
-    // No Firestore listener while using demo data.
     if (DATA_MODE === 'demo') {
         return;
     }
 
-    // Stop the previous listener before creating a new one.
+    // Stop previous Firestore listener.
     if (livePetRealtimeUnsubscribe) {
         livePetRealtimeUnsubscribe();
         livePetRealtimeUnsubscribe = null;
     }
 
-    // Nothing to listen to if no pet is selected.
     if (!selectedLivePetId) {
         return;
     }
 
-    const petRef =
-        doc(
-            db,
-            'pets',
-            selectedLivePetId
-        );
+    const petRef = doc(
+        db,
+        'pets',
+        selectedLivePetId
+    );
 
     console.log(
         'Starting real-time pet listener:',
         selectedLivePetId
     );
 
-    livePetRealtimeUnsubscribe =
-        onSnapshot(
-            petRef,
+    livePetRealtimeUnsubscribe = onSnapshot(
+        petRef,
 
-            snapshot => {
+        snapshot => {
 
-                if (!snapshot.exists()) {
-                    console.warn(
-                        'Selected pet document does not exist.'
-                    );
-                    return;
-                }
+            if (!snapshot.exists()) {
+                console.warn(
+                    'Selected pet document does not exist.'
+                );
+                return;
+            }
 
-                const index =
-                    liveTrackingPets.findIndex(
-                        pet => pet.id === snapshot.id
-                    );
+            const index = liveTrackingPets.findIndex(
+                pet => pet.id === snapshot.id
+            );
 
-                if (index === -1) {
-                    return;
-                }
-const realtimePet = {
-    id: snapshot.id,
-    ...snapshot.data()
-};
+            if (index === -1) return;
+
+            // ============================================
+            // 1. GET FIRESTORE PET DATA
+            // ============================================
+
+            const realtimePet = {
+                id: snapshot.id,
+                ...snapshot.data()
+            };
+            // ============================================
 
 
-console.log(
-    '[LIVE SNAPSHOT SUBSCRIPTION]',
-    snapshot.ref.path,
-    realtimePet.name,
-    realtimePet.subscription
-);
+            // ============================================
+            // 2. CALCULATE SAFE ZONE STATUS
+            // ============================================
 
-liveTrackingPets[index] =
-    toTrackingPet(
-        realtimePet,
-        index
-    );
+            const geofenceResult =
+                calculateGeofenceStatus(realtimePet);
+
+            if (geofenceResult) {
+
+                const newStatus = geofenceResult.status;
 
                 console.log(
-                    'REAL-TIME PET UPDATE:',
-                    realtimePet.activity
+                    '[PAWSENSE GEOFENCE DIAGNOSTIC]',
+                    {
+                        pet: realtimePet.name,
+                        gpsLocation:
+                            realtimePet.lastKnownCoordinates,
+                        homeCenter:
+                            realtimePet.safeZone?.center,
+                        radius:
+                            realtimePet.safeZone?.radius,
+                        calculatedStatus: newStatus,
+                        distanceMeters: Math.round(
+                            geofenceResult.distanceMeters
+                        ),
+                        firestoreStatus:
+                            snapshot.data().safeZoneStatus
+                    }
                 );
 
-                renderLivePetSelector();
-                renderActivityPetSelector();
-                renderSelectedLivePet();
+                // Update local display immediately.
+                realtimePet.safeZoneStatus = newStatus;
+                realtimePet.lastKnownSafeZoneStatus =
+                    newStatus;
 
-                void resolveSelectedPetAddress();
+                // ============================================
+                // 3. SAVE STATUS TO FIRESTORE
+                // ============================================
 
-                syncLiveMapMarkers();
-                updateLiveMapSelection();
+                const storedStatus =
+                    snapshot.data().safeZoneStatus;
 
-                if (liveMapFallbackActive) {
-                    renderFallbackMap();
+                const storedLastStatus =
+                    snapshot.data().lastKnownSafeZoneStatus;
+
+                if (
+                    storedStatus !== newStatus ||
+                    storedLastStatus !== newStatus
+                ) {
+
+                    const writeKey = JSON.stringify({
+                        petId: snapshot.id,
+                        position:
+                            realtimePet.lastKnownCoordinates,
+                        center:
+                            realtimePet.safeZone?.center,
+                        radius:
+                            realtimePet.safeZone?.radius,
+                        status: newStatus
+                    });
+
+                    if (!geofenceWriteAttempts.has(writeKey)) {
+
+                        geofenceWriteAttempts.set(
+                            writeKey,
+                            'pending'
+                        );
+
+                        void updateDoc(snapshot.ref, {
+                            safeZoneStatus: newStatus,
+                            lastKnownSafeZoneStatus: newStatus
+                        })
+                        .then(() => {
+
+                            geofenceWriteAttempts.delete(
+                                writeKey
+                            );
+
+                            console.log(
+                                '[PAWSENSE GEOFENCE STATUS SAVED]',
+                                newStatus
+                            );
+
+                        })
+                        .catch(error => {
+
+                            geofenceWriteAttempts.set(
+                                writeKey,
+                                'failed'
+                            );
+
+                            console.error(
+                                '[PAWSENSE GEOFENCE SAVE FAILED]',
+                                error
+                            );
+
+                        });
+                    }
                 }
-            },
-
-            error => {
-                console.error(
-                    'Real-time pet listener failed:',
-                    error
-                );
             }
-        );
+
+            // ============================================
+            // 4. UPDATE SELECTED PET DATA
+            // ============================================
+
+            liveTrackingPets[index] = toTrackingPet(
+                realtimePet,
+                index
+            );
+
+            // ============================================
+            // 5. UPDATE WEBSITE
+            // ============================================
+
+            renderLivePetSelector();
+            renderActivityPetSelector();
+            renderSelectedLivePet();
+
+            void resolveSelectedPetAddress();
+
+            syncLiveMapMarkers();
+            updateLiveMapSelection();
+
+            if (liveMapFallbackActive) {
+                renderFallbackMap();
+            }
+        },
+
+        error => {
+            console.error(
+                'Real-time pet listener failed:',
+                error
+            );
+        }
+    );
 }
 
 function setLiveTrackingPets(petList) {
@@ -1152,7 +1446,6 @@ function setLiveTrackingPets(petList) {
     updateLiveMapSelection();
     if (liveMapFallbackActive) renderFallbackMap();
 }
-
 function refreshLiveMapLayout() {
 
     if (!liveTrackingMap) {
@@ -1160,35 +1453,14 @@ function refreshLiveMapLayout() {
         return;
     }
 
-
     window.google.maps.event.trigger(
         liveTrackingMap,
         'resize'
     );
 
-
-    const pet =
-        liveTrackingPets.find(
-            item =>
-                item.id ===
-                selectedLivePetId
-        );
-
-
-    if (pet) {
-        const coordinates = getDisplayedCoordinates(pet);
-        liveTrackingMap.setCenter(
-            Array.isArray(coordinates)
-                ? toGoogleCoordinates(coordinates)
-                : DEFAULT_MAP_CENTER
-        );
-
-    } else {
-
-        liveTrackingMap.setCenter(
-            DEFAULT_MAP_CENTER
-        );
-    }
+    // Preserve the selected pet's GPS marker
+    // and saved Safe Zone Circle in the map view.
+    updateLiveMapSelection();
 }
 
 function updateLiveMapSelection() {
@@ -1258,10 +1530,30 @@ function updateLiveMapSelection() {
     Number(pet.safeZone.radius) > 0
     ) {
 
-        const safeZoneCenter =
-            toGoogleCoordinates(pet.safeZone.center);
+        // ============================================
+// TEMPORARY SAFE ZONE POSITION - MILO ONLY
+// ============================================
 
-        // Create circle only once
+const isMilo =
+    pet.name?.trim().toLowerCase() === 'milo';
+
+// Use Milo's displayed GPS marker position
+// as the temporary center of his Safe Zone.
+const useTemporaryCenter =
+    isMilo &&
+    isValidCoordinatePair(coordinates);
+
+// ============================================
+// FIXED SAFE ZONE CENTER - FIRESTORE
+// ============================================
+
+// Safe Zone must remain at the saved home location.
+// It must NOT follow the pet's current GPS position.
+
+const safeZoneCenter = toGoogleCoordinates(
+    pet.safeZone.center
+);
+    // Create circle only once
         if (!liveSafeZoneCircle) {
             liveSafeZoneCircle =
                 new window.google.maps.Circle({
@@ -1536,7 +1828,7 @@ function initializeLiveTrackingMap() {
             // ==========================================
             // CREATE MAP ONCE
             // ==========================================
-            liveTrackingMap =
+               liveTrackingMap =
                 new window.google.maps.Map(
                     container,
                     {
@@ -1549,6 +1841,17 @@ function initializeLiveTrackingMap() {
 
                         mapId: 'DEMO_MAP_ID'
                     }
+                );
+
+
+                liveTrackingMap.setOptions({
+                    gestureHandling: 'greedy',
+                    scrollwheel: true
+                });
+                
+                console.log(
+                    '[PawSense Maps] Gesture Handling:',
+                    liveTrackingMap.get('gestureHandling')
                 );
 
             liveMapFallbackActive = false;
@@ -1579,6 +1882,8 @@ function selectLiveTrackingPet(petId) {
     selectedLivePetId = petId;
 
     startSelectedPetRealtimeListener();
+    
+    
 
     renderLivePetSelector();
     renderActivityPetSelector();
@@ -1604,6 +1909,85 @@ function initializeLiveTracking() {
 }
 
 function attachLiveTrackingEvents() {
+
+    // ============================================
+    // RENEW SUBSCRIPTION - OPEN DETAILS MODAL
+    // ============================================
+    document.addEventListener('click', event => {
+        const button = event.target.closest('#renewSubscriptionBtn');
+        if (!button) return;
+
+        const pet = liveTrackingPets.find(
+            item => item.id === selectedLivePetId
+        );
+
+        if (!pet || pet.subscription?.status !== 'expired') return;
+
+        let modal = document.getElementById('pawsenseRenewalModal');
+
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'pawsenseRenewalModal';
+            modal.className = 'modal fade';
+            modal.tabIndex = -1;
+            modal.setAttribute('aria-hidden', 'true');
+            modal.setAttribute('aria-labelledby', 'renewalModalTitle');
+
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="renewalModalTitle">
+                                Renew Subscription
+                            </h5>
+                            <button type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>
+                                Renew PawSense monitoring for
+                                <strong id="renewalPetName"></strong>.
+                            </p>
+                            <h5>30-Day Subscription</h5>
+                            <p>
+                                Live GPS tracking, activity monitoring,
+                                safe-zone alerts, and location history.
+                            </p>
+                            <p><strong>₱199.00</strong> (sample price)</p>
+                            <button type="button"
+                                    class="btn btn-brand w-100"
+                                    id="renewNowBtn"
+                                    disabled>
+                                Renew Now
+                            </button>
+                            <p class="small text-muted mt-2 mb-0">
+                                GCash payment integration is not yet configured.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
+        
+        const renewalPetName = modal.querySelector('#renewalPetName');
+
+        if (renewalPetName) {
+            renewalPetName.textContent = pet.name;
+        }
+
+        if (!window.bootstrap?.Modal) {
+            console.error('Bootstrap Modal is unavailable.');
+            return;
+        }
+
+        window.bootstrap.Modal.getOrCreateInstance(modal).show();
+    });
+
     $('#refreshTrackingBtn')?.addEventListener('click', event => {
         const button = event.currentTarget;
 
